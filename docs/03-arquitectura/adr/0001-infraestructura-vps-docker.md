@@ -12,7 +12,7 @@ Principio rector: **KISS**. No se agrega nada que no se necesite hoy.
 
 ## Decisión
 
-1. **Un solo sistema: Odoo 19.0 Community.** Es la versión verificada para el flujo de checkout (ver ADR-0002). Se reevalúa Odoo 20 cuando esté confirmada como estable. Cubre web, blog, eCommerce, inventario, ventas, compras y facturación básica.
+1. **Un solo sistema: Odoo 20.0 Community.** Es la última versión estable (imagen oficial `odoo:20.0`, build 20.0-20261112, Python 3.12). Se eligió sobre la 19.0 porque ya está disponible, se verificó que el flujo de checkout se comporta igual en su documentación (ver ADR-0002) y empezar en la última evita una migración mayor en el primer año. Cubre web, blog, eCommerce, inventario, ventas, compras y facturación básica.
 2. **Un solo VPS con Docker Compose** y dos contenedores en producción: `odoo` y `postgres`. **El proveedor está pendiente.** Requisitos: 4 GB de RAM o más, pago mensual sin permanencia, unos 5 USD al mes y datacenter en EE. UU. (idealmente Miami o la costa este). Candidatos: Hetzner, Contabo, Vultr y OVH US. Se mide el rendimiento desde Colombia antes de decidir. **El desarrollo local en Docker no depende de esta decisión.**
 3. **Cloudflare delante** (plan gratuito):
    - DNS, caché de recursos estáticos y filtro de bots.

@@ -1,7 +1,7 @@
 {
     "name": "Camino Base",
     "summary": "Configuración base de Camino sobre Odoo Community",
-    "version": "19.0.1.0.0",
+    "version": "20.0.1.0.0",
     "category": "Camino",
     "author": "Camino",
     "website": "https://caminocol.com",

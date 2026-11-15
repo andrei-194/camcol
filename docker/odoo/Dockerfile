@@ -1,6 +1,6 @@
 # Imagen de Camino: Odoo Community + addons camino_*.
 # La misma imagen se usa en local y en cualquier VPS; solo cambian las variables de entorno.
-FROM odoo:19.0
+FROM odoo:20.0
 
 USER root
 

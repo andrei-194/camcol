@@ -4,11 +4,11 @@ Guía para humanos y agentes que trabajan en Camino.
 
 ## Qué es
 
-Vitrina virtual de productos campesinos. Odoo 19.0 Community en un solo servidor: web, blog, tienda, inventario, compras, ventas y facturación básica. Principio rector: **KISS**. No se agrega nada que no se necesite hoy.
+Vitrina virtual de productos campesinos. Odoo 20.0 Community en un solo servidor: web, blog, tienda, inventario, compras, ventas y facturación básica. Principio rector: **KISS**. No se agrega nada que no se necesite hoy.
 
 ## Stack
 
-Odoo 19.0 Community, Python 3.12, Postgres 16, Docker Compose, uv, GitHub Actions. El proveedor del VPS está pendiente (ver ADR-0001); la imagen Docker es la misma para cualquiera.
+Odoo 20.0 Community, Python 3.12, Postgres 16, Docker Compose, uv, GitHub Actions. El proveedor del VPS está pendiente (ver ADR-0001); la imagen Docker es la misma para cualquiera.
 
 ## Mapa del repo
 

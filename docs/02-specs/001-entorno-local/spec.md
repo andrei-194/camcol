@@ -6,7 +6,7 @@
 
 ## Objetivo
 
-Tener Odoo 19.0 Community funcionando en local con Docker Compose, lo más parecido posible a un VPS cualquiera, para empezar a desarrollar sin depender de la decisión del proveedor.
+Tener Odoo 20.0 Community funcionando en local con Docker Compose, lo más parecido posible a un VPS cualquiera, para empezar a desarrollar sin depender de la decisión del proveedor.
 
 ## Alcance
 
