@@ -1,0 +1,10 @@
+.git
+.github
+.claude
+.agents
+.venv
+.env
+docs
+tests
+**/__pycache__
+**/*.pyc
