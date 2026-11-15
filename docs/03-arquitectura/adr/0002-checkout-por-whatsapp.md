@@ -1,6 +1,6 @@
 # ADR-0002: Checkout que deriva a WhatsApp y confirma el pago a mano
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (2026-11-15). La verificación del flujo real en local queda pendiente para la spec del addon.
 - **Fecha:** 2026-11-15
 - **Decide:** equipo Camino
 

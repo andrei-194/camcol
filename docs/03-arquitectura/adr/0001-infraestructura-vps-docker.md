@@ -1,6 +1,6 @@
 # ADR-0001: Infraestructura en un VPS de OVH con Docker Compose
 
-- **Estado:** Propuesto
+- **Estado:** Aceptado (2026-11-15). El proveedor del VPS sigue pendiente (CAM-9) y se anotará aquí cuando se elija.
 - **Fecha:** 2026-11-15
 - **Decide:** equipo Camino
 
