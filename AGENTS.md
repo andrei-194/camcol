@@ -4,7 +4,9 @@ Guía para humanos y agentes que trabajan en Camino.
 
 ## Qué es
 
-Vitrina virtual de productos campesinos. Odoo 20.0 Community en un solo servidor: web, blog, tienda, inventario, compras, ventas y facturación básica. Principio rector: **KISS**. No se agrega nada que no se necesite hoy.
+Vitrina virtual de productos campesinos. El sitio público (`caminocol.com`, Next.js en Vercel, repo aparte `andrei-194/camino`) se mantiene como está. **Este repo es el back-office:** Odoo 20.0 Community para inventario, compras a productores, pedidos, pagos y entregas, sin tráfico público (ADR-0003). Principio rector: **KISS**. No se agrega nada que no se necesite hoy.
+
+Roadmap por hitos: `docs/01-producto/roadmap/roadmap.md`. El despliegue y el proveedor del VPS van al final (hito M4).
 
 ## Stack
 
@@ -31,5 +33,6 @@ Odoo 20.0 Community, Python 3.12, Postgres 16, Docker Compose, uv, GitHub Action
 - Sin secretos en el repo: van en `.env` (ignorado) y se documentan en `.env.example`.
 - Los tests de Odoo llevan la etiqueta `camino`. Ver comando en el README.
 - Cualquier funcionalidad nueva es un addon `camino_*` propio, con su spec.
-- No agregar integraciones, PWA ni APIs sin una spec aprobada: están fuera de la v1 (ver ADR-0001).
-- Pedidos: el checkout deja una cotización; solo se confirma cuando el pago está verificado (ADR-0002).
+- No instalar Website, eCommerce ni Blog en Odoo, y no agregar integraciones, PWA ni APIs sin una spec aprobada (ver ADR-0003).
+- Pedidos: llegan por WhatsApp y se registran como cotización; solo se confirman cuando el pago está verificado (ADR-0003).
+- La base local es de ensayo: no cargar datos reales del negocio hasta tener producción con backups.

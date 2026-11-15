@@ -1,6 +1,6 @@
 # ADR-0002: Checkout que deriva a WhatsApp y confirma el pago a mano
 
-- **Estado:** Aceptado (2026-11-15). La verificación del flujo real en local queda pendiente para la spec del addon.
+- **Estado:** **Reemplazado por [ADR-0003](0003-odoo-como-back-office.md)** (2026-11-15). El sitio actual se mantiene y no tiene carrito ni checkout, así que el addon `camino_checkout_whatsapp` ya no se construye. Se conserva el principio: un pedido sin pago verificado no afecta inventario ni balance. Queda como registro de la decisión original.
 - **Fecha:** 2026-11-15
 - **Decide:** equipo Camino
 

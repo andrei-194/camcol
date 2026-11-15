@@ -1,6 +1,6 @@
 # ADR-0001: Infraestructura en un VPS de OVH con Docker Compose
 
-- **Estado:** Aceptado (2026-11-15). El proveedor del VPS sigue pendiente (CAM-9) y se anotará aquí cuando se elija.
+- **Estado:** Aceptado (2026-11-15), **parcialmente reemplazado por [ADR-0003](0003-odoo-como-back-office.md)**: ya no se alojan web, blog ni eCommerce en Odoo, y Cloudflare Access cubre todo el subdominio del ERP. Siguen vigentes Docker Compose, la imagen única, uv, backups y el despliegue por tag. El proveedor del VPS sigue pendiente (CAM-9, hito M4).
 - **Fecha:** 2026-11-15
 - **Decide:** equipo Camino
 
