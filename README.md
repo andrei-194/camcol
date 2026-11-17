@@ -33,7 +33,7 @@ apps/web/    la PWA (se crea en T-M0-01)
 ## Requisitos
 
 - Node.js 20+ y npm
-- Docker Desktop y la [CLI de Supabase](https://supabase.com/docs/guides/local-development) (desde T-M0-03)
+- Docker Desktop (la [CLI de Supabase](https://supabase.com/docs/guides/local-development) se instala con `npm install`)
 
 ## Comandos
 
@@ -41,6 +41,23 @@ apps/web/    la PWA (se crea en T-M0-01)
 npm install
 npm run test:db      # 24 pruebas del esquema, en memoria con PGlite
 ```
+
+### Base de datos local (Supabase en Docker)
+
+La CLI de Supabase viene como devDependency (`npm install`); no hace falta instalarla aparte. Requiere Docker Desktop en ejecución. La primera vez descarga varias imágenes (unos GB).
+
+```bash
+npm run db:start     # levanta Supabase local (Postgres, Auth, Realtime, Storage, Studio)
+npm run db:reset     # recrea la base desde cero y aplica supabase/migrations/*.sql
+npm run db:status    # URLs y claves locales
+npm run db:stop      # detiene los contenedores (los datos se conservan en un volumen)
+```
+
+- `db:reset` es el comando que recrea la base local con todas las migraciones aplicadas.
+- Estudio (UI): http://127.0.0.1:54323 · API: http://127.0.0.1:54321 · Postgres: `postgresql://postgres:postgres@127.0.0.1:54322/postgres`.
+- Las claves locales (`anon`, `service_role`) las imprime `npm run db:status`; son solo de desarrollo y no se copian a archivos versionados. Pon la `anon key` en `.env` como `VITE_SUPABASE_ANON_KEY`.
+- El registro público de Auth está deshabilitado (`enable_signup = false`): crea los usuarios de los socios desde Estudio (Authentication > Users) o con la API de administración.
+- Verificar el esquema: `docker exec supabase_db_camino psql -U postgres -c "\dt"` (también `\dv`, `\df emitir_documento`).
 
 El resto de comandos (`dev`, `test`, `test:integration`, `test:e2e`) se agregan con las tareas de `TASKS.md`.
 
