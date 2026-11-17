@@ -5,7 +5,7 @@
   "description": "Plataforma operativa de Camino Col (PWA + Supabase)",
   "type": "module",
   "scripts": {
-    "test:db": "node tests/db/core.test.mjs"
+    "test:db": "node tests/db/core.test.mjs && node tests/db/sync.test.mjs"
   },
   "license": "UNLICENSED",
   "dependencies": {
