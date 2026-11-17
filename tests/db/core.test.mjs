@@ -67,7 +67,7 @@ const costoProm = async (art) => num((await one(`select costo_promedio from arti
 
 console.log('\nCompras, recepción y costo promedio');
 
-await test('una compra recibida suma stock y fija el costo', async () => {
+await test('[RN-INV-04][RN-COS-01] una compra recibida suma stock y fija el costo', async () => {
   const { orden, items } = await nuevaOrden([[cafe, 10, 10000]]);
   await recibir(orden, items[0], 10);
   assert.equal(num((await stock(cafe)).fisico), 10);
@@ -75,14 +75,14 @@ await test('una compra recibida suma stock y fija el costo', async () => {
   assert.equal((await one(`select estado from ordenes_compra where id=$1`, [orden])).estado, 'recibida');
 });
 
-await test('segunda compra a otro precio recalcula el costo promedio ponderado', async () => {
+await test('[RN-COS-01] segunda compra a otro precio recalcula el costo promedio ponderado', async () => {
   const { orden, items } = await nuevaOrden([[cafe, 10, 12000]]);
   await recibir(orden, items[0], 10);
   assert.equal(num((await stock(cafe)).fisico), 20);
   assert.equal(await costoProm(cafe), 11000);
 });
 
-await test('recepción parcial: en camino baja y estado pasa a recibida_parcial → recibida', async () => {
+await test('[RN-COM-01][RN-INV-02][E8] recepción parcial: en camino baja y estado pasa a recibida_parcial → recibida', async () => {
   const { orden, items } = await nuevaOrden([[cafe, 20, 11000]]);
   assert.equal(num((await stock(cafe)).en_camino), 20);
   await recibir(orden, items[0], 8);
@@ -94,14 +94,14 @@ await test('recepción parcial: en camino baja y estado pasa a recibida_parcial 
   assert.equal(num((await stock(cafe)).fisico), 40);
 });
 
-await test('no se puede recibir más de lo pedido', async () => {
+await test('[RN-COM-01] no se puede recibir más de lo pedido', async () => {
   const { orden, items } = await nuevaOrden([[cafe, 5, 11000]]);
   const r =(await one(`insert into recepciones (orden_id) values ($1) returning id`, [orden])).id;
   await rejects(`insert into recepcion_items (recepcion_id, orden_item_id, cantidad) values ('${r}','${items[0]}', 6)`, /Sobre-recepción/);
   await q(`update ordenes_compra set estado='cancelada' where id=$1`, [orden]);
 });
 
-await test('artículo con vencimiento exige fecha y crea el lote', async () => {
+await test('[RN-COM-02] artículo con vencimiento exige fecha y crea el lote', async () => {
   const { orden, items } = await nuevaOrden([[crema, 12, 15000]]);
   const r = (await one(`insert into recepciones (orden_id) values ($1) returning id`, [orden])).id;
   await rejects(`insert into recepcion_items (recepcion_id, orden_item_id, cantidad) values ('${r}','${items[0]}', 12)`, /exige fecha de vencimiento/);
@@ -113,7 +113,7 @@ await test('artículo con vencimiento exige fecha y crea el lote', async () => {
   assert.equal(mov.lote_id, lote.id);
 });
 
-await test('orden de compra: transiciones inválidas y edición bloqueada tras recibir', async () => {
+await test('[RN-COM-03] orden de compra: transiciones inválidas y edición bloqueada tras recibir', async () => {
   const { orden, items } = await nuevaOrden([[cafe, 2, 11000]], { estado: 'borrador' });
   await rejects(`update ordenes_compra set estado='recibida' where id='${orden}'`, /Transición no permitida/);
   await q(`update ordenes_compra set estado='pedida' where id=$1`, [orden]);
@@ -123,7 +123,7 @@ await test('orden de compra: transiciones inválidas y edición bloqueada tras r
 });
 
 console.log('\nPrecios');
-await test('precio escalonado y lista de comercio estratégico', async () => {
+await test('[RN-PRE-01] precio escalonado y lista de comercio estratégico', async () => {
   const publica = (await one(`select id from listas_precio where es_publica`)).id;
   const mayor = (await one(`insert into listas_precio (nombre) values ('Comercio estratégico') returning id`)).id;
   await q(`insert into precios (lista_id, articulo_id, precio, cantidad_minima) values
@@ -146,7 +146,7 @@ const nuevoPedido = async (items, cliente = cli) => {
 };
 let P1;
 
-await test('totales del pedido incluyen envío cobrado y se recalculan', async () => {
+await test('[RF-VEN-03] totales del pedido incluyen envío cobrado y se recalculan', async () => {
   P1 = await nuevoPedido([[cafe, 5, 20000]]);
   let p = await one(`select * from pedidos_venta where id=$1`, [P1]);
   assert.equal(num(p.subtotal), 100000);
@@ -242,14 +242,14 @@ await test('[RN-DOC-01][RN-DOC-02][E9] remisión con consecutivo sin huecos; no 
   assert.equal(d2.numero, 'RM-000002');
 });
 
-await test('confirmación de pedido: sin consecutivo y repetible (sirve offline/borrador)', async () => {
+await test('[RF-DOC-01][RF-DOC-06] confirmación de pedido: sin consecutivo y repetible (sirve offline/borrador)', async () => {
   const a = await one(`select * from emitir_documento('confirmacion', $1)`, [P2]);
   const b = await one(`select * from emitir_documento('confirmacion', $1)`, [P2]);
   assert.equal(a.numero, null);
   assert.notEqual(a.id, b.id);
 });
 
-await test('comprobante de compra al proveedor', async () => {
+await test('[RF-COM-07][RN-DOC-01] comprobante de compra al proveedor', async () => {
   const { orden, items } = await nuevaOrden([[cafe, 4, 11500]]);
   await recibir(orden, items[0], 4);
   const c = await one(`select * from emitir_documento('comprobante_compra', null, $1)`, [orden]);
@@ -258,7 +258,7 @@ await test('comprobante de compra al proveedor', async () => {
 });
 
 console.log('\nPagos, cuentas y dashboard');
-await test('pago a proveedor y cuentas por pagar (base para crédito futuro)', async () => {
+await test('[RN-PAG-01][RF-COM-05] pago a proveedor y cuentas por pagar (base para crédito futuro)', async () => {
   const { orden, items } = await nuevaOrden([[cafe, 10, 11000]]);
   await q(`update ordenes_compra set condicion_pago='credito', dias_credito=15 where id=$1`, [orden]);
   await recibir(orden, items[0], 10);
@@ -304,16 +304,16 @@ await test('[RN-COS-03][E10] resumen del periodo: ventas, descuentos, envíos, c
 });
 
 console.log('\nIntegridad y seguridad');
-await test('el libro de movimientos es append-only', async () => {
+await test('[RN-INV-01] el libro de movimientos es append-only', async () => {
   await rejects(`update movimientos_inventario set cantidad = 1`, /append-only/);
   await rejects(`delete from movimientos_inventario`, /append-only/);
 });
 
-await test('signo de movimientos validado (una venta no puede ser positiva)', async () => {
+await test('[RN-INV-04] signo de movimientos validado (una venta no puede ser positiva)', async () => {
   await rejects(`insert into movimientos_inventario (articulo_id, tipo, cantidad) values ('${cafe}','venta', 3)`, /check/);
 });
 
-await test('op_id único: una operación repetida no duplica registros', async () => {
+await test('[RF-SYN-05][E2] op_id único: una operación repetida no duplica registros', async () => {
   const op = '11111111-1111-1111-1111-111111111111';
   await q(`insert into terceros (nombre, es_proveedor, op_id) values ('Proveedor offline', true, $1)`, [op]);
   await rejects(`insert into terceros (nombre, es_proveedor, op_id) values ('Proveedor offline', true, '${op}')`, /unique|duplicate/);
@@ -321,7 +321,7 @@ await test('op_id único: una operación repetida no duplica registros', async (
   assert.equal(num((await one(`select count(*) c from terceros where op_id=$1`, [op])).c), 1);
 });
 
-await test('RLS: un usuario autenticado que NO es miembro ve 0 filas; un miembro sí ve datos', async () => {
+await test('[RNF-SEC-02][E12] RLS: un usuario autenticado que NO es miembro ve 0 filas; un miembro sí ve datos', async () => {
   await db.exec(`
     create role authenticated nologin;
     grant usage on schema public, auth to authenticated;
