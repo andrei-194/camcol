@@ -1,21 +1,24 @@
-# Secretos y entorno local
+# Secretos y entorno local (.env.example sí se versiona)
 .env
 .env.*
 !.env.example
 
-# Python / uv
-.venv/
-__pycache__/
-*.pyc
-.pytest_cache/
-.ruff_cache/
+# Node
+node_modules/
+dist/
+coverage/
+*.log
+
+# Supabase local
+supabase/.branches/
+supabase/.temp/
+
+# Resultados de pruebas
+playwright-report/
+test-results/
 
 # Editores y sistema
 .idea/
 .vscode/
 .DS_Store
 Thumbs.db
-
-# Odoo
-*.log
-filestore/

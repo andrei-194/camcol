@@ -1,0 +1,17 @@
+{
+  "name": "camino",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Plataforma operativa de Camino Col (PWA + Supabase)",
+  "type": "module",
+  "scripts": {
+    "test:db": "node tests/db/core.test.mjs"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.16"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
