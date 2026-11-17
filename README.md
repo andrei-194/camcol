@@ -27,20 +27,33 @@ Arranque del proyecto. Existe el esquema de base de datos (`supabase/migrations/
 docs/        spec, roadmap, ADR, decisiones, material del negocio
 supabase/    migraciones SQL (solo hacia adelante)
 tests/       db/ (PGlite), luego integration/ y e2e/
-apps/web/    la PWA (se crea en T-M0-01)
+apps/web/    la PWA (Vite + React + TypeScript + Tailwind)
 ```
 
 ## Requisitos
 
-- Node.js 22.12+ y npm (instalarlo en D:)
-- Docker Desktop (la [CLI de Supabase](https://supabase.com/docs/guides/local-development) se instala con `npm install`)
+- **Docker Desktop.** La app web corre dentro de un contenedor con Node 22, así que no hace falta instalar Node 22 en el PC.
+- Node.js 20 o superior en el PC, solo para las pruebas de base de datos y la CLI de Supabase (se instala con `npm install`).
 
 ## Comandos
 
 ```bash
-npm install
-npm run test:db      # 24 pruebas del esquema, en memoria con PGlite
+npm install          # herramientas del PC (PGlite y CLI de Supabase)
+npm run test:db      # pruebas del esquema, en memoria con PGlite
 ```
+
+### App web (en Docker)
+
+```bash
+npm run setup        # instala las dependencias de apps/web dentro del contenedor (una vez)
+npm run dev          # servidor de desarrollo: http://localhost:5173
+npm test             # pruebas de la app
+npm run typecheck    # tipos (TypeScript estricto)
+npm run lint
+npm run build
+```
+
+Los `node_modules` viven en un volumen de Docker (en D:), no en la carpeta del proyecto. El editor no verá los tipos de las dependencias; es esperado.
 
 ### Base de datos local (Supabase en Docker)
 

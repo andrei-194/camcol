@@ -42,7 +42,7 @@ apps/web/        la PWA (se crea en T-M0-01)
 ## Entorno
 
 - Windows. **Todo lo pesado va en el disco D:** el repo, el caché de npm, las imágenes y el disco virtual de Docker, y cualquier emulador. El disco C: está casi lleno.
-- Node 22.12 o superior (`.nvmrc`; Vite 8 lo exige). Docker Desktop y la CLI de Supabase desde T-M0-03.
+- **La app web corre en Docker** (`docker-compose.yml`, imagen `node:22`): `npm run setup`, `dev`, `test`, `typecheck`, `lint`, `build`. No se instala Node 22 en el PC. El Node del PC (20+) solo sirve para `test:db` y la CLI de Supabase (`db:*`).
 
 ## Cómo empezar una tarea
 
