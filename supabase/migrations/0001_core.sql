@@ -199,10 +199,10 @@ create table pedidos_venta (
   origen                 text not null default 'manual' check (origen in ('web','whatsapp','manual')),
   referencia_origen      text,                                   -- p. ej. CC-20261117-03
   estado                 text not null default 'recibido' check (estado in
-                           ('recibido','confirmado','en_alistamiento','listo','despachado','entregado','cancelado','devuelto')),
+                           ('recibido','confirmado','finalizado','cancelado','devuelto')),
   motivo_estado          text,                                   -- el cliente lo llena al cambiar estado
   fecha                  timestamptz not null default now(),
-  despachado_en          timestamptz,
+  finalizado_en          timestamptz,                            -- se fija al confirmar el pago (SPEC §9.1)
   fecha_entrega_estimada date,
   entrega_tipo           text not null default 'transportadora' check (entrega_tipo in ('transportadora','propia','recoge')),
   transportadora         text,
@@ -237,7 +237,7 @@ create table pedidos_venta_items (
   descuento_pct   numeric(5,2)  not null default 0 check (descuento_pct between 0 and 100),
   precio_unitario numeric(14,2) not null check (precio_unitario >= 0), -- precio pactado, ya con descuento
   tasa_impuesto   numeric(5,2)  not null default 0,
-  costo_unitario  numeric(14,4)                                        -- se fija al despachar
+  costo_unitario  numeric(14,4)                                        -- se fija al finalizar
 );
 create index pedidos_venta_items_pedido_idx on pedidos_venta_items (pedido_id);
 
@@ -408,13 +408,9 @@ create table gastos (                                             -- gastos oper
 create or replace function pv_transicion_valida(a text, b text) returns boolean
 language sql immutable as $$
   select (a, b) in (
-    ('recibido','confirmado'),   ('recibido','cancelado'),
-    ('confirmado','en_alistamiento'), ('confirmado','listo'),
-    ('confirmado','despachado'), ('confirmado','cancelado'),
-    ('en_alistamiento','listo'), ('en_alistamiento','despachado'), ('en_alistamiento','cancelado'),
-    ('listo','despachado'),      ('listo','cancelado'),
-    ('despachado','entregado'),  ('despachado','devuelto'),
-    ('entregado','devuelto')
+    ('recibido','confirmado'),  ('recibido','cancelado'),
+    ('confirmado','finalizado'), ('confirmado','cancelado'),
+    ('finalizado','devuelto')
   );
 $$;
 
@@ -444,7 +440,7 @@ begin
      (new.pedido_id, new.articulo_id, new.cantidad, new.precio_lista, new.descuento_pct, new.precio_unitario, new.tasa_impuesto)
      is not distinct from
      (old.pedido_id, old.articulo_id, old.cantidad, old.precio_lista, old.descuento_pct, old.precio_unitario, old.tasa_impuesto)
-  then return new;   -- solo cambió costo_unitario (lo fija el despacho)
+  then return new;   -- solo cambió costo_unitario (lo fija la finalización)
   end if;
   select estado into v_estado from pedidos_venta where id = v_pedido;
   if v_estado not in ('recibido','confirmado') then
@@ -470,7 +466,7 @@ create trigger pvi_recalc after insert or update or delete on pedidos_venta_item
 
 -- Cambios de estado: valida, mueve inventario y deja evento
 create or replace function trg_pv_estado() returns trigger language plpgsql as $$
-declare r record; v_stock numeric; n int;
+declare r record; v_stock numeric; n int; v_total numeric; v_pagado numeric;
 begin
   if new.estado = old.estado then return new; end if;
   if not pv_transicion_valida(old.estado, new.estado) then
@@ -482,14 +478,22 @@ begin
     raise exception 'El pedido no tiene ítems';
   end if;
 
-  if new.estado = 'despachado' then
+  if new.estado = 'finalizado' then
+    -- Pago completo (RN-VEN-05). El total se calcula con los valores nuevos porque
+    -- el trigger de totales corre después de este.
+    v_total := new.subtotal - new.descuento_valor + new.impuestos + new.envio_cobrado;
+    select coalesce(sum(valor), 0) into v_pagado from pagos
+     where pedido_venta_id = new.id and direccion = 'cobro';
+    if v_pagado < v_total then
+      raise exception 'El pedido no está pagado por completo: pagado %, total %', v_pagado, v_total;
+    end if;
     -- Bloqueo por artículo (orden estable) y verificación de stock físico
     for r in select articulo_id, sum(cantidad) as q from pedidos_venta_items
               where pedido_id = new.id group by articulo_id order by articulo_id loop
       perform 1 from articulos where id = r.articulo_id for update;
       select coalesce(sum(cantidad),0) into v_stock from movimientos_inventario where articulo_id = r.articulo_id;
       if v_stock < r.q then
-        raise exception 'Stock insuficiente para despachar (articulo %): hay %, se requieren %',
+        raise exception 'Stock insuficiente para finalizar (articulo %): hay %, se requieren %',
           r.articulo_id, v_stock, r.q;
       end if;
     end loop;
@@ -498,7 +502,7 @@ begin
     insert into movimientos_inventario (articulo_id, tipo, cantidad, costo_unitario, pedido_venta_item_id)
       select i.articulo_id, 'venta', -i.cantidad, i.costo_unitario, i.id
         from pedidos_venta_items i where i.pedido_id = new.id;
-    new.despachado_en := now();
+    new.finalizado_en := now();
 
   elsif new.estado = 'devuelto' then
     insert into movimientos_inventario (articulo_id, tipo, cantidad, costo_unitario, pedido_venta_item_id, motivo)
@@ -695,8 +699,8 @@ begin
     select * into pv from pedidos_venta where id = p_pedido;
     if not found then raise exception 'El pedido no existe'; end if;
     if p_tipo in ('remision','factura_interna') then
-      if pv.estado not in ('despachado','entregado') then
-        raise exception 'Solo se emite % de pedidos despachados o entregados', p_tipo;
+      if pv.estado <> 'finalizado' then
+        raise exception 'Solo se emite % de pedidos finalizados', p_tipo;
       end if;
       if exists (select 1 from documentos where tipo = p_tipo and pedido_venta_id = p_pedido and anulado_en is null) then
         raise exception 'Ya existe un % vigente para este pedido', p_tipo;
@@ -782,7 +786,7 @@ select a.id as articulo_id, a.nombre,
                from movimientos_inventario group by articulo_id) f on f.articulo_id = a.id
   left join (select i.articulo_id, sum(i.cantidad) as comprometido
                from pedidos_venta_items i join pedidos_venta p on p.id = i.pedido_id
-              where p.estado in ('confirmado','en_alistamiento','listo') and p.deleted_at is null
+              where p.estado = 'confirmado' and p.deleted_at is null
               group by i.articulo_id) c on c.articulo_id = a.id
   left join (select i.articulo_id, sum(i.cantidad - i.cantidad_recibida) as en_camino
                from ordenes_compra_items i join ordenes_compra o on o.id = i.orden_id
@@ -797,13 +801,14 @@ select s.articulo_id, s.nombre, s.faltante, a.proveedor_id, t.nombre as proveedo
   left join terceros t on t.id = a.proveedor_id
  where s.faltante > 0;
 
+-- Pedidos confirmados que esperan el pago (todo es de contado, D13). Al finalizar salen de aquí.
 create view v_cuentas_por_cobrar with (security_invoker = true) as
 select p.id as pedido_id, p.cliente_id, t.nombre as cliente, p.total,
        coalesce(sum(g.valor), 0) as pagado, p.total - coalesce(sum(g.valor), 0) as saldo
   from pedidos_venta p
   join terceros t on t.id = p.cliente_id
   left join pagos g on g.pedido_venta_id = p.id and g.direccion = 'cobro'
- where p.estado in ('despachado','entregado') and p.deleted_at is null
+ where p.estado = 'confirmado' and p.deleted_at is null
  group by p.id, t.nombre
 having p.total - coalesce(sum(g.valor), 0) > 0;
 
@@ -817,10 +822,10 @@ select o.id as orden_id, o.proveedor_id, t.nombre as proveedor, o.total, o.fecha
  group by o.id, t.nombre
 having o.total - coalesce(sum(g.valor), 0) > 0;
 
--- Una fila por pedido despachado/entregado, con sus métricas (base del dashboard)
+-- Una fila por pedido finalizado, con sus métricas (base del dashboard)
 create view v_ventas_pedido with (security_invoker = true) as
 select p.id as pedido_id, p.cliente_id,
-       (p.despachado_en at time zone 'America/Bogota')::date as dia,
+       (p.finalizado_en at time zone 'America/Bogota')::date as dia,
        m.unidades, m.ventas_lista,
        p.subtotal - p.descuento_valor                     as ventas_netas,
        m.ventas_lista - p.subtotal + p.descuento_valor    as descuentos,
@@ -832,7 +837,7 @@ select p.id as pedido_id, p.cliente_id,
            coalesce(sum(i.cantidad * i.precio_lista), 0)        as ventas_lista,
            coalesce(sum(i.cantidad * i.costo_unitario), 0)      as costo
       from pedidos_venta_items i where i.pedido_id = p.id) m
- where p.estado in ('despachado','entregado') and p.deleted_at is null;
+ where p.estado = 'finalizado' and p.deleted_at is null;
 
 create view v_ventas_diarias with (security_invoker = true) as
 select dia, count(*) as pedidos, sum(unidades) as unidades, sum(ventas_netas) as ventas_netas,

@@ -1,4 +1,4 @@
-// Pruebas del esquema núcleo en Postgres real (PGlite, WASM). Ejecutar: node tests/core.test.mjs
+// Pruebas del esquema núcleo en Postgres real (PGlite, WASM). Ejecutar: npm run test:db
 import { PGlite } from '@electric-sql/pglite';
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
@@ -134,7 +134,7 @@ await test('precio escalonado y lista de comercio estratégico', async () => {
   assert.equal(num((await one(`select precio_para($1,$2,1) p`, [cafe, comercio])).p), 16000);
 });
 
-console.log('\nPedidos de venta, reserva y despacho');
+console.log('\nPedidos de venta: reserva al confirmar y descuento al finalizar con el pago');
 const nuevoPedido = async (items, cliente = cli) => {
   const p = (await one(`insert into pedidos_venta (cliente_id, origen) values ($1,'whatsapp') returning id`, [cliente])).id;
   for (const [art, cant, lista, pct] of items) {
@@ -156,7 +156,7 @@ await test('totales del pedido incluyen envío cobrado y se recalculan', async (
   assert.equal(num(p.total), 115000);
 });
 
-await test('confirmar reserva stock: comprometido sube y disponible baja', async () => {
+await test('[RN-INV-02] confirmar reserva stock: comprometido sube y disponible baja', async () => {
   const antes = await stock(cafe);
   await q(`update pedidos_venta set estado='confirmado' where id=$1`, [P1]);
   const d = await stock(cafe);
@@ -164,56 +164,72 @@ await test('confirmar reserva stock: comprometido sube y disponible baja', async
   assert.equal(num(d.disponible_para_prometer), num(antes.disponible_para_prometer) - 5);
 });
 
-await test('transición inválida: recibido → despachado', async () => {
+await test('[RN-VEN-02] transiciones: no se salta a finalizado, y despacho y entrega ya no existen', async () => {
   const p = await nuevoPedido([[cafe, 1, 20000]]);
-  await rejects(`update pedidos_venta set estado='despachado' where id='${p}'`, /Transición no permitida/);
+  await rejects(`update pedidos_venta set estado='finalizado' where id='${p}'`, /Transición no permitida/);
+  await rejects(`update pedidos_venta set estado='despachado' where id='${p}'`, /Transición no permitida|check/);
+  await rejects(`update pedidos_venta set estado='entregado' where id='${p}'`, /Transición no permitida|check/);
   await q(`update pedidos_venta set estado='cancelado' where id=$1`, [p]);
 });
 
-await test('despachar descuenta stock físico al costo promedio y registra evento', async () => {
+await test('[RN-VEN-05][E4] no se puede finalizar sin el pago completo', async () => {
+  await rejects(`update pedidos_venta set estado='finalizado' where id='${P1}'`, /no está pagado por completo/);
+  await q(`insert into pagos (direccion, pedido_venta_id, medio, valor) values ('cobro',$1,'nequi',10000)`, [P1]);
+  await rejects(`update pedidos_venta set estado='finalizado' where id='${P1}'`, /no está pagado por completo/);
+  const s = await stock(cafe);
+  assert.equal(num(s.comprometido), 5);                       // sigue reservado
+});
+
+await test('[RN-INV-03][RN-COS-02][RN-VEN-03][E4] finalizar con pago completo descuenta el stock al costo promedio y registra evento', async () => {
+  await q(`insert into pagos (direccion, pedido_venta_id, medio, valor) values ('cobro',$1,'efectivo',105000)`, [P1]);   // 115.000 - 10.000
   const antes = num((await stock(cafe)).fisico);
-  await q(`update pedidos_venta set estado='despachado', motivo_estado='sale por Servientrega' where id=$1`, [P1]);
+  await q(`update pedidos_venta set estado='finalizado', motivo_estado='pago confirmado, sale por Servientrega' where id=$1`, [P1]);
   const d = await stock(cafe);
   assert.equal(num(d.fisico), antes - 5);
   assert.equal(num(d.comprometido), 0);
   const mov = await one(`select * from movimientos_inventario where pedido_venta_item_id is not null and tipo='venta' order by id desc limit 1`);
   assert.equal(num(mov.cantidad), -5);
   assert.equal(num(mov.costo_unitario), 11000);
-  const ev = await one(`select * from eventos_estado where entidad_id=$1 and estado_nuevo='despachado'`, [P1]);
-  assert.equal(ev.motivo, 'sale por Servientrega');
-  assert.ok((await one(`select despachado_en from pedidos_venta where id=$1`, [P1])).despachado_en);
+  const ev = await one(`select * from eventos_estado where entidad_id=$1 and estado_nuevo='finalizado'`, [P1]);
+  assert.equal(ev.motivo, 'pago confirmado, sale por Servientrega');
+  assert.ok((await one(`select finalizado_en from pedidos_venta where id=$1`, [P1])).finalizado_en);
+  assert.equal(num((await one(`select count(*) c from v_ventas_pedido where pedido_id=$1`, [P1])).c), 1);
 });
 
-await test('tras despachar ya no se editan los ítems', async () => {
+await test('[RN-VEN-02] tras finalizar ya no se editan los ítems ni se puede cancelar', async () => {
   await rejects(`update pedidos_venta_items set cantidad = 1 where pedido_id='${P1}'`, /No se pueden editar ítems/);
+  await rejects(`update pedidos_venta set estado='cancelado' where id='${P1}'`, /Transición no permitida/);
 });
 
-await test('un pedido sin stock se acepta y confirma, pero no se puede despachar', async () => {
+await test('[E5][RN-INV-03] un pedido sin stock se acepta y confirma, pero no se puede finalizar aunque esté pagado', async () => {
   const p = await nuevoPedido([[cafe, 500, 20000]]);
   await q(`update pedidos_venta set estado='confirmado' where id=$1`, [p]);
   const s = await stock(cafe);
   assert.ok(num(s.faltante) > 0, 'debe aparecer faltante');
   const nec = await one(`select * from v_necesidades_compra where articulo_id=$1`, [cafe]);
   assert.equal(nec.proveedor, 'Don Luis (finca)');
-  await rejects(`update pedidos_venta set estado='despachado' where id='${p}'`, /Stock insuficiente/);
+  await q(`insert into pagos (direccion, pedido_venta_id, medio, valor) values ('cobro',$1,'transferencia',10000000)`, [p]);
+  await rejects(`update pedidos_venta set estado='finalizado' where id='${p}'`, /Stock insuficiente/);
   await q(`update pedidos_venta set estado='cancelado' where id=$1`, [p]);
-  assert.equal(num((await stock(cafe)).comprometido), 0);
+  assert.equal(num((await stock(cafe)).comprometido), 0);     // cancelar libera la reserva
 });
 
-await test('devolución del cliente repone el stock', async () => {
+await test('[RN-VEN-02][E11] la devolución del cliente repone el stock y el pedido deja de contar en ventas', async () => {
   const antes = num((await stock(cafe)).fisico);
   await q(`update pedidos_venta set estado='devuelto', motivo_estado='empaque dañado' where id=$1`, [P1]);
   assert.equal(num((await stock(cafe)).fisico), antes + 5);
-  await rejects(`update pedidos_venta set estado='entregado' where id='${P1}'`, /Transición no permitida/);
+  assert.equal(num((await one(`select count(*) c from v_ventas_pedido where pedido_id=$1`, [P1])).c), 0);
+  await rejects(`update pedidos_venta set estado='finalizado' where id='${P1}'`, /Transición no permitida/);
 });
 
 console.log('\nDocumentos');
 let P2;
-await test('remisión con consecutivo sin huecos; no se duplica; es inmutable; se anula y se reemite', async () => {
+await test('[RN-DOC-01][RN-DOC-02][E9] remisión con consecutivo sin huecos; no se duplica; es inmutable; se anula y se reemite', async () => {
   P2 = await nuevoPedido([[cafe, 2, 20000, 10]]);              // 10 % de descuento
-  await q(`update pedidos_venta set estado='confirmado' where id=$1`, [P2]);
-  await rejects(`select emitir_documento('remision', '${P2}')`, /despachados o entregados/);
-  await q(`update pedidos_venta set estado='despachado', envio_cobrado=15000, envio_costo=15000 where id=$1`, [P2]);
+  await q(`update pedidos_venta set estado='confirmado', envio_cobrado=15000, envio_costo=15000 where id=$1`, [P2]);
+  await rejects(`select emitir_documento('remision', '${P2}')`, /finalizados/);
+  await q(`insert into pagos (direccion, pedido_venta_id, medio, valor) values ('cobro',$1,'nequi',51000)`, [P2]);
+  await q(`update pedidos_venta set estado='finalizado' where id=$1`, [P2]);
   const d1 = await one(`select * from emitir_documento('remision', $1)`, [P2]);
   assert.equal(d1.numero, 'RM-000001');
   assert.equal(num(d1.totales.total), 51000);                    // 36000 + 15000 envío
@@ -254,14 +270,20 @@ await test('pago a proveedor y cuentas por pagar (base para crédito futuro)', a
   await rejects(`insert into pagos (direccion, orden_compra_id, pedido_venta_id, medio, valor) values ('pago','${orden}','${P2}','efectivo',1)`, /check/);
 });
 
-await test('cuentas por cobrar y cobro parcial', async () => {
-  let cxc = await one(`select * from v_cuentas_por_cobrar where pedido_id=$1`, [P2]);
-  assert.equal(num(cxc.saldo), 51000);
-  await q(`insert into pagos (direccion, pedido_venta_id, medio, valor) values ('cobro',$1,'nequi',51000)`, [P2]);
-  assert.equal(await one(`select * from v_cuentas_por_cobrar where pedido_id=$1`, [P2]), undefined);
+await test('[RF-PAG-02][RN-PAG-01] pedidos esperando pago: saldo por cobrar y cobro parcial', async () => {
+  const p3 = await nuevoPedido([[cafe, 1, 20000]]);
+  await q(`update pedidos_venta set estado='confirmado' where id=$1`, [p3]);
+  let cxc = await one(`select * from v_cuentas_por_cobrar where pedido_id=$1`, [p3]);
+  assert.equal(num(cxc.saldo), 20000);
+  await q(`insert into pagos (direccion, pedido_venta_id, medio, valor) values ('cobro',$1,'nequi',5000)`, [p3]);
+  cxc = await one(`select * from v_cuentas_por_cobrar where pedido_id=$1`, [p3]);
+  assert.equal(num(cxc.saldo), 15000);
+  await q(`insert into pagos (direccion, pedido_venta_id, medio, valor) values ('cobro',$1,'nequi',15000)`, [p3]);
+  assert.equal(await one(`select * from v_cuentas_por_cobrar where pedido_id=$1`, [p3]), undefined);
+  assert.equal(await one(`select * from v_cuentas_por_cobrar where pedido_id=$1`, [P2]), undefined);   // un pedido finalizado ya no está esperando pago
 });
 
-await test('resumen del periodo: ventas, descuentos, envíos, costos, gastos y utilidad', async () => {
+await test('[RN-COS-03][E10] resumen del periodo: ventas, descuentos, envíos, costos, gastos y utilidad', async () => {
   await q(`insert into gastos (categoria, concepto, valor) values ('combustible','viaje a la finca', 5000)`);
   const hoy = (await one(`select (now() at time zone 'America/Bogota')::date d`)).d;
   const r = await one(`select * from resumen_periodo($1::date, $1::date)`, [hoy]);
