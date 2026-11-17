@@ -157,6 +157,59 @@ await test('[RF-SYN-09] ping() devuelve 1 y uso_bd() devuelve el tamaño de la b
 });
 
 console.log('\nT-M1-02 · Detección de duplicados de terceros');
-// (se completan en el siguiente commit)
+const dup = (tel, doc, nombre) =>
+  q(`select * from detectar_duplicados_tercero($1,$2,$3)`, [tel ?? null, doc ?? null, nombre ?? null]);
+const ids = (rows) => rows.map((r) => r.id);
+
+const tUno = (await one(`insert into terceros (nombre, es_cliente, telefono, municipio) values ('Carlos Andrés Ramírez', true, '3001112233', 'Tuluá') returning id`)).id;
+const tDoc = (await one(`insert into terceros (nombre, es_proveedor, tipo_documento, numero_documento, municipio) values ('Finca El Mirador', true, 'NIT', '900123456', 'Zarzal') returning id`)).id;
+const tBorrado = (await one(`insert into terceros (nombre, es_cliente, telefono, deleted_at) values ('Borrado Total', true, '3112223344', now()) returning id`)).id;
+// Ya existen: 'Don Luis (finca)' (3001112233, prov) y 'María Pérez' (3009998877, cli) de los datos base.
+
+await test('[RF-TER-04] el teléfono con +57 y espacios coincide con el guardado sin prefijo', async () => {
+  const r = await dup('+57 300 111 2233', null, null);
+  assert.ok(ids(r).includes(tUno));
+  assert.deepEqual(Object.keys(r[0]).slice(0, 4), ['id', 'nombre', 'telefono', 'municipio']);
+});
+
+await test('[RF-TER-04] el teléfono guardado con formato también coincide (57 inicial, guiones, paréntesis)', async () => {
+  const t = (await one(`insert into terceros (nombre, es_cliente, telefono) values ('Ana Formato', true, '(57) 315-444-5566') returning id`)).id;
+  assert.ok(ids(await dup('3154445566', null, null)).includes(t));
+  assert.ok(ids(await dup('0057 315 444 5566', null, null)).includes(t));
+});
+
+await test('[RF-TER-04] el documento igual es candidato aunque cambie el formato', async () => {
+  assert.deepEqual(ids(await dup(null, '900123456', null)), [tDoc]);
+  assert.deepEqual(ids(await dup(null, '900.123.456', null)), [tDoc]);
+});
+
+await test('[RF-TER-04] nombre similar (mayúsculas, tildes, signos, error de tipeo) es candidato', async () => {
+  assert.ok(ids(await dup(null, null, 'CARLOS ANDRES RAMIREZ')).includes(tUno));
+  assert.ok(ids(await dup(null, null, 'carlos andres ramirez.')).includes(tUno));
+  assert.ok(ids(await dup(null, null, 'Carlos Andrés Ramirés')).includes(tUno));
+  assert.ok(ids(await dup(null, null, 'Don Luis finca')).length >= 1);
+});
+
+await test('[RF-TER-04] sin falsos positivos con nombres, teléfono o documento distintos', async () => {
+  assert.deepEqual(await dup('3205556677', '1234567', 'Pedro Gómez Torres'), []);
+  assert.deepEqual(await dup(null, null, 'Juan Pérez'), []);        // solo comparte apellido con 'María Pérez'
+  assert.deepEqual(await dup(null, null, 'Tienda La Esquina'), []);
+});
+
+await test('[RF-TER-04] sin datos no devuelve nada; null y vacío no empatan con terceros sin teléfono', async () => {
+  await q(`insert into terceros (nombre, es_cliente) values ('Sin Teléfono SAS', true)`);
+  assert.deepEqual(await dup(null, null, null), []);
+  assert.deepEqual(await dup('', '', ''), []);
+  assert.deepEqual(await dup('abc', ' ', null), []);
+});
+
+await test('[RF-TER-04] ignora terceros con borrado lógico y devuelve una fila por tercero con el motivo', async () => {
+  assert.deepEqual(await dup('3112223344', null, null), []);
+  const r = await dup('300 111 2233', null, 'Carlos Andrés Ramírez');
+  assert.equal(r.filter((x) => x.id === tUno).length, 1);
+  assert.match(r.find((x) => x.id === tUno).motivo, /telefono/);
+  assert.match(r.find((x) => x.id === tUno).motivo, /nombre/);
+  assert.ok(!ids(r).includes(tBorrado));
+});
 
 console.log(`\n${passed} pruebas OK${process.exitCode ? ' — HAY FALLAS' : ''}`);
