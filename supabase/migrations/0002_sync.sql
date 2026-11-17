@@ -4,10 +4,13 @@
 -- Solo hacia adelante: NO se edita 0001_core.sql.
 -- Alcance (PLAN §4.2, con la revisión D-009): columnas updated_at para el
 -- pull por cursor, "touch" del padre, productos_ofrecidos, adjuntos,
--- configuracion, ping() y uso_bd(). Los duplicados de terceros están al final.
+-- configuracion, ping() y uso_bd(). Los duplicados de terceros (T-M1-02, CAM-32)
+-- están al final.
 -- Fuera de esta migración (tareas posteriores): aplicar_ops, sync_pull,
 -- endurecimiento de permisos, bucket de Storage y Realtime.
 -- =====================================================================
+
+create extension if not exists pg_trgm;   -- similitud de nombres (T-M1-02)
 
 -- ---------------------------------------------------------------------
 -- 1) updated_at + trigger set_updated_at en las tablas que aún no lo tenían
@@ -112,3 +115,56 @@ language sql stable set search_path = public as $$ select 1 $$;
 
 create or replace function uso_bd() returns bigint      -- bytes; para la alerta de cuota
 language sql stable set search_path = public as $$ select pg_database_size(current_database()) $$;
+
+-- =====================================================================
+-- 6) Detección de duplicados de terceros (T-M1-02, CAM-32 · RF-TER-04)
+-- =====================================================================
+-- Teléfono: solo dígitos y sin el indicativo 57 inicial (también con 00 delante).
+-- '+57 300 111 2233' = '(57) 300-111-2233' = '3001112233'.
+create or replace function normalizar_telefono(p text) returns text
+language sql immutable set search_path = public as $$
+  select regexp_replace(regexp_replace(coalesce(p, ''), '\D', '', 'g'), '^(00)?57(?=\d{10}$)', '')
+$$;
+
+-- Documento: minúsculas y solo letras/números ('900.123.456' = '900123456').
+create or replace function normalizar_documento(p text) returns text
+language sql immutable set search_path = public as $$
+  select regexp_replace(lower(coalesce(p, '')), '[^a-z0-9]', '', 'g')
+$$;
+
+-- Nombre: minúsculas, sin tildes ni signos, espacios colapsados.
+create or replace function normalizar_nombre(p text) returns text
+language sql immutable set search_path = public as $$
+  select btrim(regexp_replace(regexp_replace(
+           translate(lower(coalesce(p, '')), 'áàäâéèëêíìïîóòöôúùüûñ', 'aaaaeeeeiiiioooouuuun'),
+           '[^a-z0-9]+', ' ', 'g'), '\s+', ' ', 'g'))
+$$;
+
+create index terceros_telefono_norm_idx on terceros (normalizar_telefono(telefono));
+
+-- Candidatos a duplicado: mismo teléfono normalizado (>= 7 dígitos), mismo documento
+-- normalizado, o nombre normalizado con similitud de trigramas >= 0.5. Una fila por
+-- tercero; `motivo` lista por qué coincide ('telefono', 'documento', 'nombre').
+-- SECURITY INVOKER: la RLS de terceros se aplica (solo miembros).
+create or replace function detectar_duplicados_tercero(
+  p_telefono text default null, p_numero_documento text default null, p_nombre text default null
+) returns table (id uuid, nombre text, telefono text, municipio text, motivo text)
+language sql stable set search_path = public as $$
+  with q as (
+    select case when length(normalizar_telefono(p_telefono)) >= 7 then normalizar_telefono(p_telefono) end as tel,
+           nullif(normalizar_documento(p_numero_documento), '') as doc,
+           nullif(normalizar_nombre(p_nombre), '') as nom
+  )
+  select t.id, t.nombre, t.telefono, t.municipio,
+         concat_ws(', ',
+           case when q.tel is not null and normalizar_telefono(t.telefono) = q.tel then 'telefono' end,
+           case when q.doc is not null and normalizar_documento(t.numero_documento) = q.doc then 'documento' end,
+           case when q.nom is not null and similarity(normalizar_nombre(t.nombre), q.nom) >= 0.5 then 'nombre' end
+         ) as motivo
+    from terceros t, q
+   where t.deleted_at is null
+     and ((q.tel is not null and normalizar_telefono(t.telefono) = q.tel)
+       or (q.doc is not null and normalizar_documento(t.numero_documento) = q.doc)
+       or (q.nom is not null and similarity(normalizar_nombre(t.nombre), q.nom) >= 0.5))
+   order by t.nombre
+$$;
