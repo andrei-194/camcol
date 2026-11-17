@@ -20,7 +20,7 @@ Reglas:
 
 ## 2. Cómo correr en local
 
-Requisitos: Node 20 o superior (versión fijada en `.nvmrc`).
+Requisitos: Node 22.12 o superior (Vite 8 lo exige; línea fijada en `.nvmrc`).
 
 ```bash
 npm install

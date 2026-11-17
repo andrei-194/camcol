@@ -42,7 +42,7 @@ apps/web/        la PWA (se crea en T-M0-01)
 ## Entorno
 
 - Windows. **Todo lo pesado va en el disco D:** el repo, el caché de npm, las imágenes y el disco virtual de Docker, y cualquier emulador. El disco C: está casi lleno.
-- Node 20 o superior (`.nvmrc`). Docker Desktop y la CLI de Supabase desde T-M0-03.
+- Node 22.12 o superior (`.nvmrc`; Vite 8 lo exige). Docker Desktop y la CLI de Supabase desde T-M0-03.
 
 ## Cómo empezar una tarea
 

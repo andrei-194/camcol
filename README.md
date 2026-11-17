@@ -32,7 +32,7 @@ apps/web/    la PWA (se crea en T-M0-01)
 
 ## Requisitos
 
-- Node.js 20+ y npm
+- Node.js 22.12+ y npm (instalarlo en D:)
 - Docker Desktop (la [CLI de Supabase](https://supabase.com/docs/guides/local-development) se instala con `npm install`)
 
 ## Comandos
