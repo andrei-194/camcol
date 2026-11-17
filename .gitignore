@@ -22,3 +22,6 @@ test-results/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Espacios de trabajo temporales de los agentes
+.claude/worktrees/
