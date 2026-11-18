@@ -181,6 +181,15 @@ Se especificó (solo documentación) lo que el socio aprobó en D-015: el reembo
 10. **Errores del reembolso:** no se edita ni se borra. Un reembolso equivocado es un caso manual fuera del MVP.
 11. **No se construye:** comprobante o documento de reembolso (sin consecutivo), reembolso con transferencia automática, crédito a favor del cliente, devolución parcial de ítems.
 
+## Nota T-M1-15 · validaciones del servidor (CAM-94, H-05/H-07/H-08) — 2026-11-18
+
+- Migración `0015_validaciones_pedido.sql`, solo triggers (sin grants). Contrato en `PLAN.md` §4.3; reglas en SPEC (RF-VEN-03, RF-VEN-05, RN-DOC-02, RN-COS-04).
+- **Lista exacta de lo que la spec exige y ahora el servidor rechaza:** motivo al cancelar y al devolver un pedido (RF-VEN-05); `envio_costo` al finalizar con transportadora (RF-VEN-05); motivo al anular un documento por escritura directa (RN-DOC-02; `anular_documento` ya lo exigía); descuento ≤ subtotal y total ≥ 0 al finalizar (RF-VEN-03; el `crear` ya lo rechazaba desde 0010). **Ya estaba cubierto:** ajuste y merma exigen motivo (0013).
+- **Valores por defecto tomados (a revisar por el socio):** (a) «exige `envio_costo`» = **mayor que cero**, porque la columna vale 0 por defecto y no distingue «sin dato»; una transportadora con flete gratis no se puede finalizar (se puede ajustar a entrega propia). (b) Motivo «vacío» incluye solo espacios. (c) La validación de descuento/total corre **al finalizar**, no al confirmar ni al editar ítems (un descuento temporalmente mayor mientras se editan ítems es legítimo).
+- **H-08 (flete):** única vía = `envio_costo` del pedido (alimenta la utilidad bruta, RN-COS-03). Un gasto vinculado a un pedido de venta con categoría flete/envío/transporte/transportadora se rechaza (`E_FLETE`). Es un cierre por lista de categorías (el campo es texto libre); un flete cargado sin vínculo al pedido o con otra categoría no se detecta. El flete de compras (gasto vinculado a una OC) se sigue permitiendo.
+- **Pruebas previas adaptadas:** las suites de `tests/integration` finalizaban pedidos con entrega por defecto (transportadora) sin `envio_costo`; ahora usan `entrega_tipo = 'recoge'`. Las suites de `tests/db` no cargan 0015, salvo `funciones_sin_anon`, y siguen verdes. La integración real no se corrió aquí (requiere Supabase local).
+- **Pendiente (app):** que la app avise antes de enviar (D-015); el servidor ya decide.
+
 ## Nota T-M1-13 · cerrar la escritura directa (CAM-89, H-03) — 2026-11-18
 
 - **Diseño (opción a):** triggers que validan y rechazan, en `0013_cerrar_escritura_directa.sql`. No se revocan privilegios de tabla (las ops y los triggers internos siguen escribiendo con normalidad). Todo es trigger INVOKER, así que también vale para superusuario y PGlite.
@@ -189,6 +198,12 @@ Se especificó (solo documentación) lo que el socio aprobó en D-015: el reembo
 - Se adaptó `tests/db/sync_pull.test.mjs` (carga 0006 y 0013; el stock y el costo salen de una compra recibida; los pedidos se finalizan por la ruta legítima). En la prueba nueva, el stock tras la remisión es 9 (10 recibidos menos 1 vendido), no 10.
 - **H-16 queda pendiente de decisión del socio** (no se decidió aquí): un miembro puede insertar a mano un movimiento `compra`/`venta` y mover el costo promedio. Los candados de 0013 no lo cubren; si se decide restringir los tipos en inserts directos, va en una migración nueva.
 
+## Nota T-M1-16 · movimientos de inventario solo internos (CAM-95, H-16) — 2026-11-18
+
+- **Diseño:** trigger `before insert` en `movimientos_inventario` (`0016_movimientos_solo_internos.sql`) que rechaza todo tipo distinto de `ajuste` y `merma` cuando `pg_trigger_depth() <= 1` (insert directo). Es el mismo mecanismo de 0013 para `costo_promedio`; INVOKER, vale también para superusuario y PGlite. No se revocan privilegios de tabla.
+- **Decisión por tipo:** `compra` (la genera el trigger de `recepcion_items`, también para la compra de apertura), `venta` (finalización del pedido) y `devolucion_cliente` (pedido a `devuelto`) quedan **solo internos**. `devolucion_proveedor` **también solo interno**: hoy ningún flujo lo genera (no hay devolución a proveedor en el MVP); si se construye, nacerá de su propio trigger. `ajuste` y `merma` siguen directos, con motivo (0013).
+- Límite conocido: la profundidad de trigger no distingue quién dispara el trigger padre; un miembro que provoque a propósito una recepción o finalización legítima sigue generando solo el movimiento que esa operación define (esos triggers ya validan stock, pago y estado).
+- **H-16 cerrado.** Pruebas: `tests/db/movimientos_internos.test.mjs`, con controles de recepción, apertura, finalización, devolución, ajuste y merma.
 ## Nota T-M1-10 · integración real con Supabase local (CAM-40) — 2026-11-18
 
 - `npm run test:integration` corre `tests/integration/*.test.mjs` contra Supabase local (Postgres, Auth y PostgREST reales, `pg` como devDependency). Separado de `test:db`: necesita Docker y no corre en CI por ahora (el CI usa solo PGlite; correrlo en CI requeriría `supabase start`, unos GB de imágenes; queda como decisión de operación).

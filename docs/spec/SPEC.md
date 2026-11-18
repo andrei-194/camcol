@@ -108,9 +108,9 @@ Fuente de verdad: `0001_core.sql`. Entidades: `terceros` (roles cliente/proveedo
 ### 7.4 Pedidos de venta (VEN)
 - **RF-VEN-01** Crear PV con: cliente (buscar o crear), origen (`web`/`whatsapp`/`manual`), referencia de origen (opcional), ítems, descuentos, tipo de entrega (`transportadora`/`propia`/`recoge`), dirección/municipio de entrega, `envio_cobrado`, `envio_costo`, fecha estimada, notas. **Nace siempre en estado `recibido`.**
 - **RF-VEN-02** Al agregar un ítem, el precio de lista se calcula con `precio_para(artículo, cliente, cantidad)` (cache local si no hay conexión) y se guarda como **snapshot** `precio_lista`; el usuario puede aplicar `descuento_pct` y se guarda `precio_unitario` pactado.
-- **RF-VEN-03** Descuento global (`descuento_valor`) y envío editables; totales calculados por el servidor (`subtotal`, `impuestos`, `total`); la UI muestra una **vista previa idéntica** calculada con la misma fórmula (`domain/pricing`, con pruebas de paridad).
+- **RF-VEN-03** Descuento global (`descuento_valor`) y envío editables; totales calculados por el servidor (`subtotal`, `impuestos`, `total`); la UI muestra una **vista previa idéntica** calculada con la misma fórmula (`domain/pricing`, con pruebas de paridad). El descuento global no puede superar el subtotal ni dejar el total negativo (el servidor rechaza al crear y al finalizar).
 - **RF-VEN-04** *(Eliminado, D-006.)* Los pedidos se registran a mano en el formulario; la PWA no lee ni interpreta mensajes de WhatsApp.
-- **RF-VEN-05** Cambios de estado según la máquina de §9.1, con motivo obligatorio para `cancelado` y `devuelto`. **Finalizar** exige pago confirmado (RN-VEN-05) y tipo de entrega; si es transportadora, exige `envio_costo`. Transportadora y guía pueden completarse después de finalizar (online).
+- **RF-VEN-05** Cambios de estado según la máquina de §9.1, con motivo obligatorio para `cancelado` y `devuelto`. **Finalizar** exige pago confirmado (RN-VEN-05) y tipo de entrega; si es transportadora, exige `envio_costo`. Transportadora y guía pueden completarse después de finalizar (online). **Validaciones del servidor (T-M1-15, D-015):** el motivo no puede estar vacío; `envio_costo` exigido significa mayor que cero (0 es el valor por defecto y equivale a "sin dato"); al finalizar, el descuento no supera el subtotal y el total no es negativo (RF-VEN-03).
 - **RF-VEN-06** Lista de PV filtrable por estado, cliente, fecha, origen; vista **"Por confirmar"** (recibidos) y **"Esperando pago"** (confirmados).
 - **RF-VEN-07** Detalle de PV con historial de estados (`eventos_estado`), pagos (cobros y reembolsos), documentos y acciones disponibles según estado.
 - **RF-VEN-08** Los pedidos de venta **solo se crean con conexión** (D-009); no hay borradores offline. Un pedido nace `recibido` y no reserva ni mueve stock.
@@ -137,7 +137,7 @@ Fuente de verdad: `0001_core.sql`. Entidades: `terceros` (roles cliente/proveedo
 ### 7.7 Pagos, cuentas y gastos (PAG)
 - **RF-PAG-01** Registrar **cobros** a clientes (parciales permitidos) y ver saldo por pedido. La acción **"Registrar cobro y finalizar"** hace ambas cosas en una sola operación.
 - **RF-PAG-02** Vista **esperando pago**: pedidos confirmados con saldo. No hay cuentas por pagar: las compras son de contado (D13).
-- **RF-PAG-03** Registrar **gastos** operativos (combustible, empaques, etc.) con categoría y valor; **permitido offline**; opcionalmente vinculados a un PV/OC.
+- **RF-PAG-03** Registrar **gastos** operativos (combustible, empaques, etc.) con categoría y valor; **permitido offline**; opcionalmente vinculados a un PV/OC. El flete de una venta no se registra aquí sino en `envio_costo` del pedido (RN-COS-04).
 - **RF-PAG-04** **Reembolsar** al cliente el dinero cobrado de un PV `cancelado` o `devuelto` (op `pago.reembolsar`). Total o por partes, hasta el cobrado neto (RN-PAG-03/04). **Solo con conexión**; nunca se encola (D-009). Pide valor, medio, motivo y, opcionalmente, referencia, fecha y qué socio puso el dinero.
 - **RF-PAG-05** **Control de sobrepago:** el servidor rechaza un cobro que haría que lo cobrado neto supere el total del PV (RN-PAG-02). La app avisa antes con el saldo; el servidor decide.
 - **RF-PAG-06** Vista **por reembolsar**: PV `cancelado` o `devuelto` con cobrado neto > 0. El detalle del PV muestra el saldo por reembolsar y el historial de reembolsos junto a los cobros (RF-VEN-07). Es un aviso: la app no obliga a reembolsar (RN-PAG-06).
@@ -189,6 +189,7 @@ Fuente de verdad: `0001_core.sql`. Entidades: `terceros` (roles cliente/proveedo
 - **RN-COS-01** Costo promedio ponderado: al recibir `q` a costo `c` con stock `s ≥ 0` y promedio `m`: `nuevo = (s·m + q·c)/(s+q)`; si `s ≤ 0` el nuevo costo es `c`.
 - **RN-COS-02** Al finalizar se fija `costo_unitario` del ítem = costo promedio vigente (snapshot para márgenes).
 - **RN-COS-03** Utilidad bruta de un PV = (subtotal − descuento global) + envío cobrado − envío pagado − costo de mercancía. Utilidad neta del periodo = Σ utilidad bruta − gastos.
+- **RN-COS-04** (H-08, D-015) **Una sola vía para el flete de una venta:** su costo se registra solo en `envio_costo` del pedido. Un gasto vinculado a un PV no puede ser de categoría flete/envío/transporte/transportadora (se contaría dos veces); el flete de una compra (gasto vinculado a una OC) o un gasto suelto sí se permiten.
 
 **Precios**
 - **RN-PRE-01** Precio aplicable: lista del cliente (o pública) y el escalón de mayor `cantidad_minima` ≤ cantidad; si la lista del cliente no tiene precio, se usa la pública.
@@ -209,7 +210,7 @@ Fuente de verdad: `0001_core.sql`. Entidades: `terceros` (roles cliente/proveedo
 
 **Documentos**
 - **RN-DOC-01** Consecutivos por tipo y **sin huecos** (se asignan en la misma transacción). `numero = prefijo-000000` (RM, FI, CP).
-- **RN-DOC-02** Un documento emitido es inmutable salvo anulación; la anulación exige motivo y no se puede revertir.
+- **RN-DOC-02** Un documento emitido es inmutable salvo anulación; la anulación exige motivo (no vacío, también por escritura directa) y no se puede revertir ni cambiar su motivo.
 
 **Pagos**
 - **RN-PAG-01** Un pago es de **cobro** (ligado a PV), de **pago** (ligado a OC) o de **reembolso** (ligado a PV), nunca ligado a ambos. Saldo de un PV = total − **cobrado neto**; saldo de una OC = total − Σ pagos.
