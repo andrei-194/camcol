@@ -165,6 +165,31 @@ Con H1 cerrado, el socio resolvió los hallazgos que seguían sin decisión (tab
 - **H-10 a H-14, H-17:** sin cambios; siguen como se anotan en la tabla (se resuelven al llegar a su tarea).
 - **Impuesto de `pedido_venta.crear` (T-M1-05):** el socio dio por bueno que el servidor use `articulos.tasa_impuesto` (no hay tasa en `configuracion`) y siempre el precio de lista vigente al crear, con advertencia `PRECIO_CAMBIO`.
 
+## Nota T-M1-17 · spec de reembolsos y control de sobrepago (CAM-96, H-06) — 2026-11-18
+
+Se especificó (solo documentación) lo que el socio aprobó en D-015: el reembolso entra al MVP, con control de sobrepago, solo con conexión. Está en `SPEC.md` (RF-PAG-04..06, RN-PAG-02..07, RN-VEN-02, §9.1, E16..E18, L3) y `PLAN.md` §4.3 (`pago.reembolsar`, esquema de `0017`). Implementación: T-M1-18 y T-M4-08. **Valores por defecto, marcados para revisión del socio:**
+
+1. **Modelo:** el reembolso es una fila de `pagos` con `direccion = 'reembolso'` (no un cobro negativo ni un estado nuevo del pedido). El pedido sigue `cancelado` o `devuelto`; «por reembolsar» se deriva (cobrado neto > 0). Los candados de cobros de 0011 no se tocan.
+2. **Cuándo:** solo PV `cancelado` o `devuelto`. No se reembolsa un `confirmado` (si el cliente quiere su dinero, se cancela primero).
+3. **Parcial:** se permite reembolsar por partes y en varias veces hasta dejar el cobrado neto en 0; el tope es el del pedido, no el de cada cobro. La devolución de mercancía sigue siendo solo total (AGENTS: devoluciones parciales fuera).
+4. **Medio:** libre entre los medios válidos; la app sugiere el del último cobro. No se exige devolver por el mismo medio.
+5. **Motivo:** obligatorio en cada reembolso (texto), además del motivo de la cancelación o devolución.
+6. **Quién:** cualquier miembro (L6, sin roles). Se guarda quién lo registró (`created_by`) y, si se indica, qué socio puso el dinero (`pagado_por`).
+7. **Sin reembolso:** no hay acción «condonar». Si los socios deciden quedarse con el dinero (p. ej. cliente que no devuelve mercancía), el aviso «por reembolsar» queda abierto. **Pregunta para el socio (P-008):** ¿hace falta una forma de cerrar ese aviso sin devolver dinero (nota o motivo), o basta con el aviso? Por defecto: basta con el aviso.
+8. **Contabilidad:** las ventas netas, el costo y la utilidad no cambian por el reembolso (un `devuelto`/`cancelado` ya no cuenta en `v_ventas_pedido`). El dinero devuelto se ve en la columna nueva `reembolsos` de `resumen_periodo`, informativa. Caso borde conocido: un pedido finalizado un mes y devuelto en otro desaparece de las ventas del mes de la finalización (comportamiento ya existente, E11).
+9. **Sobrepago:** un cobro que dejaría lo cobrado neto por encima del total se rechaza (`E_SOBREPAGO`); también un cobro en un PV `cancelado` (`E_ESTADO`) y un cambio de totales por debajo de lo cobrado. Los cobros siguen sin op propia (se registran por T-M4-06); el control vive en triggers de `0017`, así que vale para cualquier ruta.
+10. **Errores del reembolso:** no se edita ni se borra. Un reembolso equivocado es un caso manual fuera del MVP.
+11. **No se construye:** comprobante o documento de reembolso (sin consecutivo), reembolso con transferencia automática, crédito a favor del cliente, devolución parcial de ítems.
+
+## Nota T-M1-15 · validaciones del servidor (CAM-94, H-05/H-07/H-08) — 2026-11-18
+
+- Migración `0015_validaciones_pedido.sql`, solo triggers (sin grants). Contrato en `PLAN.md` §4.3; reglas en SPEC (RF-VEN-03, RF-VEN-05, RN-DOC-02, RN-COS-04).
+- **Lista exacta de lo que la spec exige y ahora el servidor rechaza:** motivo al cancelar y al devolver un pedido (RF-VEN-05); `envio_costo` al finalizar con transportadora (RF-VEN-05); motivo al anular un documento por escritura directa (RN-DOC-02; `anular_documento` ya lo exigía); descuento ≤ subtotal y total ≥ 0 al finalizar (RF-VEN-03; el `crear` ya lo rechazaba desde 0010). **Ya estaba cubierto:** ajuste y merma exigen motivo (0013).
+- **Valores por defecto tomados (a revisar por el socio):** (a) «exige `envio_costo`» = **mayor que cero**, porque la columna vale 0 por defecto y no distingue «sin dato»; una transportadora con flete gratis no se puede finalizar (se puede ajustar a entrega propia). (b) Motivo «vacío» incluye solo espacios. (c) La validación de descuento/total corre **al finalizar**, no al confirmar ni al editar ítems (un descuento temporalmente mayor mientras se editan ítems es legítimo).
+- **H-08 (flete):** única vía = `envio_costo` del pedido (alimenta la utilidad bruta, RN-COS-03). Un gasto vinculado a un pedido de venta con categoría flete/envío/transporte/transportadora se rechaza (`E_FLETE`). Es un cierre por lista de categorías (el campo es texto libre); un flete cargado sin vínculo al pedido o con otra categoría no se detecta. El flete de compras (gasto vinculado a una OC) se sigue permitiendo.
+- **Pruebas previas adaptadas:** las suites de `tests/integration` finalizaban pedidos con entrega por defecto (transportadora) sin `envio_costo`; ahora usan `entrega_tipo = 'recoge'`. Las suites de `tests/db` no cargan 0015, salvo `funciones_sin_anon`, y siguen verdes. La integración real no se corrió aquí (requiere Supabase local).
+- **Pendiente (app):** que la app avise antes de enviar (D-015); el servidor ya decide.
+
 ## Nota T-M1-13 · cerrar la escritura directa (CAM-89, H-03) — 2026-11-18
 
 - **Diseño (opción a):** triggers que validan y rechazan, en `0013_cerrar_escritura_directa.sql`. No se revocan privilegios de tabla (las ops y los triggers internos siguen escribiendo con normalidad). Todo es trigger INVOKER, así que también vale para superusuario y PGlite.
@@ -173,6 +198,12 @@ Con H1 cerrado, el socio resolvió los hallazgos que seguían sin decisión (tab
 - Se adaptó `tests/db/sync_pull.test.mjs` (carga 0006 y 0013; el stock y el costo salen de una compra recibida; los pedidos se finalizan por la ruta legítima). En la prueba nueva, el stock tras la remisión es 9 (10 recibidos menos 1 vendido), no 10.
 - **H-16 queda pendiente de decisión del socio** (no se decidió aquí): un miembro puede insertar a mano un movimiento `compra`/`venta` y mover el costo promedio. Los candados de 0013 no lo cubren; si se decide restringir los tipos en inserts directos, va en una migración nueva.
 
+## Nota T-M1-16 · movimientos de inventario solo internos (CAM-95, H-16) — 2026-11-18
+
+- **Diseño:** trigger `before insert` en `movimientos_inventario` (`0016_movimientos_solo_internos.sql`) que rechaza todo tipo distinto de `ajuste` y `merma` cuando `pg_trigger_depth() <= 1` (insert directo). Es el mismo mecanismo de 0013 para `costo_promedio`; INVOKER, vale también para superusuario y PGlite. No se revocan privilegios de tabla.
+- **Decisión por tipo:** `compra` (la genera el trigger de `recepcion_items`, también para la compra de apertura), `venta` (finalización del pedido) y `devolucion_cliente` (pedido a `devuelto`) quedan **solo internos**. `devolucion_proveedor` **también solo interno**: hoy ningún flujo lo genera (no hay devolución a proveedor en el MVP); si se construye, nacerá de su propio trigger. `ajuste` y `merma` siguen directos, con motivo (0013).
+- Límite conocido: la profundidad de trigger no distingue quién dispara el trigger padre; un miembro que provoque a propósito una recepción o finalización legítima sigue generando solo el movimiento que esa operación define (esos triggers ya validan stock, pago y estado).
+- **H-16 cerrado.** Pruebas: `tests/db/movimientos_internos.test.mjs`, con controles de recepción, apertura, finalización, devolución, ajuste y merma.
 ## Nota T-M1-10 · integración real con Supabase local (CAM-40) — 2026-11-18
 
 - `npm run test:integration` corre `tests/integration/*.test.mjs` contra Supabase local (Postgres, Auth y PostgREST reales, `pg` como devDependency). Separado de `test:db`: necesita Docker y no corre en CI por ahora (el CI usa solo PGlite; correrlo en CI requeriría `supabase start`, unos GB de imágenes; queda como decisión de operación).
@@ -187,6 +218,13 @@ Con H1 cerrado, el socio resolvió los hallazgos que seguían sin decisión (tab
 - **Cierre de sesión:** `signOut({ scope: 'local' })`, que no depende de la red. La advertencia por pendientes y la exportación son T-M2-06 (RF-AUTH-03); hoy solo "Sin acceso" ofrece cerrar sesión.
 - **Credenciales vs. red en el login:** `AuthApiError` 400/401/422 = "Correo o contraseña incorrectos"; error reintentable o `TypeError` de `fetch` = "No hay conexión"; el resto = mensaje genérico (p. ej. 429).
 - Arquitectura: puerto `ServicioAuth` en `domain/auth`, adaptador Supabase en `infra/auth`, `AuthProvider` en `application/auth` (recibe el servicio, por eso las pruebas usan un falso sin red). Se añadió `afterEach(cleanup)` a `test-setup.ts` porque Vitest corre con `globals: false`.
+## Nota T-M2-02 · PWA instalable (CAM-42) — 2026-11-18
+
+- `vite-plugin-pwa` 2.0.0 (compatible con Vite 8) + `workbox-build`/`workbox-window` 7.4. Estrategia `generateSW`, `registerType: 'prompt'`: el SW nuevo queda en espera y solo toma el control al tocar "Actualizar" (mensaje `SKIP_WAITING`). Sin `skipWaiting`/`clientsClaim` automáticos. El aviso no recarga solo; el usuario decide cuándo (RF-OPS-03).
+- El SW solo precachea el shell y hace `navigateFallback` a `index.html`. **No define `runtimeCaching`**: no intercepta Supabase ni guarda datos (más estricto que el "NetworkOnly" de PLAN §6; equivalente en efecto). Sin Background Sync.
+- Íconos: se reutilizan los de la vitrina (`caminocol.com`: montaña y camino en cacao sobre crema, 192, 512 y maskable 512) y `apple-touch-icon` de 180 px derivado del 512. **Pendiente de reemplazo** si los socios quieren íconos específicos del back-office. `theme_color` #5A3A2A, `background_color` #F6EFE2.
+- `navigator.storage.persist()` se pide al arrancar y al evento `appinstalled`. Su estado se muestra en `/ajustes` (pantalla mínima creada aquí; irá creciendo con otras tareas). "Cómo instalar" vive en `/instalar`, enlazada desde Home y Ajustes.
+- Fuera de esta tarea: `_redirects` y `_headers` (CSP) de Cloudflare Pages (PLAN §6, hosting) y el botón nativo `beforeinstallprompt`.
 
 ## Nota auditoría H1 · hallazgos pendientes de decisión — 2026-11-18
 
@@ -195,7 +233,7 @@ Del informe de auditoría, los hallazgos H-01 a H-03 ya tienen tarea (T-M1-12, T
 | Hallazgo | Tema | Pendiente de decidir |
 |---|---|---|
 | H-05 | Pedido con total negativo se finaliza sin cobrar | **Decidido (D-015):** validar en servidor y app. Tarea T-M1-15 (CAM-94) |
-| H-06 | Sin reembolso en cancelación o devolución con cobro; sin control de sobrepago | **Decidido (D-015):** entra al MVP. Spec primero: T-M1-17 (CAM-96) |
+| H-06 | Sin reembolso en cancelación o devolución con cobro; sin control de sobrepago | **Decidido (D-015):** entra al MVP. Spec hecha (T-M1-17, nota «T-M1-17»); implementación T-M1-18 y T-M4-08 |
 | H-07 | Motivos obligatorios, `envio_costo` al finalizar con transportadora y otras reglas de la spec sin exigir | **Decidido (D-015):** van al servidor y a la app. Tarea T-M1-15 (CAM-94) |
 | H-08 | Doble conteo del flete (costo de envío del pedido y gasto vinculado) | **Por defecto (D-015):** una sola vía, documentada en T-M1-15 |
 | H-09 | Stock negativo por mermas y ajustes | **Decidido (D-015):** solo avisar (alerta en la app, T-M6) |
@@ -208,6 +246,15 @@ Del informe de auditoría, los hallazgos H-01 a H-03 ya tienen tarea (T-M1-12, T
 | H-13/H-14 | Detalles menores (redondeo a pesos, `anular_documento` inexistente, `v_cuentas_por_cobrar` sin pedidos `recibido`) | revisar al llegar a la UI |
 
 **Aviso de numeración:** el PR #9 (`docs: estado del proyecto…`) usó el número CAM-88 en su rama, pero en Linear CAM-88 es la tarea H-02 (candado de pedidos finalizados). Un `git log --grep CAM-88` mezcla ambos; el commit `919f731` es el de documentación.
+
+## D-016 · Base local Dexie, device_id y UUID v7 (T-M2-03, CAM-43) — 2026-11-18
+
+- **Esquema v1 = PLAN §5.1 sin cambios.** `sync_meta` queda con clave `tabla` pero, por D-009 (cursor único de `sync_pull`), el puller usa una sola fila `tabla = 'global'`. `terceros.roles` no viene del servidor: el puller lo deriva de `es_cliente`/`es_proveedor` (`['cliente','proveedor']`) para poder indexar por rol. `gastos` existe localmente aunque `sync_pull` no los trae (los escribe el cliente).
+- **La outbox no se pierde (regla 10).** Las versiones de Dexie solo agregan (`version(n+1).stores().upgrade()`); no se borra la base ni se retoca `version(1)`. Al cerrar sesión o cambiar de usuario solo se usa `limpiarCacheDeServidor`: borra el caché espejo y el cursor, y conserva `outbox`, `adjuntos_locales`, `kv` y las filas `_pendiente`.
+- **`device_id`:** UUID v7 en `kv` (`clave = 'device_id'`), creado con una transacción de escritura para que dos pestañas no generen dos. Es etiqueta de diagnóstico; el orden de eventos lo decide el servidor (RF-SYN-11).
+- **UUID v7 propio** (~40 líneas, sin dependencia): monótono dentro del milisegundo y si el reloj retrocede.
+- **Formato:** `Intl` con `es-CO`; COP redondeado a entero, sin `-$ 0`; agrupación de miles siempre (es-CO no agrupa 4 dígitos por defecto); fechas por `America/Bogota` por nombre. Una fecha de calendario `AAAA-MM-DD` (p. ej. `gastos.fecha`) no se convierte de zona, para que no se corra un día.
+- **Sin `navigator.storage.persist()` por ahora.** iOS/Safari puede desalojar IndexedDB de una PWA no instalada; queda como idea para T-M2-06 (centro de pendientes) o la tarea PWA, sin decidir aquí.
 
 ## Contexto de negocio
 

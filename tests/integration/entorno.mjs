@@ -103,7 +103,7 @@ export const articuloConStock = async (db, stock, costo = 10000) => {
 };
 // Pedido confirmado y pagado por completo (listo para finalizar).
 export const pedidoListo = async (db, art, cliente, cant = 1, precio = 20000) => {
-  const p = (await db.query(`insert into pedidos_venta (cliente_id) values ($1) returning id`, [cliente])).rows[0].id;
+  const p = (await db.query(`insert into pedidos_venta (cliente_id, entrega_tipo) values ($1, 'recoge') returning id`, [cliente])).rows[0].id;
   await db.query(`insert into pedidos_venta_items (pedido_id, articulo_id, cantidad, precio_lista, precio_unitario) values ($1,$2,$3,$4,$4)`, [p, art, cant, precio]);
   await db.query(`update pedidos_venta set estado='confirmado' where id=$1`, [p]);
   await db.query(`insert into pagos (direccion, pedido_venta_id, medio, valor) values ('cobro',$1,'efectivo',$2)`, [p, cant * precio]);
