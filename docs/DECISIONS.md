@@ -26,6 +26,8 @@ El sitio de caminocol.com se mantiene como está, sin carrito ni integración. V
 
 La migración `0001` implementa el flujo anterior (despacho y entrega). Como **nunca se ha aplicado a un proyecto real**, se corrige en su lugar en lugar de crear una migración que deshaga estados (regla de AGENTS.md, punto 11). La tarea es **T-M1-00**, con la prueba escrita primero. Desde su primer `db push` real, `0001` queda congelada.
 
+**Corrección 2026-11-18 (CAM-85):** las fechas por defecto (`vigente_desde`, `fecha_ingreso`, `gastos.fecha`) pasan de `current_date` (UTC) a la fecha de `America/Bogota`; de noche el día UTC ya cambiaba y fallaba CI.
+
 ## D-005 · Todo es de contado y en su totalidad — 2026-11-17
 
 **Decisión (socios):** no se vende nada a crédito; las compras también se pagan al momento y completas. Por eso un pedido solo se finaliza con el **saldo en 0** (RN-VEN-05) y la acción "Registrar cobro y finalizar" hace ambas cosas en un solo paso. Reemplaza la suposición anterior (antes P-004). Las columnas de crédito del modelo siguen existiendo pero no tienen interfaz.
