@@ -90,8 +90,8 @@ Entregada y probada (24 pruebas). **No editarla** una vez aplicada a un proyecto
 2. `terceros.productos_ofrecidos text`.
 3. Tabla `adjuntos(id uuid pk, entidad text, entidad_id uuid, path text, mime text, creado_por, created_at, op_id uuid unique)`.
 4. Tabla `configuracion(clave text pk, valor jsonb)`; clave `negocio` = `{razon_social, nit, direccion, telefono, email, ciudad, leyenda_documento, logo_path}`.
-5. Funciones: `detectar_duplicados_tercero(telefono, numero_documento, nombre)`, `aplicar_ops(jsonb)`, `sync_pull(desde)`, `ping()` (pública, devuelve 1), `uso_bd()` (tamaño de la BD para la alerta de cuota).
-6. **Endurecimiento:** `set search_path = public` en todas las funciones; `REVOKE EXECUTE ON ALL FUNCTIONS … FROM anon, public` y `GRANT` solo a `authenticated` (excepto `ping`); `REVOKE` de tablas a `anon`.
+5. Funciones: `detectar_duplicados_tercero(telefono, numero_documento, nombre)`, `aplicar_ops(jsonb)`, `sync_pull(desde)`, `ping()` (devuelve 1; solo `authenticated`, ver 0014), `uso_bd()` (tamaño de la BD para la alerta de cuota).
+6. **Endurecimiento:** `set search_path = public` en todas las funciones; `REVOKE EXECUTE ON ALL FUNCTIONS … FROM anon, public` y `GRANT` solo a `authenticated` y `service_role`, sin excepción (0014 corrige además los privilegios por defecto de `PUBLIC`, que alcanzaban a toda función nueva: `anon` no ejecuta ninguna, incluida `ping()`); `REVOKE` de tablas a `anon`.
 7. Bucket de Storage privado `soportes` + políticas "solo miembros".
 8. Publicación Realtime (`supabase_realtime`) para: `pedidos_venta`, `ordenes_compra`, `terceros`, `articulos`, `precios`, `movimientos_inventario`.
 9. Índices para `sync_pull` (`updated_at` por tabla) y para duplicados (`terceros(telefono)` normalizado).
@@ -178,7 +178,7 @@ Salida:
 
 
 ### 4.5 Otras RPC
-`emitir_documento`, `anular_documento`, `resumen_periodo`, `precio_para` (ya en 0001). Cambios de estado y edición de maestros: `UPDATE` directo (RLS) **o** RPC; en ambos casos los triggers de 0001 son la autoridad. `ping()` público, devuelve `1`.
+`emitir_documento`, `anular_documento`, `resumen_periodo`, `precio_para` (ya en 0001). Cambios de estado y edición de maestros: `UPDATE` directo (RLS) **o** RPC; en ambos casos los triggers de 0001 son la autoridad. `ping()` devuelve `1` (solo `authenticated`).
 
 ## 5. Cliente: datos locales y sincronización
 
@@ -285,7 +285,7 @@ No se construye (D-006). El mensaje que arma la web es texto libre de un solo pr
 
 - **Backup** (`backup.yml`, diario): `pg_dump --format=custom --no-owner` contra la cadena de conexión (secret), **cifrado con `age`** (clave pública en secret `AGE_RECIPIENT`), subido como artefacto con retención 30 días; copia semanal opcional a Google Drive. Los objetos de **Storage** no están en `pg_dump`: script semanal que los descarga vía API.
 - `restore-check.sh`: restaura el último dump en un Postgres local (Docker) y corre consultas de humo (conteos, `v_stock`, un `emitir_documento` de prueba en transacción con rollback). **Se ejecuta y se documenta antes de salir a producción** y luego trimestralmente.
-- **Keep-alive** (`keepalive.yml`, diario): `POST /rest/v1/rpc/ping` con la anon key. Verificar la política de pausa vigente.
+- **Keep-alive** (`keepalive.yml`, diario): `POST /rest/v1/rpc/ping` con el JWT de un usuario de servicio (la anon key ya no puede ejecutar `ping()`, 0014; se define en T-M8-02). Verificar la política de pausa vigente.
 - **Monitoreo de cuota:** pantalla de Ajustes → "Uso" (tamaño de BD vía RPC `uso_bd()` y conteo de adjuntos) con alerta al 70 % de 500 MB.
 - Imágenes: comprimir a WebP (≤ ~150 KB, lado largo ≤ 1280 px) **en el cliente** antes de subir.
 
@@ -304,7 +304,7 @@ No se construye (D-006). El mensaje que arma la web es texto libre de un solo pr
 ## 14. Seguridad (checklist de implementación)
 
 - [ ] RLS activo en tablas **y** vistas con `security_invoker`.
-- [ ] Ninguna función ejecutable por `anon` salvo `ping()`.
+- [ ] Ninguna función ejecutable por `anon` (sin excepciones; la prueba `funciones_sin_anon` recorre todas las migraciones).
 - [ ] `service_role` ausente del cliente, del repo y de los logs.
 - [ ] CSP probada (sin `unsafe-inline` si es viable; permitir solo el dominio de Supabase).
 - [ ] Storage privado; sin URLs públicas.

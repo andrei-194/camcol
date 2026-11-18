@@ -125,6 +125,12 @@ La entrada es `[{op_id, tipo, datos}]` y la salida `{detener_cola, resultados:[{
 - Decisiones de detalle (valores por defecto, sin cambio de reglas de negocio): teléfono opcional, pero si viene debe tener 7–15 dígitos; `usar_existente` suma el rol faltante al tercero existente (un cliente que también vende pasa a ser proveedor) para que la compra pueda asociarse sin otra edición online; el consentimiento exigido a clientes (RF-TER-05) se valida aquí también.
 - Las suites usan nombres de prueba bien distintos: la similitud por trigramas (≥ 0,5) marca como duplicados nombres como «Proveedor 3» y «Proveedor 30».
 
+## Nota T-M1-14 · funciones sin acceso de `anon` (CAM-92, H-15) — 2026-11-18
+
+- Causa: el `EXECUTE` por defecto de `PUBLIC` es global; `alter default privileges in schema public ... from public` (0004) no lo quita. Migración `0014_funciones_sin_anon.sql`: revoca `EXECUTE` a `PUBLIC`/`anon` en las existentes, lo concede a `authenticated` y `service_role`, y cambia los privilegios por defecto (global para `PUBLIC`, del esquema para `anon`). Cada migración futura queda cubierta por `tests/db/funciones_sin_anon.test.mjs`.
+- Los privilegios por defecto aplican al rol que ejecuta la migración (en Supabase, `postgres`); verificarlo en T-M1-10 (CAM-40).
+- Consecuencia: `ping()` ya no es público (la prueba exige cero funciones para `anon`). El keep-alive de T-M8-02 usará el JWT de un usuario de servicio en vez de la anon key. Cambia la excepción que decía `PLAN.md` §13.
+
 ## D-014 · El inventario inicial se carga como compra de apertura — 2026-11-18
 
 La auditoría funcional (`docs/auditoria-h1-2026-11-18.md`, H-01) mostró que un ajuste de inventario no fija el costo: solo las compras actualizan `costo_promedio`. Cargar así el stock existente deja el costo en 0, infla el margen de las primeras ventas y deja el capital en bodega en $0.
