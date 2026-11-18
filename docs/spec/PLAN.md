@@ -326,7 +326,7 @@ De dónde sale cada tabla:
 
 - **Registros creados offline** viven en las mismas tablas con `_pendiente = op_id`, para que las listas los muestren con ⏳. Al aplicarse la op, el siguiente pull trae la fila del servidor y reemplaza a la local (mismo `id`).
 - **Ciclo de vida de la outbox:** nace `pendiente`; `ok` o `ya_aplicada` borran la fila y quitan `_pendiente`; `error` la marca `error` con el código y el mensaje; `revision` la marca `revision`. **No existe `bloqueada`** (D-009) (eliminada de `EstadoOutbox` en T-M2-05).
-- **Fotos:** la subida de adjuntos locales (`path` en Storage, estados de `adjuntos_locales`, reintento) se define al iniciar T-M2-08 (CAM-48).
+- **Fotos (T-M2-08):** `lib/imagen.ts` comprime a WebP (lado largo ≤ 1280 px, ≈ ≤ 150 KB; JPEG si el navegador no codifica WebP). `adjuntosService.guardar` las deja en `adjuntos_locales` (`id` uuid, `op_id` de la op principal, `entidad`, `entidad_id`, `path`, `mime`, `blob`). `path` en el bucket `soportes`: `<entidad>/<entidad_id>/<id>.<webp|jpg>`. Estados: `local` → `subiendo` → `subida` → `vinculada` (borra el blob) o `error` (con `error`). Solo se sube cuando la op principal ya no está en outbox; el vínculo es `adjunto.vincular` con `op_id` = `id` del adjunto (idempotente). Reintento manual: `pendientesService.subir` invoca `adjuntos.subirListas()` tras las ops.
 - **Se leen online, sin espejo local:** `v_por_reembolsar`, los pagos de pedidos fuera del snapshot, el kardex y los gastos de otros dispositivos.
 
 ### 5.2 Escritor (`infra/sync/writer.ts`)

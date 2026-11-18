@@ -322,3 +322,12 @@ Del informe de auditoría, los hallazgos H-01 a H-03 ya tienen tarea (T-M1-12, T
 | P-003 | Supuestos S1–S5 de la spec (flete, deducciones, costo promedio, IVA, pull automático) | SPEC §5 |
 
 **Resueltas:** P-001 → D-002 · P-002 → D-006 · P-004 → D-005 · P-005 → D-008 · P-006 y P-007 → D-007.
+
+## Nota T-M2-08 · fotos locales y subida posterior (CAM-48) — 2026-11-18
+
+- **Capas:** `lib/imagen.ts` (`comprimirImagen`, motor inyectable; real = `createImageBitmap` con orientación EXIF + `OffscreenCanvas`/canvas), `infra/sync/adjuntosService.ts` (`guardar`, `subirListas`), `infra/supabase/soportes.ts` (Storage `soportes`, `upsert: true` para que reintentar sea idempotente). Sin UI de captura ni dependencias nuevas.
+- **Compresión:** WebP; prueba calidades 0,8 a 0,4 y, si no alcanza 150 KB, reduce el lado un 15 % (mínimo 320 px). Si `toBlob('image/webp')` devuelve otro tipo (iOS Safari sin codificación WebP) recae en JPEG (`.jpg`). Si aun así pasa de 150 KB al mínimo, se guarda igual (mejor pesada que perdida).
+- **`path`:** `<entidad>/<entidad_id>/<uuid del adjunto>.<webp|jpg>`. La política `soportes_solo_miembros` (0004) solo exige ser miembro: el formato es convención nuestra; el servidor tampoco comprueba que el objeto exista al vincular.
+- **Estados:** `local`, `subiendo` (si la app muere aquí se trata como `local`), `subida`, `vinculada` (se borra el blob), `error` (+ motivo). Fallo de red al vincular deja `subida` (no vuelve a subir). El `id` del adjunto es también el `op_id` de `adjunto.vincular`, así reenviar es idempotente.
+- **Regla 5 y enganche:** `guardar` nunca sube. `pendientesService.subir(opIds)` (acción explícita) llama a `adjuntos.subirListas()` después de las ops, salvo que alguna terminara en `red`/`no_aplicado`; devuelve `ResumenSubida.adjuntos`. Una foto solo se sube si su `op_id` ya no está en outbox (aplicada); una op aplicada online también cuenta, porque nunca estuvo en outbox. Un fallo de foto no altera el resultado de las ops; los `error` se reintentan en la siguiente acción manual. **Para CAM-46:** inyectar `adjuntos` al crear `pendientesService` y mostrar `adjuntos` del resumen; para reintentar solo fotos basta llamar `adjuntos.subirListas()` desde un botón.
+- **Límites:** sin tiempo límite en la subida a Storage (supabase-js no lo trae). `crearAdjuntosService` aún no se conecta a la app (no hay pantalla de captura). En pruebas, `fake-indexeddb` no conserva `Blob.size`; el IndexedDB real guarda Blobs nativamente.
