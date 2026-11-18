@@ -125,6 +125,8 @@ Reglas del servidor:
 ```
 Dedupe: teléfono normalizado (solo dígitos, sin `57` inicial), documento exacto, o nombre muy similar (`pg_trgm` si está disponible; si no, comparación normalizada). Si hay candidatos y no hay `resolucion` → `revision` con `candidatos:[{id,nombre,telefono,municipio}]`. `resolucion`: `{"tipo":"usar_existente","tercero_id":"…"}` o `{"tipo":"crear_igual"}`.
 
+**Implementado en `0007_op_tercero.sql` (T-M1-04, CAM-34).** `resolucion` va dentro de `datos`. Salida: `{id}` (creado), `{id, existente:true}` (`usar_existente`) o, en revisión, `resultado.candidatos:[{id,nombre,telefono,municipio,motivo}]` (`motivo`: `telefono`, `documento`, `nombre`). `id` es opcional (el servidor lo genera). Validaciones: nombre no vacío, al menos un rol, teléfono (si viene) de 7 a 15 dígitos sin letras → `DATOS_INVALIDOS`; cliente sin `consentimiento_datos` → `E_CONSENTIMIENTO` (RF-TER-05; sin `consentimiento_en` se usa la hora del servidor); `usar_existente` con tercero inexistente o borrado → `E_REF`; resolución de otro tipo → `DATOS_INVALIDOS`. `usar_existente` suma al existente el rol que pedía el payload (cliente/proveedor) y no cambia nada más. Un documento repetido con `crear_igual` choca con el índice único → `E_DUPLICADO`. Reutilizable: `crear_tercero_desde_payload(jsonb)` es la misma lógica para `cliente_nuevo` y `proveedor_nuevo` de T-M1-05/06; allí un `_revision` detiene la op completa.
+
 `pedido_venta.crear`
 ```json
 { "pedido": { "id","cliente_id","origen","referencia_origen","fecha","entrega_tipo",
