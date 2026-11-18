@@ -153,6 +153,18 @@ La auditoría funcional (`docs/auditoria-h1-2026-11-18.md`, H-01) mostró que un
 
 **Implementado en `0012_compra_apertura.sql` (CAM-90).** Notas: (1) **un ajuste no fija costo**: solo las compras (incluida la de apertura) mueven `costo_promedio`; queda documentado para que nadie cargue el inventario inicial como ajuste. (2) Decisiones por defecto, a revisar: en la op `orden_compra.registrar` la apertura exige recepción total y rechaza `pagos` con `E_PAGO`; el proveedor «Inventario inicial» se crea con `proveedor_nuevo` (o se reutiliza por `proveedor_id`), sin fila sembrada en la migración; un trigger impide cambiar la modalidad de/hacia `apertura` en una orden ya pedida; `v_cuentas_por_pagar` y `resumen_periodo` excluyen la apertura (tampoco cuenta como gasto del periodo). (3) El privilegio de ejecución de las funciones nuevas lo cubre 0014.
 
+## D-015 · Decisiones del socio sobre los hallazgos pendientes de la auditoría de H1 — 2026-11-18
+
+Con H1 cerrado, el socio resolvió los hallazgos que seguían sin decisión (tabla de la nota «auditoría H1»):
+
+- **H-05 y H-07 (validaciones):** se validan **en el servidor y también en la app**. El servidor rechaza total negativo y descuento mayor que el subtotal, y exige los motivos y campos obligatorios de la spec. La app avisa antes, pero el servidor decide (regla 3). Tarea: T-M1-15 ([CAM-94](https://linear.app/caminocol/issue/CAM-94)), migración `0015`.
+- **H-06 (reembolsos):** **entra al MVP**, con control de sobrepago. Solo con conexión (D-009). Como AGENTS.md dejaba las devoluciones parciales fuera del MVP, primero se acota en la spec: T-M1-17 ([CAM-96](https://linear.app/caminocol/issue/CAM-96), solo spec). De ahí salen las tareas de implementación (migración `0017`).
+- **H-08 (flete):** valor por defecto, una sola vía para el costo del flete (la del costo de envío del pedido); se documenta dentro de T-M1-15.
+- **H-09 (stock negativo):** **solo avisar.** Mermas y ajustes se aceptan aunque dejen stock negativo, y la app lo muestra como alerta (se construye con el inventario, T-M6). Las ventas siguen rechazándolo ([E6]).
+- **H-16 (movimientos a mano):** **se cierra.** En inserts directos solo se admiten `ajuste` y `merma`; `compra` y `venta` nacen solo de recepciones y finalizaciones. Tarea: T-M1-16 ([CAM-95](https://linear.app/caminocol/issue/CAM-95)), migración `0016`.
+- **H-10 a H-14, H-17:** sin cambios; siguen como se anotan en la tabla (se resuelven al llegar a su tarea).
+- **Impuesto de `pedido_venta.crear` (T-M1-05):** el socio dio por bueno que el servidor use `articulos.tasa_impuesto` (no hay tasa en `configuracion`) y siempre el precio de lista vigente al crear, con advertencia `PRECIO_CAMBIO`.
+
 ## Nota T-M1-13 · cerrar la escritura directa (CAM-89, H-03) — 2026-11-18
 
 - **Diseño (opción a):** triggers que validan y rechazan, en `0013_cerrar_escritura_directa.sql`. No se revocan privilegios de tabla (las ops y los triggers internos siguen escribiendo con normalidad). Todo es trigger INVOKER, así que también vale para superusuario y PGlite.
@@ -173,16 +185,16 @@ Del informe de auditoría, los hallazgos H-01 a H-03 ya tienen tarea (T-M1-12, T
 
 | Hallazgo | Tema | Pendiente de decidir |
 |---|---|---|
-| H-05 | Pedido con total negativo se finaliza sin cobrar | validar total ≥ 0 y descuento ≤ subtotal (probablemente en `pedido_venta.crear` y al finalizar) |
-| H-06 | Sin reembolso en cancelación o devolución con cobro; sin control de sobrepago | ¿entra al MVP o se maneja fuera de la app? |
-| H-07 | Motivos obligatorios, `envio_costo` al finalizar con transportadora y otras reglas de la spec sin exigir | ¿van al servidor? |
-| H-08 | Doble conteo del flete (costo de envío del pedido y gasto vinculado) | una sola vía documentada |
-| H-09 | Stock negativo por mermas y ajustes | validar o solo avisar |
+| H-05 | Pedido con total negativo se finaliza sin cobrar | **Decidido (D-015):** validar en servidor y app. Tarea T-M1-15 (CAM-94) |
+| H-06 | Sin reembolso en cancelación o devolución con cobro; sin control de sobrepago | **Decidido (D-015):** entra al MVP. Spec primero: T-M1-17 (CAM-96) |
+| H-07 | Motivos obligatorios, `envio_costo` al finalizar con transportadora y otras reglas de la spec sin exigir | **Decidido (D-015):** van al servidor y a la app. Tarea T-M1-15 (CAM-94) |
+| H-08 | Doble conteo del flete (costo de envío del pedido y gasto vinculado) | **Por defecto (D-015):** una sola vía, documentada en T-M1-15 |
+| H-09 | Stock negativo por mermas y ajustes | **Decidido (D-015):** solo avisar (alerta en la app, T-M6) |
 | H-10 | Reporte por artículo no reparte el descuento global | cómo repartirlo (T-M7-02) |
 | H-11 | Conversión libra a gramo no existe en la base ni tiene prueba de paridad | cubrir en T-M5-01 |
 | H-12 | La cola no se detiene en el servidor tras una `revision` (PLAN §4.3 lo declara) | confirmar que el cliente (T-M2-05/06) se detiene |
 | H-15 | Las funciones creadas después de 0004 son ejecutables por `anon` | tarea T-M1-14 (CAM-92), ya con prueba en rojo |
-| H-16 | Un miembro puede insertar a mano movimientos de inventario de tipo `compra`/`venta` (mueve `costo_promedio` sin orden ni recepción) | restringir los tipos permitidos en inserts directos. **No incluido en T-M1-13 (CAM-89); pregunta abierta del socio** |
+| H-16 | Un miembro puede insertar a mano movimientos de inventario de tipo `compra`/`venta` (mueve `costo_promedio` sin orden ni recepción) | restringir los tipos permitidos en inserts directos. **Decidido (D-015):** se cierra. Tarea T-M1-16 (CAM-95) |
 | H-17 | `costo_unitario` de los ítems es editable en pedidos abiertos (se sobrescribe al finalizar) | sin impacto en resultados; se anota |
 | H-13/H-14 | Detalles menores (redondeo a pesos, `anular_documento` inexistente, `v_cuentas_por_cobrar` sin pedidos `recibido`) | revisar al llegar a la UI |
 
