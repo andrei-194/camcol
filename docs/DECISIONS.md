@@ -109,7 +109,7 @@ Detalle completo en [negocio/catalogo.md](negocio/catalogo.md). Cierra P-006 y P
 
 ## D-012 · Flujo de ramas, PR y pruebas de base de datos — 2026-11-18
 
-- Cada tarea tiene su issue en Linear y su rama `CAM-n-descripcion-corta` creada desde `main` actualizado; un PR por tarea. **Excepción única:** H1 (cimientos) se entregó en un solo PR (#2) porque eran la reestructuración del repo y el arranque.
+- *(El flujo de ramas y PR fue reemplazado por D-017.)* Cada tarea tiene su issue en Linear y su rama `CAM-n-descripcion-corta`; entonces era un PR por tarea. **Excepción única:** H1 (cimientos) se entregó en un solo PR (#2) porque eran la reestructuración del repo y el arranque.
 - Los hallazgos que no son de la tarea en curso se abren como issue propio (p. ej. CAM-85, CAM-86, CAM-87), con prueba en rojo primero.
 - Los números de migración se reservan por tarea al asignarla (0003 `aplicar_ops`, 0004 endurecimiento, 0005 `sync_pull`, 0006 corrección de `touch_padre`) para que las ramas en paralelo no choquen.
 - `npm run test:db` descubre solo todos los `tests/db/*.test.mjs` (`scripts/test-db.mjs`, CAM-87): una tarea nueva solo añade su archivo. Antes, una fusión había dejado una suite fuera de la línea sin avisar.
@@ -189,6 +189,22 @@ Se especificó (solo documentación) lo que el socio aprobó en D-015: el reembo
 - **H-08 (flete):** única vía = `envio_costo` del pedido (alimenta la utilidad bruta, RN-COS-03). Un gasto vinculado a un pedido de venta con categoría flete/envío/transporte/transportadora se rechaza (`E_FLETE`). Es un cierre por lista de categorías (el campo es texto libre); un flete cargado sin vínculo al pedido o con otra categoría no se detecta. El flete de compras (gasto vinculado a una OC) se sigue permitiendo.
 - **Pruebas previas adaptadas:** las suites de `tests/integration` finalizaban pedidos con entrega por defecto (transportadora) sin `envio_costo`; ahora usan `entrega_tipo = 'recoge'`. Las suites de `tests/db` no cargan 0015, salvo `funciones_sin_anon`, y siguen verdes. La integración real no se corrió aquí (requiere Supabase local).
 - **Pendiente (app):** que la app avise antes de enviar (D-015); el servidor ya decide.
+
+## D-017 · Flujo de ramas por release: un solo PR por hito — 2026-11-18
+
+Con H1 se vio que un PR por tarea genera conflictos constantes (todas las tareas tocan `DECISIONS.md`, `TASKS.md`, `PLAN.md`, `package.json` y el lock) y mucho trabajo de fusión manual. Sustituye el primer punto de D-012.
+
+- **`main` solo recibe un PR por release:** de `release/<hito>` (`release/h2`, `release/h3`…). La release se crea desde `main` al empezar el hito, y se abre su PR en borrador para que el CI corra en cada push; se marca listo al cerrar el hito. Lo revisa y fusiona el socio.
+- **Una rama por tarea,** `CAM-n-descripcion-corta`, creada **desde la release**. Se integra en la release **sin PR**: fusionar la release en la rama, resolver conflictos, todo en verde, `git merge --no-ff` a la release y push. Las tareas se integran de una en una; si el push se rechaza, se repite desde la fusión.
+- **Linear:** *In Progress* al empezar; *In Review* al integrarse en la release; *Done* cuando el PR de la release se fusiona a `main`.
+- **Pruebas y TDD:** se mantienen. El rojo primero (commit aparte) sigue siendo obligatorio; una tarea que no lo cumpla lo anota en el PR de la release. CAM-41 y CAM-42 (H2) se integraron sin rojo primero y se aceptaron por defecto, sin repetirlo.
+- **`main` protegido** (CAM-10): exige PR y CI verde, sin pushes directos. Las ramas `release/*` y de tarea no se protegen. Un arreglo urgente sobre `main` va en rama desde `main` con su PR, y luego se fusiona `main` en la release.
+- **Conflictos habituales:** `package-lock.json` (tomar el de la release y correr `npm install` en Docker), `DECISIONS.md` y `TASKS.md` (conservar las dos partes). Las notas de decisión de tareas se escriben sin número («Nota T-M2-04») para no chocar.
+- **Cuándo abrir PR por tarea:** nunca, salvo que el socio lo pida para una tarea concreta (por ejemplo una de mucho riesgo).
+
+## Addendum D-015 · reembolsos (T-M1-17) — 2026-11-18
+
+Los valores por defecto de la nota «T-M1-17» (solo pedidos `cancelado`/`devuelto`, reembolso parcial en varias veces, medio libre, motivo obligatorio, cualquier miembro, sin editar ni borrar, sin comprobantes) y la pregunta **P-008** (sin acción «condonar»; basta el aviso «por reembolsar») **se mantienen** al no haber objeción del socio a 2026-11-18. Si objeta, se ajustan en T-M1-18 (CAM-97) antes de implementar.
 
 ## Nota T-M1-13 · cerrar la escritura directa (CAM-89, H-03) — 2026-11-18
 

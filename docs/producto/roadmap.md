@@ -18,9 +18,11 @@ El negocio no cambia; cambia la herramienta. Fuente de verdad: `docs/spec/` (`SP
 |---|---|
 | T-M0-01 a 05 · app web, pruebas con IDs, Supabase local, CI, runbook | Hecho (CI corriendo; falta la protección de rama, CAM-10) |
 | T-M1-00 a 14 · esquema, operaciones, `sync_pull`, endurecimiento, compra de apertura, candados, integración real | Hecho |
-| T-M1-15 a 17 · validaciones del servidor, movimientos a mano, spec de reembolsos (D-015) | Pendiente, antes o junto a H3 |
+| T-M1-15 a 17 · validaciones del servidor, movimientos a mano, spec de reembolsos (D-015) | Hecho |
+| T-M1-18 · reembolsos en el servidor (0017) | Pendiente, en `release/h2` |
 | T-M2-00 · spike en iPhone real | Pendiente; necesita un iPhone físico |
-| T-M2-01 a 09 · app base offline (H2) | Siguiente |
+| T-M2-01 a 03 · login, PWA instalable, datos locales | Hecho |
+| T-M2-04 a 09 · puller, escritor, pendientes, indicadores, fotos, E2E | Siguiente, en `release/h2` (D-017: un solo PR por release) |
 
 ## Principios
 

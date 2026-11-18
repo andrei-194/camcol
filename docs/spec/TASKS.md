@@ -1,8 +1,8 @@
 # TASKS — Backlog ordenado del MVP
 
-> Versión 1.1 · Implementa `SPEC.md` según `PLAN.md`. **Un PR por tarea.** TDD: la prueba se escribe **antes** y se ve fallar. Cada tarea cita los IDs que cierra; una tarea no termina si alguno de esos IDs no tiene prueba.
+> Versión 1.1 · Implementa `SPEC.md` según `PLAN.md`. **Una rama por tarea, que se integra en la rama `release/<hito>` sin PR; un solo PR por release (D-017).** TDD: la prueba se escribe **antes** y se ve fallar. Cada tarea cita los IDs que cierra; una tarea no termina si alguno de esos IDs no tiene prueba.
 > Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecha.
-> Cada tarea tiene un issue en Linear (proyecto *Camino PWA*, hitos H1 a H5) con el mismo código; el enlace va junto al código. Rama: `CAM-n-descripcion-corta`.
+> Cada tarea tiene un issue en Linear (proyecto *Camino PWA*, hitos H1 a H5) con el mismo código; el enlace va junto al código. Rama: `CAM-n-descripcion-corta`, creada desde `release/<hito>` (ver `AGENTS.md`).
 
 **Definición de hecho (DoD) para toda tarea**
 - Pruebas nuevas y existentes en verde; `tsc --noEmit` y lint limpios.
@@ -19,7 +19,7 @@
 - [x] **T-M0-01** ([CAM-26](https://linear.app/caminocol/issue/CAM-26)) Inicializar monorepo ligero (`apps/web` con Vite + React + TS strict + Tailwind + React Router; ESLint, Prettier, Vitest). Cierra: base de RNF-UX-01.
 - [x] **T-M0-02** ([CAM-27](https://linear.app/caminocol/issue/CAM-27)) Mover `tests/core.test.mjs` a `tests/db/core.test.mjs` y ejecutarlo en `npm run test:db`. **Done:** 24 pruebas verdes. Ya cubren RN-INV-01/02/03/04/05, RN-COS-01/02/03, RN-PAG-01 y RN-DOC-01/02: **renombrar las pruebas** para citar esos IDs.
 - [x] **T-M0-03** ([CAM-28](https://linear.app/caminocol/issue/CAM-28)) `supabase init`, `supabase start` y aplicar `0001_core.sql` en local; documentar comandos en `README.md`. Cierra: RNF-REL-03 (migraciones hacia adelante con la CLI).
-- [ ] **T-M0-04** ([CAM-10](https://linear.app/caminocol/issue/CAM-10)) `ci.yml` con lint + typecheck + unit + DB; protección de rama. **Done:** PR de prueba verde. **Avance (2026-11-18):** `ci.yml` ya corre dos trabajos (base de datos y app web) en cada PR. Falta activar la protección de la rama `main` (requiere permisos de administrador en GitHub).
+- [ ] **T-M0-04** ([CAM-10](https://linear.app/caminocol/issue/CAM-10)) `ci.yml` con lint + typecheck + unit + DB; protección de rama. **Done:** PR de prueba verde. **Avance (2026-11-18):** `ci.yml` ya corre dos trabajos (base de datos y app web) en cada PR. Falta activar la protección de la rama `main` (requiere permisos de administrador en GitHub): exigir PR y CI verde, sin pushes directos; las ramas `release/*` y de tarea quedan sin protección (D-017).
 - [x] **T-M0-05** ([CAM-29](https://linear.app/caminocol/issue/CAM-29)) `docs/runbook.md` (esqueleto): variables de entorno, cómo correr local, procedimiento de pérdida de dispositivo.
 
 ## M1 — Base de datos: sincronización y endurecimiento (`0002_sync.sql`)
@@ -43,7 +43,7 @@
 - [x] **T-M1-15** ([CAM-94](https://linear.app/caminocol/issue/CAM-94)) Validaciones del servidor (hallazgos H-05, H-07, H-08; D-015): total no negativo, descuento ≤ subtotal, motivos y campos obligatorios de la spec, una sola vía para el costo del flete. Migración `0015`. **Prueba primero:** `tests/db/validaciones_pedido.test.mjs`.
 - [x] **T-M1-16** ([CAM-95](https://linear.app/caminocol/issue/CAM-95)) Cerrar los movimientos `compra`/`venta` hechos a mano (hallazgo H-16; D-015). Migración `0016`. **Prueba primero:** `tests/db/movimientos_internos.test.mjs`.
 - [x] **T-M1-17** ([CAM-96](https://linear.app/caminocol/issue/CAM-96)) Spec de reembolsos y control de sobrepago (hallazgo H-06; D-015). Solo documentación: SPEC (RF-PAG-04..06, RN-PAG-02..07, E16..E18), PLAN §4.3 (`pago.reembolsar`) y la nota «T-M1-17» de `docs/DECISIONS.md`. De ahí salen T-M1-18 y T-M4-08.
-- [ ] **T-M1-18** (issue por crear) Reembolsos y control de sobrepago en el servidor (hallazgo H-06). Migración `0017`: `pagos.direccion` admite `reembolso` y columna `motivo`, op `pago.reembolsar`, triggers de sobrepago y de inmutabilidad del reembolso, vista `v_por_reembolsar`, columna `reembolsos` en `resumen_periodo`, `sync_pull` con reembolsos. **Prueba primero:** `tests/db/reembolsos.test.mjs`. Cierra: RF-PAG-04/05/06, RN-PAG-02..07, [E16], [E17], [E18]. Depende de T-M1-17 y, para el orden de migraciones, de T-M1-15 y T-M1-16 (0015, 0016).
+- [ ] **T-M1-18** ([CAM-97](https://linear.app/caminocol/issue/CAM-97)) Reembolsos y control de sobrepago en el servidor (hallazgo H-06). Migración `0017`: `pagos.direccion` admite `reembolso` y columna `motivo`, op `pago.reembolsar`, triggers de sobrepago y de inmutabilidad del reembolso, vista `v_por_reembolsar`, columna `reembolsos` en `resumen_periodo`, `sync_pull` con reembolsos. **Prueba primero:** `tests/db/reembolsos.test.mjs`. Cierra: RF-PAG-04/05/06, RN-PAG-02..07, [E16], [E17], [E18]. Depende de T-M1-17 y, para el orden de migraciones, de T-M1-15 y T-M1-16 (0015, 0016).
 - [x] **Correcciones surgidas en H1** (no estaban en el plan): [CAM-85](https://linear.app/caminocol/issue/CAM-85) fechas por defecto del esquema en hora de Bogotá (CI fallaba de noche); [CAM-86](https://linear.app/caminocol/issue/CAM-86) finalizar fallaba con 0002 por `touch_padre` (migración 0006); [CAM-87](https://linear.app/caminocol/issue/CAM-87) `test:db` descubre solo las suites. Ver D-012.
 
 **Hecho de M1:** `npm run test:db` y `npm run test:integration` verdes; contratos en `PLAN.md` coinciden con el código.
@@ -76,7 +76,7 @@
 - [ ] **T-M4-04** ([CAM-57](https://linear.app/caminocol/issue/CAM-57)) Lista de PV (filtros) + vistas "Por confirmar" y "Esperando pago". Cierra: RF-VEN-06.
 - [ ] **T-M4-05** ([CAM-58](https://linear.app/caminocol/issue/CAM-58)) Detalle de PV con acciones por estado, motivos obligatorios, acción "Registrar cobro y finalizar", datos de envío (transportadora, guía, `envio_costo`), historial, diálogos de confirmación en acciones irreversibles. Cierra: RF-VEN-05/07, RNF-UX-03, RN-VEN-01/02/03/04/05, [E4], [E5], [E11].
 - [ ] **T-M4-06** ([CAM-59](https://linear.app/caminocol/issue/CAM-59)) Cobros a clientes y saldo por pedido. Cierra: RF-PAG-01.
-- [ ] **T-M4-08** (issue por crear) Pantalla de **reembolso** en el detalle del PV `cancelado`/`devuelto` y lista «por reembolsar»: saldo, valor, medio (sugerido el del último cobro), motivo, confirmación (RNF-UX-03), historial de reembolsos; solo con conexión ("Requiere conexión" sin red); aviso previo de sobrepago en el cobro. Cierra: RF-PAG-04/05/06 (UI), RF-VEN-07, RN-PAG-07. Depende de T-M1-18 y T-M4-05/06.
+- [ ] **T-M4-08** ([CAM-98](https://linear.app/caminocol/issue/CAM-98)) Pantalla de **reembolso** en el detalle del PV `cancelado`/`devuelto` y lista «por reembolsar»: saldo, valor, medio (sugerido el del último cobro), motivo, confirmación (RNF-UX-03), historial de reembolsos; solo con conexión ("Requiere conexión" sin red); aviso previo de sobrepago en el cobro. Cierra: RF-PAG-04/05/06 (UI), RF-VEN-07, RN-PAG-07. Depende de T-M1-18 y T-M4-05/06.
 - [ ] **T-M4-07** ([CAM-60](https://linear.app/caminocol/issue/CAM-60)) Documentos de venta: `confirmacion` (offline), `remision`/`factura_interna` (online), anulación, PDF y **compartir por WhatsApp**. Cierra: RF-DOC-01–06, RN-DOC-01/02, [E9].
 
 ## M5 — Compras

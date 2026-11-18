@@ -1,45 +1,56 @@
-# Siguiente ronda (H1, parte 3): operaciones sobre `aplicar_ops`
+# Siguiente ronda: H2 (app base offline), en `release/h2`
 
-Estado a 2026-11-18. Ya en `main`: esquema (0001–0006), `aplicar_ops` (0003), endurecimiento (0004), `sync_pull` (0005) y `tercero.crear` (0007, CAM-34, PR #10). 98 pruebas de base de datos en 6 suites. Esta ronda añade el resto de las operaciones de negocio y los candados que salieron de la auditoría (`docs/auditoria-h1-2026-11-18.md`).
+Estado a 2026-11-18. `main` en `79c6e94` (PR #27). **H1 cerrado.** Línea base de pruebas: `npm run test:db` 15 suites en verde; app web 81 pruebas en verde; `npm run test:integration` 33 pruebas (corridas antes de las migraciones 0015 y 0016; vuelve a correrlas).
 
-## Tareas (una por agente)
+Lee primero `AGENTS.md` (flujo de ramas nuevo, D-017) y `docs/DECISIONS.md` (D-009, D-015, D-016, D-017 y las notas T-M2-01 y T-M2-02).
 
-| Issue | Tarea | Migración reservada | Archivo de pruebas |
+## Paso 0: crear la release (si no existe)
+
+```bash
+git fetch && git checkout -B release/h2 origin/main && git push -u origin release/h2
+gh pr create --draft --base main --head release/h2 --title "release: H2 app base offline" --body-file .github/pull_request_template.md
+```
+
+Solo existirá **ese** PR en todo H2. Las tareas se integran en `release/h2` sin PR (ver «Integrar una tarea» en `AGENTS.md`). Linear: *In Progress* al empezar, *In Review* al integrar en la release, *Done* cuando el PR de la release se fusione.
+
+## Hecho en H2
+
+T-M2-01 login y guardia de rutas (CAM-41) · T-M2-02 PWA instalable (CAM-42) · T-M2-03 Dexie, `device_id`, UUID v7 y formatos (CAM-43).
+
+## Tareas pendientes (una por agente)
+
+| Issue | Tarea | Depende de | Notas |
 |---|---|---|---|
-| ~~CAM-34~~ | ~~`tercero.crear` con revisión de duplicados~~ **hecha (PR #10)** | `0007_op_tercero.sql` | `tests/db/op_tercero.test.mjs` |
-| CAM-36 | `orden_compra.registrar` | `0008_op_compra.sql` | `tests/db/op_compra.test.mjs` |
-| CAM-37 | `gasto.registrar` y `adjunto.vincular` | `0009_op_gasto_adjunto.sql` | `tests/db/op_gasto_adjunto.test.mjs` |
-| CAM-35 | `pedido_venta.crear` (solo con conexión) | `0010_op_pedido_venta.sql` | `tests/db/op_pedido_venta.test.mjs` |
-| CAM-88 | Candado de pedidos finalizados (H-02) | `0011_candado_finalizados.sql` | `tests/db/candado_finalizados.test.mjs` (rama `CAM-88-candado-pedido-finalizado`, en rojo) |
-| CAM-90 | Compra de apertura para el inventario inicial (H-01, D-014) | `0012_compra_apertura.sql` | `tests/db/compra_apertura.test.mjs` (rama `CAM-90-compra-apertura`, en rojo) |
-| CAM-92 | Funciones sin acceso de `anon` (H-15) | `0014_funciones_sin_anon.sql` | `tests/db/funciones_sin_anon.test.mjs` (rama `CAM-92-funciones-sin-anon`, en rojo) |
-| CAM-89 | Cerrar la escritura directa (H-03) | `0013_cerrar_escritura_directa.sql` | `tests/db/escritura_directa.test.mjs` (rama `CAM-89-cerrar-escritura-directa`, en rojo) |
+| CAM-44 | T-M2-04 Puller | T-M2-03 | Una sola fila `sync_meta` con `tabla = 'global'` (D-016). Deriva `terceros.roles` de `es_cliente`/`es_proveedor`. No pisa registros `_pendiente`. |
+| CAM-45 | T-M2-05 Escritor | T-M2-03 | Llama a `aplicar_ops` con el cuerpo `{ "ops": [...] }` (el parámetro se llama `ops`). Solo se encolan compra, proveedor, gasto y adjunto. |
+| CAM-97 | T-M1-18 Reembolsos en el servidor (migración 0017) | spec T-M1-17 (hecha) | Solo base de datos; independiente de la app. Rojo primero en `tests/db/reembolsos.test.mjs`. Va en esta release para no abrir otra. |
+| CAM-46 | T-M2-06 Centro de pendientes | CAM-45 | Nada se envía sin pulsar «Subir». Agrega el aviso por pendientes al cerrar sesión (RF-AUTH-03). |
+| CAM-47 | T-M2-07 Indicadores (conexión, pendientes, «datos al …») | CAM-44 y CAM-45 | Sin Realtime (D-009). |
+| CAM-48 | T-M2-08 Fotos locales y `adjunto.vincular` | CAM-45 | |
+| CAM-49 | T-M2-09 E2E Playwright base | CAM-45 y CAM-46 | Cierra H2. No se empieza H3 hasta que pase. |
+| CAM-84 | T-M2-00 Spike en iPhone real | — | **Lo hace el socio** (necesita un iPhone físico). |
 
-El alcance, las pruebas y el criterio de "hecho" de cada una están en su issue de Linear. Después, en serie: CAM-40 (integración real con Supabase local, T-M1-10), que cierra H1.
+**Oleadas sugeridas** (integración siempre de una en una): A = CAM-44, CAM-45 y CAM-97 en paralelo; B = CAM-46, CAM-47 y CAM-48 cuando 44 y 45 estén en la release; C = CAM-49.
 
-## Cómo trabajar
+## Lo aprendido (para no repetirlo)
 
-1. Lee `AGENTS.md`, `docs/DECISIONS.md` (D-009, D-012, D-013), `docs/spec/PLAN.md` §4.3 (contrato de `aplicar_ops`) y la tarea en `docs/spec/TASKS.md`.
-2. Pasa el issue a *In Progress*. Crea la rama `CAM-n-descripcion-corta` **desde `main` actualizado** (`git fetch && git checkout -B CAM-n-... origin/main`). Comprueba con `git log --oneline -1` que ves el último merge.
-3. **TDD:** primero el archivo de pruebas (nombres que citan los IDs, `[RF-SYN-06]`, `[E14]`), míralo fallar, haz un commit `test: ... (rojo) (CAM-n)`, luego la migración y el commit `feat: ...`.
-4. Cada operación es una función `f(datos jsonb) returns jsonb` en `public` con `search_path` fijo, más un `insert into tipos_op` en tu migración. Para pedir revisión devuelve `{"_revision": true, ...}`. Para fallar usa `RAISE EXCEPTION 'CODIGO: mensaje'`. No modifiques el núcleo de `aplicar_ops`.
-5. No edites migraciones existentes ni `package.json` (`test:db` descubre tu archivo solo). No toques las migraciones reservadas a otras tareas.
-6. Documenta el contrato de tu op en `PLAN.md` §4.3 y marca la tarea `[x]` en `TASKS.md`. Decisiones nuevas, en `DECISIONS.md` sin número (usa "Nota T-M1-0n") para no chocar.
-7. Verifica con `npm run test:db`. La app web no hace falta tocarla (corre en Docker, ver D-011). Todo en el disco D:.
-8. Commits en español `tipo: resumen (CAM-n)` con el trailer `Co-Authored-By`. Abre un PR por tarea con la plantilla y menciona `CAM-n`. Pasa el issue a *In Review*; al fusionar, a *Done*.
-9. Un hallazgo fuera del alcance (como el de `touch_padre`) se abre como issue propio con prueba en rojo; no se arregla a escondidas dentro de tu PR.
+- **Rojo primero es obligatorio.** CAM-41 y CAM-42 se integraron sin él; no se repite. Excepciones, anotadas en la descripción del PR de la release.
+- `npm run setup` usa `npm ci`: si cambias dependencias, corre `docker compose run --rm dev npm --prefix apps/web install` y sube el `package-lock.json`. En una fusión con conflicto en el lock, toma el de la release y vuelve a instalar.
+- Cada worktree tiene su propio volumen de `node_modules` en Docker. No dejes `npm run dev` ocupando el puerto 5173 mientras otro agente corre; para pruebas usa `test`, `typecheck`, `lint` y `build`.
+- `npm run test:integration` necesita `npm run db:start` y `npm run db:reset` (Docker, todo en D:). Al terminar, `npm run db:stop`.
+- Las migraciones reservadas: `0017` para CAM-97. No edites migraciones existentes; `funciones_sin_anon` descubre las nuevas y exige que `anon` no ejecute ninguna función de `public` (no hagas grants masivos).
+- La outbox sobrevive a re-login y actualizaciones (regla 10). Al cambiar de usuario usa solo `limpiarCacheDeServidor` de `infra/db/db.ts`.
+- `/instalar` es pública; `/` y `/ajustes` van tras el login.
+- Un fallo de red nunca cierra la sesión ni se trata como «no es miembro» (nota T-M2-01).
 
-## Orden de fusión
+## Pendiente del socio (no lo hace un agente)
 
-1. ~~CAM-34~~ (hecha).
-2. **CAM-88**, **CAM-92** y **CAM-37**, en paralelo (independientes entre sí; AGENTS dice «una tarea por vez» para cada agente, y las tareas independientes pueden ir en paralelo con agentes distintos).
-3. **CAM-36** y después **CAM-35** (reutilizan `crear_tercero_desde_payload` de 0007).
-4. **CAM-90**, después de CAM-36 (la op de compra debe aceptar `modalidad: "apertura"`).
-5. **CAM-89**, con todas las operaciones ya fusionadas (los candados se prueban contra los flujos reales).
-6. **CAM-40** (integración real con Supabase), que cierra H1.
-
-Las ramas de CAM-88, 89 y 90 ya existen con su prueba en rojo y `main` fusionado; el agente que tome cada tarea sigue esa rama (rebasando o fusionando `main` de nuevo) y abre el PR. Las migraciones `0011`–`0014` están reservadas (0012 apertura se fusiona antes que 0013 escritura directa, para que `db push` las aplique en orden). Hallazgos de la auditoría sin tarea: ver la nota «auditoría H1» en `docs/DECISIONS.md`.
+- **CAM-10:** proteger `main` en GitHub (exigir PR y CI verde, sin pushes directos; `release/*` sin protección). Requiere permisos de administrador.
+- **T-M2-00 (CAM-84):** spike en iPhone real.
+- **Verificación manual de la PWA** (lista en la nota T-M2-02): instalar en Chrome Android y Safari iPhone, abrir en modo avión tras la primera carga, comprobar que una versión nueva solo se aplica al tocar «Actualizar», y revisar `/ajustes` y las pantallas a 360 px.
+- Reemplazar los íconos provisionales de la vitrina si se quiere identidad propia del back-office.
+- Revisar los valores por defecto de reembolsos (nota T-M1-17 y addendum D-015).
 
 ## Fuera de esta ronda
 
-T-M2-00 (spike en iPhone real) necesita un iPhone físico y lo hace el socio desarrollador. La protección de la rama `main` (CAM-10) requiere permisos de administrador en GitHub.
+H3 (terceros, catálogo, pedidos y compras en pantalla, incluida T-M4-08 CAM-98), headers y redirecciones de Cloudflare Pages (T-M8) y despliegue.
