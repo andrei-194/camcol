@@ -173,6 +173,12 @@ Con H1 cerrado, el socio resolvió los hallazgos que seguían sin decisión (tab
 - Se adaptó `tests/db/sync_pull.test.mjs` (carga 0006 y 0013; el stock y el costo salen de una compra recibida; los pedidos se finalizan por la ruta legítima). En la prueba nueva, el stock tras la remisión es 9 (10 recibidos menos 1 vendido), no 10.
 - **H-16 queda pendiente de decisión del socio** (no se decidió aquí): un miembro puede insertar a mano un movimiento `compra`/`venta` y mover el costo promedio. Los candados de 0013 no lo cubren; si se decide restringir los tipos en inserts directos, va en una migración nueva.
 
+## Nota T-M1-16 · movimientos de inventario solo internos (CAM-95, H-16) — 2026-11-18
+
+- **Diseño:** trigger `before insert` en `movimientos_inventario` (`0016_movimientos_solo_internos.sql`) que rechaza todo tipo distinto de `ajuste` y `merma` cuando `pg_trigger_depth() <= 1` (insert directo). Es el mismo mecanismo de 0013 para `costo_promedio`; INVOKER, vale también para superusuario y PGlite. No se revocan privilegios de tabla.
+- **Decisión por tipo:** `compra` (la genera el trigger de `recepcion_items`, también para la compra de apertura), `venta` (finalización del pedido) y `devolucion_cliente` (pedido a `devuelto`) quedan **solo internos**. `devolucion_proveedor` **también solo interno**: hoy ningún flujo lo genera (no hay devolución a proveedor en el MVP); si se construye, nacerá de su propio trigger. `ajuste` y `merma` siguen directos, con motivo (0013).
+- Límite conocido: la profundidad de trigger no distingue quién dispara el trigger padre; un miembro que provoque a propósito una recepción o finalización legítima sigue generando solo el movimiento que esa operación define (esos triggers ya validan stock, pago y estado).
+- **H-16 cerrado.** Pruebas: `tests/db/movimientos_internos.test.mjs`, con controles de recepción, apertura, finalización, devolución, ajuste y merma.
 ## Nota T-M1-10 · integración real con Supabase local (CAM-40) — 2026-11-18
 
 - `npm run test:integration` corre `tests/integration/*.test.mjs` contra Supabase local (Postgres, Auth y PostgREST reales, `pg` como devDependency). Separado de `test:db`: necesita Docker y no corre en CI por ahora (el CI usa solo PGlite; correrlo en CI requeriría `supabase start`, unos GB de imágenes; queda como decisión de operación).
