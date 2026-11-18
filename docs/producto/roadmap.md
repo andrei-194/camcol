@@ -1,6 +1,6 @@
 # Roadmap de Camino
 
-Última actualización: 2026-11-17. Decisión de base: [ADR-0004](../adr/0004-plataforma-propia-pwa-supabase.md), que reemplaza a [ADR-0003](../adr/0003-odoo-como-back-office.md).
+Última actualización: 2026-11-18. Decisión de base: [ADR-0004](../adr/0004-plataforma-propia-pwa-supabase.md), que reemplaza a [ADR-0003](../adr/0003-odoo-como-back-office.md).
 
 ## Qué estamos construyendo
 
@@ -9,6 +9,21 @@ Una **PWA móvil propia** (iPhone y Android) sobre Supabase, con costo de infrae
 El negocio no cambia; cambia la herramienta. Fuente de verdad: `docs/spec/` (`SPEC.md`, `PLAN.md`, `TASKS.md`). El detalle de tareas vive en `TASKS.md`; este documento solo organiza los hitos.
 
 **Métrica de éxito (UAT):** la socia registra una compra en finca sin señal y la sube después, de forma consciente; ambos ven stock y dashboard correctos; un pedido de WhatsApp se registra en menos de 60 s y recorre todos sus estados sin errores de inventario.
+
+## Estado actual (2026-11-18)
+
+**H1 Cimientos: en curso, unos 2/3 hechos.** El esquema ya implementa el flujo `recibido → confirmado → finalizado`, hay `aplicar_ops` idempotente, `sync_pull` de un solo cursor, endurecimiento de seguridad y la app web base corriendo en Docker. Van 87 issues en Linear; las pruebas de base de datos son 78 en 5 suites.
+
+| Tarea | Estado |
+|---|---|
+| T-M0-01, 02, 03, 05 · app web, pruebas con IDs, Supabase local, runbook | Hecho |
+| T-M0-04 · CI | CI corriendo; falta la protección de rama |
+| T-M1-00 a 03 · flujo `finalizado`, migración 0002, duplicados, `aplicar_ops` | Hecho |
+| T-M1-08, 09 · `sync_pull`, endurecimiento | Hecho |
+| Correcciones CAM-85, 86, 87 | Hecho (ver D-012) |
+| T-M1-04 a 07 · operaciones (`tercero.crear`, `pedido_venta.crear`, `orden_compra.registrar`, `gasto.registrar`, `adjunto.vincular`) | Siguiente |
+| T-M1-10 · integración real con Supabase local | Después de las operaciones |
+| T-M2-00 · spike en iPhone real | Pendiente; necesita un iPhone físico |
 
 ## Principios
 
@@ -39,8 +54,8 @@ Hecho antes de los hitos: ADR de arquitectura y entorno local (CAM-6, CAM-7, CAM
 
 | Ciclo | Fechas | Trabajo |
 |---|---|---|
-| 1 | 17 – 23 nov | T-M0-01 a T-M0-05: app web, pruebas de `0001` con IDs, Supabase local, CI y runbook (CAM-26 a 29 y CAM-10) |
-| 2 | 23 – 30 nov | T-M1-00 a T-M1-03: esquema al flujo `finalizado`, migración 0002, duplicados y `aplicar_ops` (CAM-30 a 33) |
+| 1 ✔ | 17 – 23 nov | T-M0-01 a T-M0-05: app web, pruebas de `0001` con IDs, Supabase local, CI y runbook (CAM-26 a 29 y CAM-10) |
+| 2 ✔ | 23 – 30 nov | T-M1-00 a T-M1-03, T-M1-08 y T-M1-09 (adelantadas): esquema al flujo `finalizado`, migración 0002, duplicados y `aplicar_ops` (CAM-30 a 33) |
 | 3 | 30 nov – 8 dic | T-M1-04 a T-M1-10: operaciones, `sync_pull`, endurecimiento e integración real (CAM-34 a 40). **Cierra H1** |
 | 4 | 8 – 15 dic | T-M2-01…05: login, PWA, Dexie, puller, escritor |
 | 5 | 15 – 22 dic | T-M2-06…09: pendientes, Realtime, fotos, E2E base. **Cierra H2** |
@@ -80,7 +95,7 @@ Regla de los socios en [DECISIONS](../DECISIONS.md) (D-002) y en la spec (§9.1)
 | M4 VPS, despliegue, backups (CAM-9, 11, 12, 13) | H5: Supabase + Cloudflare Pages, sin VPS. Backup cifrado y restauración en T-M8-01 |
 | CI (CAM-10) | Se mantiene, adaptado a Node/Vitest/Playwright (T-M0-04) |
 
-Los issues de Linear (CAM-9 a CAM-25) hay que replantearlos contra `TASKS.md`; no se modificaron.
+Los issues de Odoo ya están cancelados en Linear (borrarlos queda a mano: la herramienta no puede eliminar issues).
 
 ## Fuera de alcance por ahora
 
@@ -88,7 +103,7 @@ Factura electrónica DIAN, automatización o API de WhatsApp, checkout del sitio
 
 ## Riesgos y cosas a verificar
 
-- **Esquema SQL desfasado:** `0001_core.sql` aún implementa despacho y entrega. T-M1-00 lo adapta al flujo `finalizado` antes de cualquier otra tarea de base de datos.
+- **Esquema SQL:** resuelto en T-M1-00. Queda verificar con Supabase real lo que hoy solo se probó en PGlite o con *stubs* (RLS por JWT, Storage, PostgREST): T-M1-10.
 - **Precios en la web:** la crema de cacao sigue en $25.000 en el sitio y debe pasar a $22.000 (repositorio `camino`, fuera de este proyecto). Mientras tanto la PWA usa $22.000 (D-007).
 - **Fechas optimistas:** la revisión técnica estima H1 hacia mediados de enero y algo usable en 2 a 3 meses. Se mantienen las fechas y se recalibran al cerrar H1 (D-009).
 - **iOS sin verificar:** almacenamiento local y compartir PDF. Se prueba con el spike T-M2-00 antes de seguir con H2.

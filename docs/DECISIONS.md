@@ -97,7 +97,33 @@ Detalle completo en [negocio/catalogo.md](negocio/catalogo.md). Cierra P-006 y P
 ## Nota T-M1-08 · `sync_pull` simple (CAM-38) — 2026-11-17
 
 - Contrato en `PLAN.md` §4.4; migración `0005_sync_pull.sql`. Decisiones de detalle: el stock va siempre completo (derivado, sin cursor); con cursor no hay filtro de ventana de 90 días (solo el snapshot inicial); el cursor es estricto (`>`), el solape de seguridad lo pone el cliente; `pagos` se comparan aparte porque no tocan al padre; gastos y adjuntos no se leen en el pull.
-- **Hallazgo (fuera de alcance, pendiente de tarea):** `touch_padre` (0002) rompe `update pedidos_venta set estado='finalizado'`: `trg_pv_estado` (BEFORE UPDATE) actualiza los ítems (`costo_unitario`), el *touch* intenta actualizar la fila del pedido que ya se está modificando y Postgres falla con "tuple to be updated was already modified by an operation triggered by the current command". Los tests de `core` no lo ven porque no cargan 0002. Posible arreglo en una migración nueva: que `touch_padre` no actúe cuando `pg_trigger_depth() > 1`, o que `trg_pv_estado` marque el cambio de ítems sin disparar el *touch*. Conviene cubrirlo antes de T-M1-04/05 (finalizar vía `aplicar_ops`).
+- **Hallazgo resuelto (CAM-86):** `touch_padre` (0002) rompía `update pedidos_venta set estado='finalizado'`, porque `trg_pv_estado` actualiza los ítems (`costo_unitario`) y el *touch* de cada ítem intentaba actualizar el pedido en curso. Se corrige en `0006_fix_touch_padre.sql` (no actualiza el pedido si en el ítem solo cambió `costo_unitario`) y las pruebas de `core` ahora cargan 0001, 0002 y 0006.
+
+## D-011 · La app web se desarrolla en Docker — 2026-11-17
+
+**Decisión (socio desarrollador):** el PC no recibe herramientas de desarrollo nuevas. La app web (`apps/web`) corre en un contenedor `node:22` (`docker-compose.yml`): `npm run setup`, `dev`, `test`, `typecheck`, `lint` y `build`. Los `node_modules` viven en un volumen de Docker en el disco D:. El Node del PC (20 o superior) solo se usa para `test:db` y la CLI de Supabase.
+
+**Por qué:** Vite 8 exige Node 22.12 o superior y el PC tiene 22.9; actualizarlo implicaba cambiar el PC y C: está casi lleno. El servidor de Vite escucha en todas las interfaces (`0.0.0.0`) con *polling*, para verlo desde el móvil en la misma red (`http://<IP del PC>:5173`).
+
+**Consecuencia:** el editor no ve los tipos de las dependencias de `apps/web`; es esperado.
+
+## D-012 · Flujo de ramas, PR y pruebas de base de datos — 2026-11-18
+
+- Cada tarea tiene su issue en Linear y su rama `CAM-n-descripcion-corta` creada desde `main` actualizado; un PR por tarea. **Excepción única:** H1 (cimientos) se entregó en un solo PR (#2) porque eran la reestructuración del repo y el arranque.
+- Los hallazgos que no son de la tarea en curso se abren como issue propio (p. ej. CAM-85, CAM-86, CAM-87), con prueba en rojo primero.
+- Los números de migración se reservan por tarea al asignarla (0003 `aplicar_ops`, 0004 endurecimiento, 0005 `sync_pull`, 0006 corrección de `touch_padre`) para que las ramas en paralelo no choquen.
+- `npm run test:db` descubre solo todos los `tests/db/*.test.mjs` (`scripts/test-db.mjs`, CAM-87): una tarea nueva solo añade su archivo. Antes, una fusión había dejado una suite fuera de la línea sin avisar.
+- Las pruebas de `core` cargan todas las migraciones, para que los flujos de negocio se prueben con los *triggers* de las migraciones posteriores.
+
+## D-013 · Contrato de `aplicar_ops` (CAM-33) — 2026-11-18
+
+La entrada es `[{op_id, tipo, datos}]` y la salida `{detener_cola, resultados:[{op_id, status, resultado?, error?:{codigo,mensaje}}]}`, con `status` `ok`, `ya_aplicada`, `revision` o `error` (sin `bloqueada`, D-009). Cada operación corre en su sub-bloque; las fallidas o en revisión no se registran en `sync_ops` y pueden reenviarse. Los tipos se registran en `tipos_op` desde cada migración. Detalle en `PLAN.md` §4.3, que reemplaza el contrato anterior (`payload`, `device_id`).
+
+## Nota T-M1-04 · `tercero.crear` (CAM-34) — 2026-11-18
+
+- Contrato en `PLAN.md` §4.3; migración `0007_op_tercero.sql`. La lógica vive en `crear_tercero_desde_payload` para que `pedido_venta.crear` y `orden_compra.registrar` la reutilicen con `cliente_nuevo`/`proveedor_nuevo`.
+- Decisiones de detalle (valores por defecto, sin cambio de reglas de negocio): teléfono opcional, pero si viene debe tener 7–15 dígitos; `usar_existente` suma el rol faltante al tercero existente (un cliente que también vende pasa a ser proveedor) para que la compra pueda asociarse sin otra edición online; el consentimiento exigido a clientes (RF-TER-05) se valida aquí también.
+- Las suites usan nombres de prueba bien distintos: la similitud por trigramas (≥ 0,5) marca como duplicados nombres como «Proveedor 3» y «Proveedor 30».
 
 ## Contexto de negocio
 
