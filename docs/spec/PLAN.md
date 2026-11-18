@@ -412,13 +412,19 @@ No se construye (D-006). El mensaje que arma la web es texto libre de un solo pr
 | `privilegios.test.mjs` | RNF-SEC-03 / H-15 en Supabase real: privilegios por defecto del rol `postgres`, función nueva sin `EXECUTE` para `anon`, `ping()` y todas las funciones de `public` rechazadas para `anon` por PostgREST |
 | `ops_extremo_a_extremo.test.mjs` | Ops 0007-0012 con JWT de miembro: `tercero.crear`, compra apertura e inmediata, gasto, adjunto, pedido, cobro, finalización, remisión, idempotencia, rechazo vs. revisión, `sync_pull` |
 
+**E2E (T-M2-09, CAM-49).** `apps/web/e2e/*.spec.ts`, `npm run test:e2e` (nota T-M2-09 de `DECISIONS.md`). Playwright corre en la imagen oficial `mcr.microsoft.com/playwright` (servicio `e2e` de `docker-compose.yml`, versión igual a `@playwright/test`) contra Supabase local real, con la app construida en modo `e2e` y servida con `vite preview`; Chromium y WebKit a 360 px. No entra en `test:db` ni en CI. Hasta H3 no hay pantallas de captura: un gancho solo de prueba (`window.__camino_e2e`, existe solo en el build `e2e`; `bundle.test.ts` lo vigila) llama al escritor real.
+
+| Suite | Cubre |
+|---|---|
+| `e1-sin-red.spec.ts` | Parte de [E1]: la app abre sin red desde el service worker; un gasto creado sin red queda en la outbox con `_pendiente` (⏳) y el indicador cuenta «1 pendiente»; al volver la red aparece el banner «1 sin subir» y no se envía nada solo (cero `aplicar_ops`); «Subir seleccionados» sube una vez, el pendiente desaparece y el gasto existe en el servidor. Falta, con las pantallas de H3, la compra completa con proveedor nuevo, recepción, pago y foto |
+
 **Cobertura mínima:** `domain/` ≥ 90 %, `infra/sync/` ≥ 85 %, SQL: todo requisito RN con ≥ 1 prueba. Las pruebas de `tests/db/` deben pasar siempre, incluidas las previas.
 
 ## 11. CI/CD y entornos
 
 - **Local:** `supabase start` (Docker) + `npm run dev`.
 - **Producción:** un proyecto Supabase gratuito. (Opcional: segundo proyecto como *staging*; verificar el cupo del plan.)
-- `ci.yml` (en cada PR y en cada push a `main` y `release/**`, D-017): `npm run test:db`, y en `apps/web` pruebas, `tsc --noEmit`, lint y build. Pendientes: e2e (T-M2-09). La integración real se corre en local (§10). **Verde obligatorio para fusionar a `main`.**
+- `ci.yml` (en cada PR y en cada push a `main` y `release/**`, D-017): `npm run test:db`, y en `apps/web` pruebas, `tsc --noEmit`, lint y build. La integración real y los E2E (T-M2-09) se corren en local (§10), no en CI. **Verde obligatorio para fusionar a `main`.**
 - Despliegue del front: integración Git de Cloudflare Pages (rama `main`); variables `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`.
 - `db-push.yml`: **manual** (`workflow_dispatch`), requiere CI verde y un backup reciente; usa `SUPABASE_ACCESS_TOKEN` y `SUPABASE_DB_PASSWORD` como secrets.
 - Flujo de ramas: una rama por tarea, que se integra en `release/<hito>` sin PR; un solo PR por release (D-017). Mensajes de commit convencionales.

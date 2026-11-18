@@ -1,7 +1,7 @@
 ﻿import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
-import { defineConfig } from 'vitest/config'
+import { configDefaults, defineConfig } from 'vitest/config'
 import { opcionesPwa } from './src/pwa/config'
 
 export default defineConfig({
@@ -15,5 +15,6 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test-setup.ts'],
     globals: false,
+    exclude: [...configDefaults.exclude, 'e2e/**'], // los E2E de Playwright no son pruebas de Vitest
   },
 })

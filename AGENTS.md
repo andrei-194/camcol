@@ -25,7 +25,7 @@ docs/adr/        decisiones de arquitectura
 docs/producto/   roadmap
 docs/negocio/    material del negocio (costeo, etc.)
 supabase/        migraciones SQL, solo hacia adelante
-tests/           db/ (PGlite), integration/, e2e/
+tests/           db/ (PGlite), integration/ (Supabase local); E2E en apps/web/e2e/
 apps/web/        la PWA (se crea en T-M0-01)
 ```
 

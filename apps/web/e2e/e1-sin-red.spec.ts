@@ -33,13 +33,14 @@ test('[E1] sin red: se encola con ⏳, al volver la red solo avisa y sube al pul
   await page.getByLabel('Correo').fill(EMAIL)
   await page.getByLabel('Contraseña').fill(PASSWORD)
   await page.getByRole('button', { name: 'Entrar' }).click()
-  await expect(page.getByRole('heading', { name: 'Camino Col' })).toBeVisible()
+  // La barra de estado solo existe con sesión activa (el título «Camino Col» también aparece en el login).
+  await expect(page.getByLabel('Estado de la app')).toBeVisible({ timeout: 20_000 })
   await expect(page.getByText('Lista para usarse sin conexión.')).toBeVisible({ timeout: 30_000 })
 
   // 2. Se corta la red y la app abre igual (RF-OPS-02, RF-AUTH-02).
   await context.setOffline(true)
   await page.reload()
-  await expect(page.getByRole('heading', { name: 'Camino Col' })).toBeVisible()
+  await expect(page.getByLabel('Estado de la app')).toBeVisible({ timeout: 20_000 })
   await expect(page.getByRole('status').filter({ hasText: 'Sin conexión' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Sin pendientes' })).toBeVisible()
 

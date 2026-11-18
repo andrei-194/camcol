@@ -1,4 +1,4 @@
-﻿import { StrictMode } from 'react'
+﻿import { lazy, StrictMode, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { AuthProvider } from './application/auth/AuthProvider'
@@ -15,6 +15,10 @@ import { AvisoActualizacion } from './pwa/AvisoActualizacion'
 import { AppRoutes } from './routes'
 import './index.css'
 
+// Gancho solo de prueba E2E: `import.meta.env.MODE` se reemplaza al construir, así que fuera del modo `e2e` esta
+// rama (y el import dinámico) desaparece del bundle. Lo verifica `src/e2e/bundle.test.ts`.
+const GanchoE2E = import.meta.env.MODE === 'e2e' ? lazy(() => import('./e2e/GanchoE2E')) : null
+
 iniciarPersistenciaAlmacenamiento()
 
 const clienteSupabase = obtenerClienteSupabase()
@@ -28,6 +32,11 @@ createRoot(document.getElementById('root')!).render(
     <AuthProvider servicio={servicioAuth}>
       <SyncProvider db={db} api={pullApi}>
         <ServiciosApp db={db} api={opsApi} almacen={almacenSoportes}>
+          {GanchoE2E && (
+            <Suspense fallback={null}>
+              <GanchoE2E />
+            </Suspense>
+          )}
           <BrowserRouter>
             <AppRoutes />
             <AvisoActualizacion />

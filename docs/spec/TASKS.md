@@ -60,7 +60,7 @@
 - [x] **T-M2-06** ([CAM-46](https://linear.app/caminocol/issue/CAM-46)) **Centro de pendientes**: lista, descartar, subir seleccionados, resultados, banner con antigüedad y **exportar** JSON; sin editar ni importar (D-009). Cierra: RF-SYN-03/04/10, RF-AUTH-03, [E13]. **Pruebas:** nada se envía sin pulsar "Subir".
 - [x] **T-M2-07** ([CAM-47](https://linear.app/caminocol/issue/CAM-47)) Indicadores siempre visibles: conexión, pendientes y "datos al …" (**sin Realtime**, D-009). Cierra: RNF-UX-02.
 - [x] **T-M2-08** ([CAM-48](https://linear.app/caminocol/issue/CAM-48)) Compresión y almacenamiento de fotos locales + subida posterior y `adjunto.vincular`. Cierra: RF-SYN-09.
-- [ ] **T-M2-09** ([CAM-49](https://linear.app/caminocol/issue/CAM-49)) E2E Playwright base: abrir app con red cortada, crear algo, ver ⏳, restablecer red, ver banner, subir. Cierra: parte de [E1].
+- [x] **T-M2-09** ([CAM-49](https://linear.app/caminocol/issue/CAM-49)) E2E Playwright base: abrir app con red cortada, crear algo, ver ⏳, restablecer red, ver banner, subir. Cierra: parte de [E1].
 
 ## M3 — Terceros y catálogo
 - [ ] **T-M3-01** ([CAM-50](https://linear.app/caminocol/issue/CAM-50)) Lista/búsqueda local de terceros y formulario (cliente/proveedor/ambos), GPS con alternativa manual, foto, consentimiento. Cierra: RF-TER-01/02/03/05, RN-DAT-01, RNF-UX-04.
