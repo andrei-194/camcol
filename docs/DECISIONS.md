@@ -165,6 +165,15 @@ Con H1 cerrado, el socio resolvió los hallazgos que seguían sin decisión (tab
 - **H-10 a H-14, H-17:** sin cambios; siguen como se anotan en la tabla (se resuelven al llegar a su tarea).
 - **Impuesto de `pedido_venta.crear` (T-M1-05):** el socio dio por bueno que el servidor use `articulos.tasa_impuesto` (no hay tasa en `configuracion`) y siempre el precio de lista vigente al crear, con advertencia `PRECIO_CAMBIO`.
 
+## Nota T-M1-15 · validaciones del servidor (CAM-94, H-05/H-07/H-08) — 2026-11-18
+
+- Migración `0015_validaciones_pedido.sql`, solo triggers (sin grants). Contrato en `PLAN.md` §4.3; reglas en SPEC (RF-VEN-03, RF-VEN-05, RN-DOC-02, RN-COS-04).
+- **Lista exacta de lo que la spec exige y ahora el servidor rechaza:** motivo al cancelar y al devolver un pedido (RF-VEN-05); `envio_costo` al finalizar con transportadora (RF-VEN-05); motivo al anular un documento por escritura directa (RN-DOC-02; `anular_documento` ya lo exigía); descuento ≤ subtotal y total ≥ 0 al finalizar (RF-VEN-03; el `crear` ya lo rechazaba desde 0010). **Ya estaba cubierto:** ajuste y merma exigen motivo (0013).
+- **Valores por defecto tomados (a revisar por el socio):** (a) «exige `envio_costo`» = **mayor que cero**, porque la columna vale 0 por defecto y no distingue «sin dato»; una transportadora con flete gratis no se puede finalizar (se puede ajustar a entrega propia). (b) Motivo «vacío» incluye solo espacios. (c) La validación de descuento/total corre **al finalizar**, no al confirmar ni al editar ítems (un descuento temporalmente mayor mientras se editan ítems es legítimo).
+- **H-08 (flete):** única vía = `envio_costo` del pedido (alimenta la utilidad bruta, RN-COS-03). Un gasto vinculado a un pedido de venta con categoría flete/envío/transporte/transportadora se rechaza (`E_FLETE`). Es un cierre por lista de categorías (el campo es texto libre); un flete cargado sin vínculo al pedido o con otra categoría no se detecta. El flete de compras (gasto vinculado a una OC) se sigue permitiendo.
+- **Pruebas previas adaptadas:** las suites de `tests/integration` finalizaban pedidos con entrega por defecto (transportadora) sin `envio_costo`; ahora usan `entrega_tipo = 'recoge'`. Las suites de `tests/db` no cargan 0015, salvo `funciones_sin_anon`, y siguen verdes. La integración real no se corrió aquí (requiere Supabase local).
+- **Pendiente (app):** que la app avise antes de enviar (D-015); el servidor ya decide.
+
 ## Nota T-M1-13 · cerrar la escritura directa (CAM-89, H-03) — 2026-11-18
 
 - **Diseño (opción a):** triggers que validan y rechazan, en `0013_cerrar_escritura_directa.sql`. No se revocan privilegios de tabla (las ops y los triggers internos siguen escribiendo con normalidad). Todo es trigger INVOKER, así que también vale para superusuario y PGlite.
