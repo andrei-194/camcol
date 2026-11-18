@@ -108,6 +108,23 @@ await test('[RN-COS-01] el costo promedio mezcla apertura y compras posteriores'
   assert.ok(Math.abs(c - (9 * 13000 + 5 * 14000) / 14) < 0.01, `costo ${c}`);
 });
 
+await test('[RN-COM-04] la modalidad de apertura no se cambia una vez la orden está pedida (ni hacia ni desde apertura)', async () => {
+  assert.ok(apertura, 'la compra de apertura debe existir (modalidad apertura)');
+  await rejects(`update ordenes_compra set modalidad='inmediata' where id=$1`, [apertura]);
+  const normal = (await one(`insert into ordenes_compra (proveedor_id, modalidad) values ($1,'encargo') returning id`, [don])).id;
+  await q(`insert into ordenes_compra_items (orden_id, articulo_id, cantidad, costo_unitario) values ($1,$2,1,1000)`, [normal, art]);
+  await q(`update ordenes_compra set estado='pedida' where id=$1`, [normal]);
+  await rejects(`update ordenes_compra set modalidad='apertura' where id=$1`, [normal]);
+  assert.equal((await one(`select modalidad from ordenes_compra where id=$1`, [apertura])).modalidad, 'apertura');
+});
+
+await test('[RN-COM-04] control: en borrador la modalidad sí se puede ajustar, y entre modalidades normales también', async () => {
+  const b = (await one(`insert into ordenes_compra (proveedor_id, modalidad) values ($1,'encargo') returning id`, [don])).id;
+  await q(`update ordenes_compra set modalidad='apertura' where id=$1`, [b]);
+  await q(`update ordenes_compra set modalidad='inmediata' where id=$1`, [b]);
+  assert.equal((await one(`select modalidad from ordenes_compra where id=$1`, [b])).modalidad, 'inmediata');
+});
+
 // --- Punta a punta por aplicar_ops (op orden_compra.registrar con modalidad "apertura") ---
 const aplicar = async (op) => (await one(`select aplicar_ops($1::jsonb) r`, [JSON.stringify([op])])).r.resultados[0];
 const prod2 = (await one(`insert into productos (nombre, categoria) values ('Panela', 'Panela') returning id`)).id;
