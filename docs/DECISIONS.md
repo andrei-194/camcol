@@ -194,7 +194,7 @@ Se especificó (solo documentación) lo que el socio aprobó en D-015: el reembo
 
 Con H1 se vio que un PR por tarea genera conflictos constantes (todas las tareas tocan `DECISIONS.md`, `TASKS.md`, `PLAN.md`, `package.json` y el lock) y mucho trabajo de fusión manual. Sustituye el primer punto de D-012.
 
-- **`main` solo recibe un PR por release:** de `release/<hito>` (`release/h2`, `release/h3`…). La release se crea desde `main` al empezar el hito, y se abre su PR en borrador para que el CI corra en cada push; se marca listo al cerrar el hito. Lo revisa y fusiona el socio.
+- **`main` solo recibe un PR por release:** de `release/<hito>` (`release/h2`, `release/h3`…). La release se crea desde `main` al empezar el hito, y su PR se abre en borrador al integrar la primera tarea (GitHub no permite abrirlo sin commits propios), para que el CI corra en cada push; se marca listo al cerrar el hito. Lo revisa y fusiona el socio.
 - **Una rama por tarea,** `CAM-n-descripcion-corta`, creada **desde la release**. Se integra en la release **sin PR**: fusionar la release en la rama, resolver conflictos, todo en verde, `git merge --no-ff` a la release y push. Las tareas se integran de una en una; si el push se rechaza, se repite desde la fusión.
 - **Linear:** *In Progress* al empezar; *In Review* al integrarse en la release; *Done* cuando el PR de la release se fusiona a `main`.
 - **Pruebas y TDD:** se mantienen. El rojo primero (commit aparte) sigue siendo obligatorio; una tarea que no lo cumpla lo anota en el PR de la release. CAM-41 y CAM-42 (H2) se integraron sin rojo primero y se aceptaron por defecto, sin repetirlo.

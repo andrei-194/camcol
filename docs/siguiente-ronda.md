@@ -4,10 +4,13 @@ Estado a 2026-11-18. `main` en `79c6e94` (PR #27). **H1 cerrado.** Línea base d
 
 Lee primero `AGENTS.md` (flujo de ramas nuevo, D-017) y `docs/DECISIONS.md` (D-009, D-015, D-016, D-017 y las notas T-M2-01 y T-M2-02).
 
-## Paso 0: crear la release (si no existe)
+## Paso 0: la release `release/h2`
+
+La rama `release/h2` **ya existe** en GitHub (creada desde `main`). El PR en borrador se abre al integrar la primera tarea, porque GitHub no deja abrirlo sin commits propios:
 
 ```bash
-git fetch && git checkout -B release/h2 origin/main && git push -u origin release/h2
+git fetch && git checkout release/h2 && git pull
+# tras la primera integración:
 gh pr create --draft --base main --head release/h2 --title "release: H2 app base offline" --body-file .github/pull_request_template.md
 ```
 
