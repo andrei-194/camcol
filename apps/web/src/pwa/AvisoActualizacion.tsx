@@ -1,4 +1,5 @@
 import { useRegisterSW } from 'virtual:pwa-register/react'
+import { Boton } from '../ui/componentes/Boton'
 
 type Props = {
   necesitaActualizar: boolean
@@ -13,26 +14,18 @@ export function AvisoActualizacionVista({ necesitaActualizar, listoOffline, onAc
   return (
     <div
       role="status"
-      className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-md rounded-lg border border-stone-300 bg-white p-4 shadow-lg"
+      className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-md rounded-tarjeta border-2 border-texto bg-fondo p-4 shadow-flotante"
     >
-      <p className="text-sm text-stone-800">
+      <p className="text-texto">
         {necesitaActualizar
           ? 'Nueva versión disponible. Termina lo que estás haciendo y toca Actualizar.'
           : 'Lista para usarse sin conexión.'}
       </p>
       <div className="mt-3 flex justify-end gap-2">
-        <button type="button" onClick={onCerrar} className="min-h-11 rounded-md px-4 text-sm text-stone-600">
+        <Boton variante="secundario" onClick={onCerrar}>
           {necesitaActualizar ? 'Después' : 'Cerrar'}
-        </button>
-        {necesitaActualizar && (
-          <button
-            type="button"
-            onClick={onActualizar}
-            className="min-h-11 rounded-md bg-emerald-800 px-4 text-sm font-medium text-white"
-          >
-            Actualizar
-          </button>
-        )}
+        </Boton>
+        {necesitaActualizar && <Boton onClick={onActualizar}>Actualizar</Boton>}
       </div>
     </div>
   )

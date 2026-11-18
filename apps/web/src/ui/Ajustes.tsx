@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { CLASES_ENLACE } from './componentes/Boton'
+import { Pagina } from './componentes/Pagina'
 import { BotonActualizar } from './BotonActualizar'
 import { BotonCerrarSesion } from './pendientes/BotonCerrarSesion'
 import { estadoAlmacenamiento, type EstadoAlmacenamiento } from '../pwa/almacenamiento'
@@ -24,22 +26,18 @@ export function Ajustes() {
   }, [])
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col gap-6 px-4 py-6">
-      <Link to="/" className="text-sm text-emerald-800 underline">
-        Volver
-      </Link>
-      <h1 className="text-2xl font-bold text-emerald-800">Ajustes</h1>
+    <Pagina titulo="Ajustes" volverA="/">
       <section aria-labelledby="almacenamiento" className="flex flex-col gap-1">
-        <h2 id="almacenamiento" className="text-lg font-semibold text-stone-900">
+        <h2 id="almacenamiento" className="font-titulo text-seccion font-semibold">
           Almacenamiento
         </h2>
-        <p className="text-base text-stone-700">{estado ? TEXTO_ALMACENAMIENTO[estado] : 'Revisando…'}</p>
+        <p className="text-texto-secundario">{estado ? TEXTO_ALMACENAMIENTO[estado] : 'Revisando…'}</p>
       </section>
       <BotonActualizar />
       <BotonCerrarSesion />
-      <Link to="/instalar" className="text-base text-emerald-800 underline">
+      <Link to="/instalar" className={`${CLASES_ENLACE} inline-flex min-h-12 items-center`}>
         Cómo instalar la app
       </Link>
-    </main>
+    </Pagina>
   )
 }

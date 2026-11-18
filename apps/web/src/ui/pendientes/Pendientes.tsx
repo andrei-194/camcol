@@ -1,10 +1,14 @@
 // Centro de pendientes (PLAN §5.3, RF-SYN-03/04/10). Nada se envía solo: solo «Subir seleccionados» llama al
 // servidor (regla 5). Sin Editar ni Importar (D-009): se descarta y se rehace.
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useSync } from '../../application/sync/SyncProvider'
 import type { OpOutbox } from '../../infra/db/db'
 import type { ResultadoSubida } from '../../infra/sync/pendientesService'
+import { Aviso } from '../componentes/Aviso'
+import { Boton } from '../componentes/Boton'
+import { EtiquetaEstado, type TonoEtiqueta } from '../componentes/EtiquetaEstado'
+import { Pagina } from '../componentes/Pagina'
+import { Tarjeta } from '../componentes/Tarjeta'
 import { BannerPendientes } from './BannerPendientes'
 import { usePendientesCtx, useOutbox } from './contexto'
 import { exportarPendientes } from './exportarJson'
@@ -14,6 +18,12 @@ const ESTADO: Record<OpOutbox['estado'], string> = {
   pendiente: 'Sin subir',
   error: 'Error',
   revision: 'Requiere decisión',
+}
+
+const TONO_ESTADO: Record<OpOutbox['estado'], TonoEtiqueta> = {
+  pendiente: 'neutro',
+  error: 'peligro',
+  revision: 'advertencia',
 }
 
 interface Candidato {
@@ -142,33 +152,26 @@ export function Pendientes() {
     }
   }
 
-  const boton = 'min-h-11 rounded-lg px-4 py-2 text-base font-medium disabled:opacity-50'
-
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col gap-4 px-4 py-6">
-      <Link to="/" className="text-sm text-emerald-800 underline">
-        Volver
-      </Link>
-      <h1 className="text-2xl font-bold text-emerald-800">Pendientes</h1>
+    <Pagina titulo="Pendientes" volverA="/">
       <BannerPendientes />
 
       {carga.fase === 'cargando' && (
-        <p role="status" className="text-stone-600">
+        <p role="status" className="text-texto-secundario">
           Cargando…
         </p>
       )}
       {carga.fase === 'error' && (
-        <p role="alert" className="text-red-800">
-          No se pudieron leer los pendientes de este teléfono.
-        </p>
+        <Aviso tono="error">No se pudieron leer los pendientes de este teléfono.</Aviso>
       )}
-      {carga.fase === 'listo' && ops.length === 0 && <p className="text-base text-stone-700">No tienes nada pendiente.</p>}
+      {carga.fase === 'listo' && ops.length === 0 && <p className="text-texto-secundario">No tienes nada pendiente.</p>}
 
       {ops.length > 0 && (
         <>
-          <ul className="flex flex-col gap-2">
+          <ul className="flex flex-col gap-3">
             {ops.map((op) => (
-              <li key={op.op_id} className="flex flex-col gap-2 rounded-lg border border-stone-300 bg-white p-3">
+              <li key={op.op_id}>
+              <Tarjeta className="flex flex-col gap-2 p-3">
                 <label className="flex items-start gap-3">
                   <input
                     type="checkbox"
@@ -178,79 +181,78 @@ export function Pendientes() {
                     aria-label={`Seleccionar: ${resumen(op)}`}
                   />
                   <span className="flex flex-col gap-1">
-                    <span className="break-words text-base text-stone-900">{`${resumen(op)} · ${hace(op.created_at)}`}</span>
-                    <span className="text-sm text-stone-700">
-                      {ESTADO[op.estado]}
-                      {op.estado === 'error' && op.error ? `: ${(op.error as { mensaje?: string }).mensaje ?? ''}` : ''}
+                    <span className="break-words font-medium text-texto">{`${resumen(op)} · ${hace(op.created_at)}`}</span>
+                    <span className="flex flex-wrap items-center gap-2">
+                      <EtiquetaEstado tono={TONO_ESTADO[op.estado]}>{ESTADO[op.estado]}</EtiquetaEstado>
+                      {op.estado === 'error' && op.error ? (
+                        <span className="text-pequeno text-peligro">{(op.error as { mensaje?: string }).mensaje ?? ''}</span>
+                      ) : null}
                     </span>
                   </span>
                 </label>
                 {op.estado === 'revision' && (
                   <>
-                    <button type="button" className={`${boton} border border-amber-600 text-amber-900`} onClick={() => setDecidiendo(decidiendo === op.op_id ? null : op.op_id)}>
+                    <Boton variante="secundario" onClick={() => setDecidiendo(decidiendo === op.op_id ? null : op.op_id)}>
                       Decidir
-                    </button>
+                    </Boton>
                     {decidiendo === op.op_id && (
-                      <div className="flex flex-col gap-2 rounded-lg bg-amber-50 p-3">
-                        <p className="text-base text-amber-900">Ya existe algo parecido. ¿Qué hacemos?</p>
+                      <div className="flex flex-col gap-2 rounded-control bg-advertencia-suave p-3">
+                        <p className="font-medium text-advertencia">Ya existe algo parecido. ¿Qué hacemos?</p>
                         {candidatosDe(op).map((c) => (
                           <div key={c.id} className="flex flex-col gap-1">
-                            <span data-candidato className="text-base text-stone-900">
+                            <span data-candidato className="text-texto">
                               {c.nombre}
                               {c.telefono ? ` · ${c.telefono}` : ''}
                             </span>
-                            <button
-                              type="button"
-                              className={`${boton} bg-emerald-800 text-white`}
-                              onClick={() => void resolver(op.op_id, { tipo: 'usar_existente', tercero_id: c.id })}
-                            >
+                            <Boton onClick={() => void resolver(op.op_id, { tipo: 'usar_existente', tercero_id: c.id })}>
                               Usar existente
-                            </button>
+                            </Boton>
                           </div>
                         ))}
-                        <button type="button" className={`${boton} border border-stone-400 text-stone-900`} onClick={() => void resolver(op.op_id, { tipo: 'crear_igual' })}>
+                        <Boton variante="secundario" onClick={() => void resolver(op.op_id, { tipo: 'crear_igual' })}>
                           Crear igual
-                        </button>
-                        <p className="text-sm text-stone-700">Después pulsa «Subir seleccionados».</p>
+                        </Boton>
+                        <p className="text-pequeno text-texto-secundario">Después pulsa «Subir seleccionados».</p>
                       </div>
                     )}
                   </>
                 )}
+              </Tarjeta>
               </li>
             ))}
           </ul>
 
           <div className="flex flex-col gap-2">
-            <button type="button" className={`${boton} bg-emerald-800 text-white`} disabled={subiendo || elegidos.size === 0} onClick={() => void subir()}>
+            <Boton disabled={subiendo || elegidos.size === 0} onClick={() => void subir()}>
               {subiendo ? 'Subiendo…' : 'Subir seleccionados'}
-            </button>
-            <button type="button" className={`${boton} border border-red-700 text-red-800`} disabled={subiendo || elegidos.size === 0} onClick={() => setConfirmando(true)}>
+            </Boton>
+            <Boton variante="secundario" disabled={subiendo || elegidos.size === 0} onClick={() => setConfirmando(true)}>
               {`Descartar${elegidos.size ? ` (${elegidos.size})` : ''}`}
-            </button>
+            </Boton>
           </div>
         </>
       )}
 
       {confirmando && (
-        <div role="alertdialog" aria-labelledby="confirma-descartar" className="flex flex-col gap-3 rounded-lg border border-red-300 bg-red-50 p-4">
-          <p id="confirma-descartar" className="text-base text-red-900">
+        <div role="alertdialog" aria-labelledby="confirma-descartar" className="flex flex-col gap-3 rounded-tarjeta border-2 border-peligro bg-peligro-suave p-4">
+          <p id="confirma-descartar" className="text-peligro">
             {`¿Descartar ${elegidos.size} ${elegidos.size === 1 ? 'pendiente' : 'pendientes'}? Se borran de este teléfono y no se puede deshacer.`}
           </p>
-          <button type="button" className={`${boton} bg-red-700 text-white`} onClick={() => void descartar()}>
+          <Boton variante="peligro" onClick={() => void descartar()}>
             Sí, descartar
-          </button>
-          <button type="button" className={`${boton} border border-stone-400 text-stone-900`} onClick={() => setConfirmando(false)}>
+          </Boton>
+          <Boton variante="secundario" onClick={() => setConfirmando(false)}>
             Cancelar
-          </button>
+          </Boton>
         </div>
       )}
 
       {resultados && (
         <section className="flex flex-col gap-2">
-          <h2 className="text-lg font-semibold text-stone-900">Resultado</h2>
+          <h2 className="font-titulo text-seccion font-semibold">Resultado</h2>
           <ul aria-label="Resultado de la subida" className="flex flex-col gap-1">
             {resultados.map((r) => (
-              <li key={r.op_id} className="break-words text-base text-stone-900">
+              <li key={r.op_id} className="break-words">
                 {r.texto}
               </li>
             ))}
@@ -258,15 +260,11 @@ export function Pendientes() {
         </section>
       )}
 
-      {aviso && (
-        <p role="alert" className="text-base text-red-800">
-          {aviso}
-        </p>
-      )}
+      {aviso && <Aviso tono="error">{aviso}</Aviso>}
 
-      <button type="button" className={`${boton} border border-stone-400 text-stone-900`} onClick={() => void exportar()}>
+      <Boton variante="secundario" onClick={() => void exportar()}>
         Exportar JSON
-      </button>
-    </main>
+      </Boton>
+    </Pagina>
   )
 }

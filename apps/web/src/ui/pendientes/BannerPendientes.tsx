@@ -11,7 +11,7 @@ export function BannerPendientes() {
   return (
     <Link
       to="/pendientes"
-      className="block rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-base font-medium text-amber-900"
+      className="block rounded-control border-2 border-advertencia bg-advertencia-suave px-4 py-3 font-semibold text-advertencia"
     >
       {`${carga.ops.length} sin subir (el más viejo: ${hace(viejo.created_at)})`}
     </Link>
