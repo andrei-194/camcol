@@ -13,6 +13,7 @@ const migracion = (f) => readFileSync(new URL(`../../supabase/migrations/${f}`, 
 await db.exec(`
   create role anon nologin;
   create role authenticated nologin;
+  create role service_role nologin;
   grant usage on schema public to anon, authenticated;
   alter default privileges in schema public grant all on tables to anon, authenticated;
   alter default privileges in schema public grant all on sequences to anon, authenticated;
