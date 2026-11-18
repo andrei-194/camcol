@@ -47,7 +47,7 @@ apps/web/        la PWA (se crea en T-M0-01)
 ## Cómo empezar una tarea
 
 1. Tomar el siguiente issue del ciclo en Linear (respetar las dependencias que indica) y pasarlo a *In Progress*.
-2. Crear la rama `CAM-n-descripcion-corta` desde `release/<hito>` actualizada (`git fetch && git checkout -B CAM-n-... origin/release/<hito>`). Si la release no existe, créala desde `main` y abre el PR en borrador (ver «Integrar una tarea»).
+2. Crear la rama `CAM-n-descripcion-corta` desde `release/<hito>` actualizada (`git fetch && git checkout -B CAM-n-... origin/release/<hito>`). Si la release no existe, créala desde `main`; el PR en borrador se abre con la primera tarea integrada (ver «Integrar una tarea»).
 3. Releer en `SPEC.md` los IDs que cierra la tarea.
 4. Escribir la prueba, verla fallar, implementar, verla pasar. Correr todo: `npm run test:db` (descubre solo los `tests/db/*.test.mjs`; solo añade tu archivo).
 5. Integrar la tarea en la release (sección siguiente), marcarla `[x]` en `TASKS.md` y pasar el issue a *In Review*. **No se abre PR por tarea.**
@@ -59,7 +59,7 @@ apps/web/        la PWA (se crea en T-M0-01)
 2. Correr **todo** en verde sobre esa fusión: `npm run test:db`, y si tocaste la app, `npm test`, `typecheck`, `lint` y `build` (dentro de Docker).
 3. Fusionar en la release con `git checkout release/<hito> && git merge --no-ff CAM-n-... && git push origin release/<hito>`. Si el push se rechaza porque otra tarea se integró antes, repetir desde el paso 1.
 4. Las tareas se integran **de una en una**. Una tarea que depende de otra espera a que esté en la release.
-5. El **PR único** `release/<hito>` → `main` se abre en borrador al crear la release (para que el CI corra en cada push) y se marca listo al cerrar el hito; lo revisa y fusiona el socio. Su descripción lista las tareas `CAM-n`, el estado de las pruebas y la verificación manual pendiente.
+5. El **PR único** `release/<hito>` → `main` se abre en borrador al integrar la primera tarea (GitHub no deja abrir un PR sin commits propios; así el CI corre en cada push) y se marca listo al cerrar el hito; lo revisa y fusiona el socio. Su descripción lista las tareas `CAM-n`, el estado de las pruebas y la verificación manual pendiente.
 6. Un arreglo urgente sobre `main` va en rama desde `main` con su propio PR; después se fusiona `main` en la release.
 
 **Orden:** H1 → H2 → H3 → H4 → H5. No empezar H3 hasta que pase el E2E de H2 (T-M2-09).
