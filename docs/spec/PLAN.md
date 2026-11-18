@@ -147,6 +147,17 @@ Servidor: crea PV en `recibido`; fija `tasa_impuesto` desde el artículo (autori
 ```
 Servidor: OC `borrador` → ítems → `pedida` → (si hay) recepción (los triggers suman stock y costo) → pagos (`direccion='pago'`). **Todo atómico.** Compra inmediata = con `recepcion` y `pagos`.
 
+**Implementado en `0008_op_compra.sql` (T-M1-06, CAM-36).** Funciona offline (D-009). Todo `id` es opcional (el servidor lo genera); sin señal, el cliente manda los suyos. Reglas:
+- `orden.proveedor_id` **o** `proveedor_nuevo` (uno solo; ninguno o ambos → `DATOS_INVALIDOS`). `proveedor_nuevo` usa `crear_tercero_desde_payload` (0007) forzando `es_proveedor`; con candidatos y sin `resolucion` la op devuelve `revision` (`resultado.candidatos`) y **no escribe nada**; con `resolucion` (`usar_existente` / `crear_igual`, dentro de `proveedor_nuevo`) continúa. Proveedor inexistente → `E_REF`.
+- `modalidad`: `inmediata` (por defecto) o `encargo`; otra → `DATOS_INVALIDOS`. `condicion_pago` solo `contado` (D-005); crédito → `DATOS_INVALIDOS`.
+- `items` no vacío; `cantidad > 0`, `costo_unitario >= 0`, artículo existente (`E_REF`). El total lo calcula el servidor.
+- `recepcion.items[]` apunta al ítem por `orden_item_id` o por su posición `item` (base 0, para ids generados por el servidor). Ítem ajeno → `E_REF`; recibir más de lo pedido (sumando filas) → `E_SOBRE_RECEPCION` ([E8], RN-COM-01); artículo con `controla_vencimiento` sin `fecha_vencimiento` → `E_VENCIMIENTO` (RN-COM-02). Lotes, stock y costo promedio los fijan los triggers de 0001.
+- `inmediata`: exige recepción **total** (`E_RECEPCION`) y pagos que sumen **exactamente** el total (`E_PAGO`). `encargo`: recepción opcional (parcial o total) y pagos opcionales, sin superar el total (`E_PAGO`).
+- Pagos: `valor > 0`, `medio` válido (si no, `DATOS_INVALIDOS`), `pagado_por` debe ser socio (`E_REF`). Fechas de orden, recepción y pagos: hasta mañana (`E_FECHA`); por defecto la de la orden.
+- Atomicidad: cualquier fallo deshace proveedor nuevo, orden, recepción, movimientos y pagos ([E1]); la op fallida no se registra y se puede reenviar. Idempotencia por `op_id` (`ya_aplicada`, sin duplicar proveedor).
+- Salida: `{orden_id, proveedor_id, estado, total, item_ids, recepcion_id, pago_ids}`. Como en 0009, `ordenes_compra.op_id` queda nulo (el manejador no recibe el `op_id`).
+- Extensión prevista (CAM-90, no implementada): `modalidad: "apertura"` se añadirá a la lista `v_modalidades` de la función, sin pagos y fuera de `compras_periodo`; el resto del contrato no cambia.
+
 `gasto.registrar` → `{ id?, fecha?, categoria, concepto?, valor, orden_compra_id?, pedido_venta_id?, pagado_por? }`
 
 **Implementado en `0009_op_gasto_adjunto.sql` (T-M1-07, CAM-37).** Ambas ops funcionan offline (D-009). Salida de `gasto.registrar`: el gasto creado `{id, fecha, categoria, concepto, valor, orden_compra_id, pedido_venta_id, pagado_por}`. `id` es opcional (el servidor lo genera). Validaciones: `categoria` no vacía; `valor` numérico, mayor que cero y entero (COP sin decimales) → `DATOS_INVALIDOS`; `fecha` `AAAA-MM-DD` (por defecto hoy en `America/Bogota`; formato inválido → `DATOS_INVALIDOS`; posterior a mañana → `E_FECHA`); `orden_compra_id`, `pedido_venta_id` o `pagado_por` inexistentes (o borrados) → `E_REF`. El gasto entra a `resumen_periodo` por su `fecha`. La idempotencia la da `sync_ops`; el manejador no recibe el `op_id`, así que `gastos.op_id` y `adjuntos.op_id` quedan nulos, y un `id` repetido con otro `op_id` responde `E_DUPLICADO` (PK).
