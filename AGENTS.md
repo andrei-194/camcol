@@ -57,7 +57,7 @@ apps/web/        la PWA (se crea en T-M0-01)
 
 1. Con la tarea terminada y la prueba escrita primero (rojo en un commit aparte, salvo excepción anotada): `git fetch` y fusionar `origin/release/<hito>` en tu rama; resolver conflictos (en `package-lock.json`, toma el de la release y corre `npm install` en Docker; en `DECISIONS.md` y `TASKS.md` conserva las dos partes).
 2. Correr **todo** en verde sobre esa fusión: `npm run test:db`, y si tocaste la app, `npm test`, `typecheck`, `lint` y `build` (dentro de Docker).
-3. Fusionar en la release con `git checkout release/<hito> && git merge --no-ff CAM-n-... && git push origin release/<hito>`. Si el push se rechaza porque otra tarea se integró antes, repetir desde el paso 1.
+3. Con tu rama ya fusionada con la release y en verde, subirla a la release sin cambiar de rama: `git push origin CAM-n-descripcion-corta:release/<hito>` (avance rápido; así no hace falta `checkout` de la release, que puede estar abierta en otro worktree). Si el push se rechaza porque otra tarea se integró antes, repetir desde el paso 1.
 4. Las tareas se integran **de una en una**. Una tarea que depende de otra espera a que esté en la release.
 5. El **PR único** `release/<hito>` → `main` se abre en borrador al integrar la primera tarea (GitHub no deja abrir un PR sin commits propios; así el CI corre en cada push) y se marca listo al cerrar el hito; lo revisa y fusiona el socio. Su descripción lista las tareas `CAM-n`, el estado de las pruebas y la verificación manual pendiente.
 6. Un arreglo urgente sobre `main` va en rama desde `main` con su propio PR; después se fusiona `main` en la release.
