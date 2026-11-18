@@ -70,7 +70,7 @@
 - [ ] **T-M3-05** ([CAM-54](https://linear.app/caminocol/issue/CAM-54)) `domain/pricing` + pruebas de propiedad; **paridad** con `precio_para` de Postgres. Cierra: RN-PRE-01.
 
 ## M4 — Pedidos de venta
-- [ ] **T-M4-01** ([CAM-55](https://linear.app/caminocol/issue/CAM-55)) `domain/totals` y `domain/pedidoEstados` + **prueba de paridad** con triggers/totales de SQL (fast-check + PGlite). Cierra: RF-VEN-03, RN-COS-03.
+- [x] **T-M4-01** ([CAM-55](https://linear.app/caminocol/issue/CAM-55)) `domain/totals` y `domain/pedidoEstados` + **prueba de paridad** con triggers/totales de SQL (fast-check + PGlite). Cierra: RF-VEN-03, RN-COS-03.
 - [ ] **T-M4-02** ([CAM-56](https://linear.app/caminocol/issue/CAM-56)) Formulario "Nuevo pedido": cliente (buscar/crear), ítems con precio automático y descuento, envío, entrega, notas; solo con conexión (D-009). Cierra: RF-VEN-01/02/08/10, RNF-UX-05, [E10].
 - [x] ~~**T-M4-03**~~ *Eliminada (D-006): no hay parser de WhatsApp.*
 - [ ] **T-M4-04** ([CAM-57](https://linear.app/caminocol/issue/CAM-57)) Lista de PV (filtros) + vistas "Por confirmar" y "Esperando pago". Cierra: RF-VEN-06.

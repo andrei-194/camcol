@@ -42,6 +42,8 @@ beforeAll(async () => {
   for (const f of MIGRACIONES) {
     await db.exec(readFileSync(new URL(`../../../../supabase/migrations/${f}`, import.meta.url), 'utf8'))
   }
+  // Fixture: el costo promedio lo fijan las compras recibidas (RN-COS-01); aquí se necesitan costos arbitrarios.
+  await db.exec(`alter table articulos disable trigger art_costo_candado`)
   cliente = (await one(`insert into terceros (nombre, es_cliente) values ('Cliente', true) returning id`)).id as string
   const prod = (await one(`insert into productos (nombre, categoria) values ('Café', 'Café') returning id`)).id as string
   articulos = []
@@ -79,12 +81,13 @@ const pedidoArb = fc.record({
 })
 type Pedido = typeof pedidoArb extends fc.Arbitrary<infer T> ? T : never
 
+// El descuento global se aplica al final: el servidor rechaza con E_TOTAL (0017) cualquier cambio que deje el total
+// por debajo del cobrado neto (0), y con el descuento puesto de entrada los totales intermedios serían negativos.
 const crearPedido = async (p: Pedido) => {
   const id = (
     await one(
-      `insert into pedidos_venta (cliente_id, descuento_valor, envio_cobrado, envio_costo, entrega_tipo)
-       values ($1,$2,$3,$4,'recoge') returning id`,
-      [cliente, p.descuentoValor, p.envioCobrado, p.envioCosto],
+      `insert into pedidos_venta (cliente_id, envio_cobrado, envio_costo, entrega_tipo) values ($1,$2,$3,'recoge') returning id`,
+      [cliente, p.envioCobrado, p.envioCosto],
     )
   ).id as string
   for (const it of p.items) {
@@ -94,7 +97,13 @@ const crearPedido = async (p: Pedido) => {
       [id, articulos[it.art], it.cantidad, it.precioLista, it.descuentoPct, precioConDescuento(it.precioLista, it.descuentoPct), it.tasaImpuesto],
     )
   }
-  return id
+  let error: string | null = null
+  try {
+    await q(`update pedidos_venta set descuento_valor = $2 where id = $1`, [id, p.descuentoValor])
+  } catch (e) {
+    error = (e as Error).message
+  }
+  return { id, error }
 }
 const itemsDominio = (p: Pedido) =>
   p.items.map((it) => ({
@@ -117,9 +126,16 @@ describe('paridad con Postgres', () => {
   it('[RF-VEN-03] subtotal, impuestos y total = lo que calculan los triggers pvi_recalc y pv_totales (±0)', async () => {
     await fc.assert(
       fc.asyncProperty(pedidoArb, async (p) => {
-        const id = await crearPedido(p)
-        const s = await one(`select subtotal, impuestos, total, descuento_valor, envio_cobrado from pedidos_venta where id = $1`, [id])
+        const { id, error } = await crearPedido(p)
         const t = calcularTotales({ items: itemsDominio(p), descuentoValor: p.descuentoValor, envioCobrado: p.envioCobrado })
+        if (t.total < 0) {
+          // RF-VEN-03 / RN-PAG-02: un total negativo no queda guardado (E_TOTAL) y validarDescuento lo anticipa
+          expect(error).toMatch(/E_TOTAL/)
+          expect(validarDescuento(t)).not.toBeNull()
+          return
+        }
+        expect(error).toBeNull()
+        const s = await one(`select subtotal, impuestos, total, descuento_valor, envio_cobrado from pedidos_venta where id = $1`, [id])
         expect([t.subtotal, t.impuestos, t.total, t.descuentoValor, t.envioCobrado]).toEqual([
           n(s.subtotal), n(s.impuestos), n(s.total), n(s.descuento_valor), n(s.envio_cobrado),
         ])
@@ -131,10 +147,16 @@ describe('paridad con Postgres', () => {
   it('[RF-VEN-03][RN-COS-03] finalizar: el servidor rechaza exactamente lo que validarDescuento rechaza y la utilidad bruta coincide con v_ventas_pedido', async () => {
     await fc.assert(
       fc.asyncProperty(pedidoArb.filter((p) => p.items.length > 0), async (p) => {
-        const id = await crearPedido(p)
+        const { id, error: errCrear } = await crearPedido(p)
+        const t = calcularTotales({ items: itemsDominio(p), descuentoValor: p.descuentoValor, envioCobrado: p.envioCobrado })
+        if (t.total < 0) {
+          expect(errCrear).toMatch(/E_TOTAL/)
+          expect(validarDescuento(t)).toBe('DESCUENTO_MAYOR_SUBTOTAL')
+          return
+        }
+        expect(errCrear).toBeNull()
         for (let i = 0; i < 3; i++) await q(`update articulos set costo_promedio = $2 where id = $1`, [articulos[i], p.costos[i]])
         await q(`update pedidos_venta set estado = 'confirmado' where id = $1`, [id])
-        const t = calcularTotales({ items: itemsDominio(p), descuentoValor: p.descuentoValor, envioCobrado: p.envioCobrado })
         if (t.total > 0) {
           await q(`insert into pagos (direccion, pedido_venta_id, medio, valor) values ('cobro',$1,'efectivo',$2)`, [id, t.total])
         }

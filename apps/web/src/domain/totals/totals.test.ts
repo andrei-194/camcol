@@ -62,6 +62,7 @@ describe('precioConDescuento', () => {
   it('[RN-PRE-01] precio_lista × (1 − pct/100) a centavos', () => {
     expect(precioConDescuento(10000, 10)).toBe(9000)
     expect(precioConDescuento(333.33, 12.5)).toBe(291.66) // 291,66375
+    expect(precioConDescuento(0.05, 50)).toBe(0.03) // 0,025 → mitad hacia arriba
     expect(precioConDescuento(100, 0)).toBe(100)
     expect(precioConDescuento(100, 100)).toBe(0)
   })
