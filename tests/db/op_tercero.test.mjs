@@ -4,6 +4,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 
 const db = new PGlite({ extensions: { pg_trgm } });
 const migracion = (f) => readFileSync(new URL(`../../supabase/migrations/${f}`, import.meta.url), 'utf8');
@@ -38,8 +39,11 @@ const test = async (name, fn) => {
 
 const uid = (n) => `bbbbbbbb-0000-0000-0000-${String(n).padStart(12, '0')}`;
 const aplicar = async (ops) => (await one(`select aplicar_ops($1::jsonb) r`, [JSON.stringify(ops)])).r;
+// Nombres bien distintos entre sí (los parecidos disparan la revisión por trigramas)
+const nombreDe = (n) => 'Finca ' + createHash('sha1').update(String(n)).digest('hex').slice(0, 8)
+  .replace(/[0-9]/g, (d) => 'ghijklmnop'[d]);
 const tercero = (n, extra = {}) => ({
-  id: uid(1000 + n), nombre: `Proveedor ${n}`, es_proveedor: true, es_cliente: false,
+  id: uid(1000 + n), nombre: nombreDe(n), es_proveedor: true, es_cliente: false,
   telefono: `31000000${String(n).padStart(2, '0')}`, municipio: 'Cajibío', ...extra,
 });
 const crear = (opN, datos) => ({ op_id: uid(opN), tipo: 'tercero.crear', datos });
@@ -62,7 +66,7 @@ await test('[RF-SYN-06] crea un tercero sin duplicados con todos sus campos', as
   assert.equal(r.resultados[0].status, 'ok');
   assert.equal(r.resultados[0].resultado.id, d.id);
   const t = await one(`select * from terceros where id = $1`, [d.id]);
-  assert.equal(t.nombre, 'Proveedor 1');
+  assert.equal(t.nombre, nombreDe(1));
   assert.equal(t.es_proveedor, true);
   assert.equal(t.productos_ofrecidos, 'café, panela');
   assert.equal(t.vereda, 'La Laguna');
@@ -85,7 +89,7 @@ await test('[RF-TER-04][E14] teléfono repetido (formato distinto) deja la op en
   const c = r.resultados[0].resultado.candidatos;
   assert.equal(c.length, 1);
   assert.equal(c[0].id, uid(1001));
-  assert.equal(c[0].nombre, 'Proveedor 1');
+  assert.equal(c[0].nombre, nombreDe(1));
   assert.equal(c[0].municipio, 'Cajibío');
   assert.match(c[0].motivo, /telefono/);
   assert.equal(await cuenta(), antes);
@@ -97,7 +101,7 @@ await test('[RF-TER-04] documento igual o nombre muy similar también piden revi
   const porDoc = await aplicar([crear(11, tercero(11, { tipo_documento: 'CC', numero_documento: '1234567', telefono: null }))]);
   assert.equal(porDoc.resultados[0].status, 'revision');
   assert.match(porDoc.resultados[0].resultado.candidatos[0].motivo, /documento/);
-  const porNombre = await aplicar([crear(12, tercero(12, { nombre: 'proveedor 10', telefono: null }))]);
+  const porNombre = await aplicar([crear(12, tercero(12, { nombre: nombreDe(10).toUpperCase(), telefono: null }))]);
   assert.equal(porNombre.resultados[0].status, 'revision');
   assert.match(porNombre.resultados[0].resultado.candidatos[0].motivo, /nombre/);
 });

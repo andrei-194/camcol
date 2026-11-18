@@ -99,6 +99,12 @@ Detalle completo en [negocio/catalogo.md](negocio/catalogo.md). Cierra P-006 y P
 - Contrato en `PLAN.md` §4.4; migración `0005_sync_pull.sql`. Decisiones de detalle: el stock va siempre completo (derivado, sin cursor); con cursor no hay filtro de ventana de 90 días (solo el snapshot inicial); el cursor es estricto (`>`), el solape de seguridad lo pone el cliente; `pagos` se comparan aparte porque no tocan al padre; gastos y adjuntos no se leen en el pull.
 - **Hallazgo (fuera de alcance, pendiente de tarea):** `touch_padre` (0002) rompe `update pedidos_venta set estado='finalizado'`: `trg_pv_estado` (BEFORE UPDATE) actualiza los ítems (`costo_unitario`), el *touch* intenta actualizar la fila del pedido que ya se está modificando y Postgres falla con "tuple to be updated was already modified by an operation triggered by the current command". Los tests de `core` no lo ven porque no cargan 0002. Posible arreglo en una migración nueva: que `touch_padre` no actúe cuando `pg_trigger_depth() > 1`, o que `trg_pv_estado` marque el cambio de ítems sin disparar el *touch*. Conviene cubrirlo antes de T-M1-04/05 (finalizar vía `aplicar_ops`).
 
+## Nota T-M1-04 · `tercero.crear` (CAM-34) — 2026-11-18
+
+- Contrato en `PLAN.md` §4.3; migración `0007_op_tercero.sql`. La lógica vive en `crear_tercero_desde_payload` para que `pedido_venta.crear` y `orden_compra.registrar` la reutilicen con `cliente_nuevo`/`proveedor_nuevo`.
+- Decisiones de detalle (valores por defecto, sin cambio de reglas de negocio): teléfono opcional, pero si viene debe tener 7–15 dígitos; `usar_existente` suma el rol faltante al tercero existente (un cliente que también vende pasa a ser proveedor) para que la compra pueda asociarse sin otra edición online; el consentimiento exigido a clientes (RF-TER-05) se valida aquí también.
+- Las suites usan nombres de prueba bien distintos: la similitud por trigramas (≥ 0,5) marca como duplicados nombres como «Proveedor 3» y «Proveedor 30».
+
 ## Contexto de negocio
 
 - [docs/negocio/catalogo.md](negocio/catalogo.md): estructura de productos, artículos, precios y costos, cruzando el sitio y el costeo oficial.
