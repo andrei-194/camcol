@@ -125,6 +125,33 @@ La entrada es `[{op_id, tipo, datos}]` y la salida `{detener_cola, resultados:[{
 - Decisiones de detalle (valores por defecto, sin cambio de reglas de negocio): teléfono opcional, pero si viene debe tener 7–15 dígitos; `usar_existente` suma el rol faltante al tercero existente (un cliente que también vende pasa a ser proveedor) para que la compra pueda asociarse sin otra edición online; el consentimiento exigido a clientes (RF-TER-05) se valida aquí también.
 - Las suites usan nombres de prueba bien distintos: la similitud por trigramas (≥ 0,5) marca como duplicados nombres como «Proveedor 3» y «Proveedor 30».
 
+## D-014 · El inventario inicial se carga como compra de apertura — 2026-11-18
+
+La auditoría funcional (`docs/auditoria-h1-2026-11-18.md`, H-01) mostró que un ajuste de inventario no fija el costo: solo las compras actualizan `costo_promedio`. Cargar así el stock existente deja el costo en 0, infla el margen de las primeras ventas y deja el capital en bodega en $0.
+
+**Decisión (socio, 2026-11-18):** el inventario existente se carga como una **compra de apertura**: nueva modalidad `apertura` de `ordenes_compra`, con un proveedor genérico («Inventario inicial»). Se recibe como cualquier compra (suma stock y fija costo), **no** cuenta en `compras_periodo`, **no** genera cuenta por pagar y no admite pagos. Los ajustes siguen siendo solo para corregir diferencias y no fijan costo. Tarea: T-M1-12 (CAM-90, migración 0012). En ese PR se añade RN-COM-04 a `SPEC.md` y se actualizan RF-COM-01, T-M5-01 y el payload de `orden_compra.registrar` en `PLAN.md` §4.3 (`modalidad` admite `apertura`).
+
+## Nota auditoría H1 · hallazgos pendientes de decisión — 2026-11-18
+
+Del informe de auditoría, los hallazgos H-01 a H-03 ya tienen tarea (T-M1-12, T-M1-11, T-M1-13). H-04 es el trabajo pendiente de CAM-35/36/37 (aún sin iniciar). Los demás **no tienen tarea ni decisión**; se resuelven cuando el socio decida:
+
+| Hallazgo | Tema | Pendiente de decidir |
+|---|---|---|
+| H-05 | Pedido con total negativo se finaliza sin cobrar | validar total ≥ 0 y descuento ≤ subtotal (probablemente en `pedido_venta.crear` y al finalizar) |
+| H-06 | Sin reembolso en cancelación o devolución con cobro; sin control de sobrepago | ¿entra al MVP o se maneja fuera de la app? |
+| H-07 | Motivos obligatorios, `envio_costo` al finalizar con transportadora y otras reglas de la spec sin exigir | ¿van al servidor? |
+| H-08 | Doble conteo del flete (costo de envío del pedido y gasto vinculado) | una sola vía documentada |
+| H-09 | Stock negativo por mermas y ajustes | validar o solo avisar |
+| H-10 | Reporte por artículo no reparte el descuento global | cómo repartirlo (T-M7-02) |
+| H-11 | Conversión libra a gramo no existe en la base ni tiene prueba de paridad | cubrir en T-M5-01 |
+| H-12 | La cola no se detiene en el servidor tras una `revision` (PLAN §4.3 lo declara) | confirmar que el cliente (T-M2-05/06) se detiene |
+| H-15 | Las funciones creadas después de 0004 son ejecutables por `anon` | tarea T-M1-14 (CAM-92), ya con prueba en rojo |
+| H-16 | Un miembro puede insertar a mano movimientos de inventario de tipo `compra`/`venta` (mueve `costo_promedio` sin orden ni recepción) | restringir los tipos permitidos en inserts directos; encaja en T-M1-13 si se decide |
+| H-17 | `costo_unitario` de los ítems es editable en pedidos abiertos (se sobrescribe al finalizar) | sin impacto en resultados; se anota |
+| H-13/H-14 | Detalles menores (redondeo a pesos, `anular_documento` inexistente, `v_cuentas_por_cobrar` sin pedidos `recibido`) | revisar al llegar a la UI |
+
+**Aviso de numeración:** el PR #9 (`docs: estado del proyecto…`) usó el número CAM-88 en su rama, pero en Linear CAM-88 es la tarea H-02 (candado de pedidos finalizados). Un `git log --grep CAM-88` mezcla ambos; el commit `919f731` es el de documentación.
+
 ## Contexto de negocio
 
 - [docs/negocio/catalogo.md](negocio/catalogo.md): estructura de productos, artículos, precios y costos, cruzando el sitio y el costeo oficial.
