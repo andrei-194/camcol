@@ -1,4 +1,4 @@
-// Pruebas de la migración 0013_compra_apertura.sql (H-01, CAM-90). Ejecutar: npm run test:db
+// Pruebas de la migración 0012_compra_apertura.sql (H-01, CAM-90). Ejecutar: npm run test:db
 // Decisión del socio: el inventario inicial se carga como compra de apertura (con costo), no como ajuste.
 import { PGlite } from '@electric-sql/pglite';
 import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
@@ -14,7 +14,7 @@ await db.exec(`
   create function auth.uid() returns uuid language sql stable as
     $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 `);
-for (const f of ['0001_core.sql', '0002_sync.sql', '0006_fix_touch_padre.sql', '0013_compra_apertura.sql']) {
+for (const f of ['0001_core.sql', '0002_sync.sql', '0006_fix_touch_padre.sql', '0012_compra_apertura.sql']) {
   if (!existsSync(new URL(`../../supabase/migrations/${f}`, import.meta.url))) {
     console.log(`  (aún no existe ${f}: las pruebas de apertura deben fallar)`);
     continue;
@@ -93,7 +93,7 @@ await test('[RN-COS-02] la primera venta usa el costo de apertura (no 100 % de m
   assert.equal(num((await periodo()).costo_mercancia), 13000);
 });
 
-await test('[RN-COM-02] control: una compra normal (inmediata) sí cuenta como compra y como deuda sin pago', async () => {
+await test('[H-01] control: una compra normal (inmediata) sí cuenta como compra y como deuda sin pago', async () => {
   const o = await comprar(don, 'inmediata', 5, 14000);
   await q(`update ordenes_compra set total = 70000 where id = $1`, [o]);
   assert.equal(num((await periodo()).compras_periodo), 70000);
