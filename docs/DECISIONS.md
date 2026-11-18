@@ -137,6 +137,10 @@ La entrada es `[{op_id, tipo, datos}]` y la salida `{detener_cola, resultados:[{
 - Decisiones de detalle: el candado de cabecera compara solo los seis campos de dinero, así que `notas`, `estado` y `finalizado_en` siguen editables (la suite `sync_pull` no cambia). El trigger de `pagos` filtra por `direccion = 'cobro'` para no tapar el CHECK que espera `core`. No se reasignan privilegios de funciones: eso es de CAM-92 (otorgar `EXECUTE` a `authenticated` en todas las funciones expondría las `op_*` fuera de `aplicar_ops`).
 - Fuera de alcance (H-17): `costo_unitario` sigue editable en pedidos abiertos; se sobrescribe al finalizar.
 
+## Nota T-M1-06 · `orden_compra.registrar` (CAM-36) — 2026-11-18
+
+Decisiones por defecto, a revisar: (1) la op acepta `inmediata` y `encargo`; en `inmediata` exige recepción total y pago exacto (D-005), en `encargo` permite recepción parcial y pagos opcionales sin pasar del total (el pago posterior de un encargo aún no tiene op propia). (2) Códigos de error nuevos: `E_RECEPCION`, `E_SOBRE_RECEPCION`, `E_VENCIMIENTO` y `E_PAGO`; las validaciones van antes de insertar para no depender de los mensajes de los triggers. (3) Los ítems de la recepción se pueden indicar por posición (`item`) cuando el cliente no manda ids. (4) Un proveedor nuevo con duplicados detiene toda la op en `revision`; no se crea nada hasta que el usuario resuelve. (5) La lista de modalidades admitidas está en una variable de la función para que CAM-90 agregue `apertura` sin cambiar el contrato.
+
 ## D-014 · El inventario inicial se carga como compra de apertura — 2026-11-18
 
 La auditoría funcional (`docs/auditoria-h1-2026-11-18.md`, H-01) mostró que un ajuste de inventario no fija el costo: solo las compras actualizan `costo_promedio`. Cargar así el stock existente deja el costo en 0, infla el margen de las primeras ventas y deja el capital en bodega en $0.
