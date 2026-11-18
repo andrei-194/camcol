@@ -94,6 +94,11 @@ Detalle completo en [negocio/catalogo.md](negocio/catalogo.md). Cierra P-006 y P
 
 **Sin probar aún (T-M1-10, Supabase local):** las políticas de Storage se probaron contra un stub de `storage.objects`; falta verificar con el Storage real (subida con JWT de miembro, URL firmada, rechazo a no miembro y a `anon`). Tampoco se probó que la API de PostgREST oculte las funciones a `anon` ni la publicación Realtime real.
 
+## Nota T-M1-08 · `sync_pull` simple (CAM-38) — 2026-11-17
+
+- Contrato en `PLAN.md` §4.4; migración `0005_sync_pull.sql`. Decisiones de detalle: el stock va siempre completo (derivado, sin cursor); con cursor no hay filtro de ventana de 90 días (solo el snapshot inicial); el cursor es estricto (`>`), el solape de seguridad lo pone el cliente; `pagos` se comparan aparte porque no tocan al padre; gastos y adjuntos no se leen en el pull.
+- **Hallazgo (fuera de alcance, pendiente de tarea):** `touch_padre` (0002) rompe `update pedidos_venta set estado='finalizado'`: `trg_pv_estado` (BEFORE UPDATE) actualiza los ítems (`costo_unitario`), el *touch* intenta actualizar la fila del pedido que ya se está modificando y Postgres falla con "tuple to be updated was already modified by an operation triggered by the current command". Los tests de `core` no lo ven porque no cargan 0002. Posible arreglo en una migración nueva: que `touch_padre` no actúe cuando `pg_trigger_depth() > 1`, o que `trg_pv_estado` marque el cambio de ítems sin disparar el *touch*. Conviene cubrirlo antes de T-M1-04/05 (finalizar vía `aplicar_ops`).
+
 ## Contexto de negocio
 
 - [docs/negocio/catalogo.md](negocio/catalogo.md): estructura de productos, artículos, precios y costos, cruzando el sitio y el costeo oficial.
