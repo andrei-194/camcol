@@ -15,6 +15,7 @@
     "dev:docker": "vite --host 0.0.0.0"
   },
   "dependencies": {
+    "dexie": "^4.4.7",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-router-dom": "^7.18.5"
@@ -31,6 +32,7 @@
     "eslint": "10.15.0",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-react-hooks": "7.1.1",
+    "fake-indexeddb": "^6.2.8",
     "globals": "17.14.0",
     "jsdom": "26.1.0",
     "prettier": "3.10.1",

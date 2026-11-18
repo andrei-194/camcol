@@ -3,6 +3,7 @@
 > Versión 1.1 · 2026-11-17 · Estado: listo para implementación, **salvo la migración `0001_core.sql`, que aún implementa el flujo anterior** (ver `docs/DECISIONS.md`, D-002 y D-004, y la tarea T-M1-00).
 > Cambio 1.1: el pedido de venta termina en `finalizado` cuando se confirma el pago; ahí se descuenta el stock. Desaparecen los estados de alistamiento, despacho y entrega.
 > Cambio 1.2 (D-009): el offline se recorta a compra, proveedor y gasto. Pedidos, cobros, estados y clientes requieren conexión. Sin Realtime, sin "stock estimado" y sin editar ni importar pendientes.
+> Cambio 1.3 (D-015, T-M1-17): entran al MVP el **reembolso** de un pedido cancelado o devuelto que ya tenía cobros (RF-PAG-04..06, RN-PAG-02..07) y el **control de sobrepago** al cobrar. La devolución de mercancía sigue siendo solo total.
 > Documentos hermanos: `PLAN.md` (cómo), `TASKS.md` (en qué orden). Esquema SQL de referencia: `supabase/migrations/0001_core.sql` (probado, 24 pruebas en `tests/db/core.test.mjs`).
 > Convención: **DEBE** = obligatorio, **DEBERÍA** = recomendado, **PUEDE** = opcional. Cada requisito tiene ID (`RF-…`, `RN-…`, `RNF-…`) y **cada prueba debe citar el ID que cubre**.
 
@@ -107,11 +108,11 @@ Fuente de verdad: `0001_core.sql`. Entidades: `terceros` (roles cliente/proveedo
 ### 7.4 Pedidos de venta (VEN)
 - **RF-VEN-01** Crear PV con: cliente (buscar o crear), origen (`web`/`whatsapp`/`manual`), referencia de origen (opcional), ítems, descuentos, tipo de entrega (`transportadora`/`propia`/`recoge`), dirección/municipio de entrega, `envio_cobrado`, `envio_costo`, fecha estimada, notas. **Nace siempre en estado `recibido`.**
 - **RF-VEN-02** Al agregar un ítem, el precio de lista se calcula con `precio_para(artículo, cliente, cantidad)` (cache local si no hay conexión) y se guarda como **snapshot** `precio_lista`; el usuario puede aplicar `descuento_pct` y se guarda `precio_unitario` pactado.
-- **RF-VEN-03** Descuento global (`descuento_valor`) y envío editables; totales calculados por el servidor (`subtotal`, `impuestos`, `total`); la UI muestra una **vista previa idéntica** calculada con la misma fórmula (`domain/pricing`, con pruebas de paridad).
+- **RF-VEN-03** Descuento global (`descuento_valor`) y envío editables; totales calculados por el servidor (`subtotal`, `impuestos`, `total`); la UI muestra una **vista previa idéntica** calculada con la misma fórmula (`domain/pricing`, con pruebas de paridad). El descuento global no puede superar el subtotal ni dejar el total negativo (el servidor rechaza al crear y al finalizar).
 - **RF-VEN-04** *(Eliminado, D-006.)* Los pedidos se registran a mano en el formulario; la PWA no lee ni interpreta mensajes de WhatsApp.
-- **RF-VEN-05** Cambios de estado según la máquina de §9.1, con motivo obligatorio para `cancelado` y `devuelto`. **Finalizar** exige pago confirmado (RN-VEN-05) y tipo de entrega; si es transportadora, exige `envio_costo`. Transportadora y guía pueden completarse después de finalizar (online).
+- **RF-VEN-05** Cambios de estado según la máquina de §9.1, con motivo obligatorio para `cancelado` y `devuelto`. **Finalizar** exige pago confirmado (RN-VEN-05) y tipo de entrega; si es transportadora, exige `envio_costo`. Transportadora y guía pueden completarse después de finalizar (online). **Validaciones del servidor (T-M1-15, D-015):** el motivo no puede estar vacío; `envio_costo` exigido significa mayor que cero (0 es el valor por defecto y equivale a "sin dato"); al finalizar, el descuento no supera el subtotal y el total no es negativo (RF-VEN-03).
 - **RF-VEN-06** Lista de PV filtrable por estado, cliente, fecha, origen; vista **"Por confirmar"** (recibidos) y **"Esperando pago"** (confirmados).
-- **RF-VEN-07** Detalle de PV con historial de estados (`eventos_estado`), pagos, documentos y acciones disponibles según estado.
+- **RF-VEN-07** Detalle de PV con historial de estados (`eventos_estado`), pagos (cobros y reembolsos), documentos y acciones disponibles según estado.
 - **RF-VEN-08** Los pedidos de venta **solo se crean con conexión** (D-009); no hay borradores offline. Un pedido nace `recibido` y no reserva ni mueve stock.
 - **RF-VEN-09** *(Eliminado, D-006.)* Los mensajes de la web no traen número de pedido, así que no hay referencia que comparar.
 - **RF-VEN-10** Mientras el estado sea `recibido`/`confirmado` los ítems son editables (en `confirmado`, ajustando la reserva); después de finalizar, no.
@@ -136,7 +137,10 @@ Fuente de verdad: `0001_core.sql`. Entidades: `terceros` (roles cliente/proveedo
 ### 7.7 Pagos, cuentas y gastos (PAG)
 - **RF-PAG-01** Registrar **cobros** a clientes (parciales permitidos) y ver saldo por pedido. La acción **"Registrar cobro y finalizar"** hace ambas cosas en una sola operación.
 - **RF-PAG-02** Vista **esperando pago**: pedidos confirmados con saldo. No hay cuentas por pagar: las compras son de contado (D13).
-- **RF-PAG-03** Registrar **gastos** operativos (combustible, empaques, etc.) con categoría y valor; **permitido offline**; opcionalmente vinculados a un PV/OC.
+- **RF-PAG-03** Registrar **gastos** operativos (combustible, empaques, etc.) con categoría y valor; **permitido offline**; opcionalmente vinculados a un PV/OC. El flete de una venta no se registra aquí sino en `envio_costo` del pedido (RN-COS-04).
+- **RF-PAG-04** **Reembolsar** al cliente el dinero cobrado de un PV `cancelado` o `devuelto` (op `pago.reembolsar`). Total o por partes, hasta el cobrado neto (RN-PAG-03/04). **Solo con conexión**; nunca se encola (D-009). Pide valor, medio, motivo y, opcionalmente, referencia, fecha y qué socio puso el dinero.
+- **RF-PAG-05** **Control de sobrepago:** el servidor rechaza un cobro que haría que lo cobrado neto supere el total del PV (RN-PAG-02). La app avisa antes con el saldo; el servidor decide.
+- **RF-PAG-06** Vista **por reembolsar**: PV `cancelado` o `devuelto` con cobrado neto > 0. El detalle del PV muestra el saldo por reembolsar y el historial de reembolsos junto a los cobros (RF-VEN-07). Es un aviso: la app no obliga a reembolsar (RN-PAG-06).
 
 ### 7.8 Documentos (DOC)
 - **RF-DOC-01** Tipos: `confirmacion` (sin consecutivo), `remision`, `factura_interna`, `comprobante_compra` (con consecutivo).
@@ -185,6 +189,7 @@ Fuente de verdad: `0001_core.sql`. Entidades: `terceros` (roles cliente/proveedo
 - **RN-COS-01** Costo promedio ponderado: al recibir `q` a costo `c` con stock `s ≥ 0` y promedio `m`: `nuevo = (s·m + q·c)/(s+q)`; si `s ≤ 0` el nuevo costo es `c`.
 - **RN-COS-02** Al finalizar se fija `costo_unitario` del ítem = costo promedio vigente (snapshot para márgenes).
 - **RN-COS-03** Utilidad bruta de un PV = (subtotal − descuento global) + envío cobrado − envío pagado − costo de mercancía. Utilidad neta del periodo = Σ utilidad bruta − gastos.
+- **RN-COS-04** (H-08, D-015) **Una sola vía para el flete de una venta:** su costo se registra solo en `envio_costo` del pedido. Un gasto vinculado a un PV no puede ser de categoría flete/envío/transporte/transportadora (se contaría dos veces); el flete de una compra (gasto vinculado a una OC) o un gasto suelto sí se permiten.
 
 **Precios**
 - **RN-PRE-01** Precio aplicable: lista del cliente (o pública) y el escalón de mayor `cantidad_minima` ≤ cantidad; si la lista del cliente no tiene precio, se usa la pública.
@@ -192,10 +197,10 @@ Fuente de verdad: `0001_core.sql`. Entidades: `terceros` (roles cliente/proveedo
 
 **Pedidos de venta**
 - **RN-VEN-01** Un PV acepta ítems sin stock (D5). `confirmado` exige ≥ 1 ítem.
-- **RN-VEN-02** `cancelado` solo antes de finalizar (libera la reserva); después, `devuelto` (devolución total) que repone stock al costo de la finalización.
+- **RN-VEN-02** `cancelado` solo antes de finalizar (libera la reserva); después, `devuelto` (devolución total) que repone stock al costo de la finalización. Si el PV tenía cobros, **el estado no cambia por eso**: sigue siendo `cancelado` o `devuelto`, y el dinero se devuelve con `pago.reembolsar` (RN-PAG-03). No existe un estado «reembolsado»: el reembolso pendiente se deriva de los pagos (RN-PAG-06).
 - **RN-VEN-03** `finalizado_en` se fija en el servidor al finalizar; los reportes agrupan por ese día (zona Bogotá).
 - **RN-VEN-04** Entrega propia (`propia`/`recoge`): `envio_cobrado` y `envio_costo` normalmente 0.
-- **RN-VEN-05** Un PV solo se finaliza con el **pago confirmado**: saldo = 0 (Σ cobros ≥ total). Los socios no venden a crédito (D-005).
+- **RN-VEN-05** Un PV solo se finaliza con el **pago confirmado**: saldo = 0 (cobrado neto = total; con RN-PAG-02 nunca es mayor). Los socios no venden a crédito (D-005).
 
 **Compras**
 - **RN-COM-01** No se recibe más de lo pedido (sobre-recepción prohibida). Recepción parcial cambia la OC a `recibida_parcial`; completa → `recibida`.
@@ -205,10 +210,16 @@ Fuente de verdad: `0001_core.sql`. Entidades: `terceros` (roles cliente/proveedo
 
 **Documentos**
 - **RN-DOC-01** Consecutivos por tipo y **sin huecos** (se asignan en la misma transacción). `numero = prefijo-000000` (RM, FI, CP).
-- **RN-DOC-02** Un documento emitido es inmutable salvo anulación; la anulación exige motivo y no se puede revertir.
+- **RN-DOC-02** Un documento emitido es inmutable salvo anulación; la anulación exige motivo (no vacío, también por escritura directa) y no se puede revertir ni cambiar su motivo.
 
 **Pagos**
-- **RN-PAG-01** Un pago es de **cobro** (ligado a PV) o de **pago** (ligado a OC), nunca ambos. Saldo = total − Σ pagos.
+- **RN-PAG-01** Un pago es de **cobro** (ligado a PV), de **pago** (ligado a OC) o de **reembolso** (ligado a PV), nunca ligado a ambos. Saldo de un PV = total − **cobrado neto**; saldo de una OC = total − Σ pagos.
+- **RN-PAG-02** **Sobrepago:** **cobrado neto** = Σ cobros − Σ reembolsos del PV. Un cobro nuevo se rechaza (`E_SOBREPAGO`) si deja el cobrado neto por encima del `total`. Tampoco se acepta un cambio de totales del PV que deje el total por debajo del cobrado neto. Un cobro solo se registra en un PV `recibido` o `confirmado`; en `cancelado` se rechaza (`E_ESTADO`), y en `finalizado`/`devuelto` ya lo bloquea el candado de 0011.
+- **RN-PAG-03** **Reembolso:** solo de un PV `cancelado` o `devuelto` (en otro estado, `E_ESTADO`) y con cobrado neto > 0. El reembolso **no cambia el estado** del PV ni mueve stock.
+- **RN-PAG-04** **Tope:** el valor de un reembolso es > 0, entero (COP sin decimales) y ≤ cobrado neto. Se puede reembolsar por partes (varios reembolsos) hasta dejar el cobrado neto en 0. Un reembolso no se liga a un cobro concreto: el tope es el del pedido. Exceder el tope, o reembolsar un PV sin cobrado neto, → `E_SOBREPAGO`.
+- **RN-PAG-05** **Inmutabilidad:** un reembolso exige motivo (texto no vacío) y medio válido, y una vez registrado no se edita ni se borra (igual que los cobros de un PV finalizado). Un reembolso equivocado es un caso manual fuera del MVP (se anota en `DECISIONS.md`).
+- **RN-PAG-06** **Efecto contable:** (a) `v_ventas_pedido` solo cuenta PV `finalizado`, así que un `devuelto` y un `cancelado` **no** cuentan en ventas netas, descuentos, costo ni utilidad, con o sin reembolso; el reembolso no vuelve a restar nada. (b) El movimiento de caja es informativo: `resumen_periodo` agrega la columna `reembolsos` (Σ valor de reembolsos con `fecha` en el periodo, en `America/Bogota`) y no la resta de la utilidad neta. (c) **Reembolso pendiente** = PV `cancelado`/`devuelto` con cobrado neto > 0; se lista (RF-PAG-06) hasta que se reembolse. No hay «condonar»: si los socios deciden no devolver el dinero, el aviso queda abierto (pregunta abierta en `DECISIONS.md`). (d) `v_cuentas_por_cobrar` no cambia: solo mira PV `confirmado`.
+- **RN-PAG-07** **Quién y cómo:** cualquier miembro puede reembolsar (L6). Online, vía `aplicar_ops`, con `op_id` idempotente: repetir la misma op devuelve `ya_aplicada` sin duplicar el reembolso. Medio por defecto en la app: el del último cobro del PV; se puede cambiar.
 
 **Datos personales**
 - **RN-DAT-01** Cliente con consentimiento registrado (bandera + fecha). No exportar ni compartir la base de clientes fuera de los socios.
@@ -227,8 +238,8 @@ Transiciones válidas (única fuente: `pv_transicion_valida`): `recibido→{conf
 |---|---|
 | → `confirmado` | Datos y pedido confirmados por WhatsApp. Reserva (aumenta `comprometido`). Requiere ≥ 1 ítem. **Solo online.** |
 | → `finalizado` | Exige pago confirmado (RN-VEN-05) y stock suficiente; movimientos `venta`; fija costos y `finalizado_en`; libera la reserva. **Solo online.** |
-| → `devuelto` | Movimientos `devolucion_cliente` al costo de la finalización. Motivo obligatorio. |
-| → `cancelado` | Libera `comprometido`. Motivo obligatorio. |
+| → `devuelto` | Movimientos `devolucion_cliente` al costo de la finalización. Motivo obligatorio. Si hay cobros, queda con **reembolso pendiente** (RN-PAG-06) hasta `pago.reembolsar`. |
+| → `cancelado` | Libera `comprometido`. Motivo obligatorio. Si hay cobros parciales, queda con **reembolso pendiente** (RN-PAG-06). |
 
 `recibido` nace de la creación del pedido (también offline) y no reserva nada. El **pago** se deriva de `pagos` (pendiente/parcial/pagado) y es lo que habilita `finalizado`. El envío (transportadora, guía, costo) es información del pedido, no un estado.
 
@@ -252,6 +263,7 @@ borrador ──► pedida ──► recibida_parcial ──► recibida
 | Crear compra inmediata o encargo (con recepción y pago) | Sí | Pendiente; las entradas suman al sincronizar |
 | Registrar gasto | Sí | |
 | Confirmar/finalizar/cancelar/devolver PV | **No** | Requiere servidor |
+| Registrar cobro o reembolso | **No** | Requiere servidor (D-009) |
 | Emitir remisión/factura/comprobante, anular | **No** | Consecutivo lo asigna el servidor |
 | Editar maestros, catálogo, precios, ajustes de inventario | **No** | |
 | Generar y compartir PDF de `confirmacion` | Sí | Sin consecutivo |
@@ -270,7 +282,7 @@ Más tarde: banner "Tienes N sin subir (el más viejo: hace X)" → Pendientes �
 ```
 
 ### 10.3 Operaciones del MVP
-`tercero.crear` · `pedido_venta.crear` (incluye cliente nuevo opcional + ítems; solo con conexión, nunca se encola) · `orden_compra.registrar` (incluye proveedor nuevo opcional + ítems + recepción opcional + pagos opcionales) · `gasto.registrar` · `adjunto.vincular`. Contratos JSON en `PLAN.md` §4.3.
+`tercero.crear` · `pedido_venta.crear` (incluye cliente nuevo opcional + ítems; solo con conexión, nunca se encola) · `orden_compra.registrar` (incluye proveedor nuevo opcional + ítems + recepción opcional + pagos opcionales) · `gasto.registrar` · `adjunto.vincular` · `pago.reembolsar` (solo con conexión, nunca se encola). Contratos JSON en `PLAN.md` §4.3.
 
 ### 10.4 Conflictos y casos borde
 - **Doble envío por respuesta perdida:** idempotencia por `op_id` (RF-SYN-05).
@@ -343,6 +355,15 @@ Dado un PV de 2 und con lista $20.000 y 10 % de descuento, envío cobrado y paga
 **E11 — Devolución (RN-VEN-02)**
 Dado un PV finalizado, cuando se marca `devuelto` con motivo, entonces el stock se repone y el pedido deja de contar en ventas.
 
+**E16 — Cancelar un pedido con cobro parcial y reembolsar (RN-VEN-02, RN-PAG-03/04/05)**
+Dado un PV `confirmado` de total 100.000 con un cobro de 40.000, cuando se cancela con motivo, entonces el estado es `cancelado`, `comprometido` baja, no hay movimientos de stock y el PV aparece en «por reembolsar» con 40.000. Cuando se reembolsan 15.000 con medio y motivo, entonces el cobrado neto es 25.000 y sigue pendiente; cuando se reembolsan otros 25.000, el cobrado neto es 0 y sale de «por reembolsar». Intentar reembolsar 1 más falla con `E_SOBREPAGO`.
+
+**E17 — Devolver un pedido finalizado y reembolsar (RN-VEN-02, RN-PAG-03/06, E11)**
+Dado un PV `finalizado` de total 100.000 totalmente cobrado, cuando se marca `devuelto`, entonces el stock se repone al costo de la finalización, el PV deja de contar en ventas netas y queda «por reembolsar» 100.000. Cuando se reembolsan 100.000, entonces el cobrado neto es 0, el estado sigue `devuelto`, `resumen_periodo` del día del reembolso muestra `reembolsos` = 100.000, y las ventas netas y la utilidad no cambian por el reembolso. Intentar registrar un cobro en ese PV sigue fallando (candado de 0011).
+
+**E18 — Sobrepago y estados no reembolsables (RN-PAG-02/03/04/05)**
+Dado un PV `confirmado` de total 100.000 con cobros por 100.000, cuando se intenta un cobro de 1, entonces falla con `E_SOBREPAGO` y no se inserta nada. Dado un PV `confirmado` con cobros, cuando se intenta `pago.reembolsar`, entonces falla con `E_ESTADO`. Dado un PV `cancelado` sin cobros, cuando se intenta reembolsar, falla con `E_SOBREPAGO`. Un reembolso sin motivo falla con `DATOS_INVALIDOS`; repetir la misma op con el mismo `op_id` responde `ya_aplicada` y deja un solo reembolso; un reembolso registrado no se puede editar ni borrar.
+
 **E12 — Seguridad (RNF-SEC-02)**
 Dado un usuario autenticado que no es miembro, entonces ve 0 filas en todas las tablas y vistas y no puede insertar.
 
@@ -359,7 +380,7 @@ Dada la app sin conexión, entonces el dashboard muestra la última copia con "d
 
 - **L1** Sin Background Sync en iOS: la subida es con la app abierta (coherente con D9).
 - **L2** El consumo por lote (FEFO) no está implementado: las ventas no descuentan de un lote específico; las alertas de vencimiento son **informativas** sobre lotes ingresados.
-- **L3** Devoluciones solo totales.
+- **L3** Devoluciones de mercancía solo totales. El **dinero** sí puede reembolsarse por partes (RN-PAG-04), pero no hay devolución parcial de ítems.
 - **L4** Un PV se finaliza completo o no se finaliza.
 - **L8** No se rastrea la entrega: `finalizado` significa pago confirmado y stock descontado, no que el cliente ya recibió el producto.
 - **L5** Impuestos simplificados (tasa por artículo, sobre el neto).

@@ -78,7 +78,7 @@ Pruebas verdes (incluidas las previas) · tipos y lint limpios · IDs citados en
 
 ## Qué NO construir (MVP)
 
-Factura electrónica DIAN, API o automatización de WhatsApp, checkout web escribiendo a la base, roles finos, recetas, UI de crédito a proveedores, FEFO por lote, devoluciones parciales, multi-bodega, notificaciones push. El modelo deja la puerta abierta; no se implementan.
+Factura electrónica DIAN, API o automatización de WhatsApp, checkout web escribiendo a la base, roles finos, recetas, UI de crédito a proveedores, FEFO por lote, devoluciones parciales de mercancía (el reembolso del dinero sí entra, SPEC RF-PAG-04), multi-bodega, notificaciones push. El modelo deja la puerta abierta; no se implementan.
 
 ## Cuando dudes
 
