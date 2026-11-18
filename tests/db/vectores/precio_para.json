@@ -1,0 +1,81 @@
+{
+  "_nota": "Vectores compartidos [RN-PRE-01]: tests/db/precio_paridad.test.mjs los verifica contra precio_para (PGlite) y apps/web/src/domain/pricing/pricing.test.ts contra domain/pricing. Ids simbolicos; 'publica' es la lista publica; esperado null = sin precio.",
+  "escenarios": [
+    {
+      "nombre": "lista del cliente con respaldo en la publica",
+      "listas": ["publica", "mayorista"],
+      "clientes": { "ana": "mayorista", "beto": null, "carla": "publica" },
+      "precios": [
+        { "lista": "publica", "articulo": "cafe", "precio": 30000, "minima": 1 },
+        { "lista": "publica", "articulo": "cacao", "precio": 20000, "minima": 1 },
+        { "lista": "mayorista", "articulo": "cafe", "precio": 25000, "minima": 1 }
+      ],
+      "consultas": [
+        { "articulo": "cafe", "cliente": "ana", "cantidad": 1, "esperado": 25000 },
+        { "articulo": "cafe", "cliente": "beto", "cantidad": 1, "esperado": 30000 },
+        { "articulo": "cafe", "cliente": "carla", "cantidad": 5, "esperado": 30000 },
+        { "articulo": "cacao", "cliente": "ana", "cantidad": 1, "esperado": 20000 },
+        { "articulo": "cacao", "cliente": "beto", "cantidad": 3, "esperado": 20000 },
+        { "articulo": "cafe", "cliente": null, "cantidad": 2, "esperado": 30000 },
+        { "articulo": "cafe", "cliente": "desconocido", "cantidad": 2, "esperado": 30000 }
+      ]
+    },
+    {
+      "nombre": "escalon por cantidad (Llevate 2) y bordes",
+      "listas": ["publica", "mayorista"],
+      "clientes": { "ana": "mayorista", "beto": null },
+      "precios": [
+        { "lista": "publica", "articulo": "cafe", "precio": 30000, "minima": 1 },
+        { "lista": "publica", "articulo": "cafe", "precio": 27000, "minima": 2 },
+        { "lista": "publica", "articulo": "cafe", "precio": 24000, "minima": 10 },
+        { "lista": "mayorista", "articulo": "cafe", "precio": 26000, "minima": 5 }
+      ],
+      "consultas": [
+        { "articulo": "cafe", "cliente": "beto", "cantidad": 1, "esperado": 30000 },
+        { "articulo": "cafe", "cliente": "beto", "cantidad": 1.999, "esperado": 30000 },
+        { "articulo": "cafe", "cliente": "beto", "cantidad": 2, "esperado": 27000 },
+        { "articulo": "cafe", "cliente": "beto", "cantidad": 9.5, "esperado": 27000 },
+        { "articulo": "cafe", "cliente": "beto", "cantidad": 10, "esperado": 24000 },
+        { "articulo": "cafe", "cliente": "beto", "cantidad": 500, "esperado": 24000 },
+        { "articulo": "cafe", "cliente": "ana", "cantidad": 4, "esperado": 27000 },
+        { "articulo": "cafe", "cliente": "ana", "cantidad": 4.5, "esperado": 27000 },
+        { "articulo": "cafe", "cliente": "ana", "cantidad": 5, "esperado": 26000 },
+        { "articulo": "cafe", "cliente": "ana", "cantidad": 50, "esperado": 26000 }
+      ]
+    },
+    {
+      "nombre": "sin precio, cantidad bajo el minimo y cantidades fraccionarias",
+      "listas": ["publica", "mayorista"],
+      "clientes": { "ana": "mayorista" },
+      "precios": [
+        { "lista": "publica", "articulo": "cafe", "precio": 12500, "minima": 0.5 },
+        { "lista": "publica", "articulo": "panela", "precio": 8000, "minima": 3 },
+        { "lista": "mayorista", "articulo": "panela", "precio": 7000, "minima": 3 }
+      ],
+      "consultas": [
+        { "articulo": "cafe", "cliente": "ana", "cantidad": 0.499, "esperado": null },
+        { "articulo": "cafe", "cliente": "ana", "cantidad": 0.5, "esperado": 12500 },
+        { "articulo": "cafe", "cliente": "ana", "cantidad": 0, "esperado": null },
+        { "articulo": "panela", "cliente": "ana", "cantidad": 2, "esperado": null },
+        { "articulo": "panela", "cliente": "ana", "cantidad": 3, "esperado": 7000 },
+        { "articulo": "inexistente", "cliente": "ana", "cantidad": 1, "esperado": null },
+        { "articulo": "inexistente", "cliente": null, "cantidad": 1, "esperado": null }
+      ]
+    },
+    {
+      "nombre": "precio cero es un precio valido y la lista propia sin precio aplicable no tapa a la publica",
+      "listas": ["publica", "mayorista"],
+      "clientes": { "ana": "mayorista" },
+      "precios": [
+        { "lista": "publica", "articulo": "muestra", "precio": 0, "minima": 1 },
+        { "lista": "publica", "articulo": "cafe", "precio": 30000, "minima": 1 },
+        { "lista": "mayorista", "articulo": "cafe", "precio": 25000, "minima": 10 }
+      ],
+      "consultas": [
+        { "articulo": "muestra", "cliente": "ana", "cantidad": 1, "esperado": 0 },
+        { "articulo": "cafe", "cliente": "ana", "cantidad": 9, "esperado": 30000 },
+        { "articulo": "cafe", "cliente": "ana", "cantidad": 10, "esperado": 25000 }
+      ]
+    }
+  ]
+}
