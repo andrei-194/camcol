@@ -263,6 +263,17 @@ Los valores por defecto de la nota «T-M1-17» (solo pedidos `cancelado`/`devuel
 - `navigator.storage.persist()` se pide al arrancar y al evento `appinstalled`. Su estado se muestra en `/ajustes` (pantalla mínima creada aquí; irá creciendo con otras tareas). "Cómo instalar" vive en `/instalar`, enlazada desde Home y Ajustes.
 - Fuera de esta tarea: `_redirects` y `_headers` (CSP) de Cloudflare Pages (PLAN §6, hosting) y el botón nativo `beforeinstallprompt`.
 
+## Nota T-M2-06 · centro de pendientes (CAM-46) — 2026-11-18
+
+- **Pantalla** `/pendientes` (`ui/pendientes/`, protegida por el login, enlazada desde Home): lista por `created_at` con resumen legible, estado y antigüedad; checkbox; **Subir seleccionados** (único camino de envío, vía `pendientesService.subir`, de una en una; resultado ✔/⚠/✖ por fila); **Descartar** con confirmación; **Decidir** en filas `revision` (candidatos, «Usar existente» / «Crear igual» vía `resolver`; la fila vuelve a `pendiente` y hay que pulsar Subir); **Exportar JSON**. Sin Editar ni Importar (D-009).
+- Las filas en `revision` seleccionadas se omiten al subir (detendrían la cola); primero se decide. Tras subir con algún ✔ se pide un pull (`useSync()?.actualizar()`).
+- `pendientesService.descartar(opIds)` (nuevo): borra la op, las filas locales con `_pendiente = op_id` (nunca llegaron al servidor) y los `adjuntos_locales` de esa op, en una transacción. No toca el servidor. Si se descarta una op base, las dependientes (p. ej. `adjunto.vincular`) fallarán al subir y también se descartan.
+- **Exportación** (`infra/sync/exportar.ts`): formato de PLAN §5.3; el campo `fotos_locales_sin_exportar` cuenta las filas de `adjuntos_locales`. Archivo `camino-pendientes-AAAA-MM-DD.json` (fecha de Bogotá).
+- **Cableado:** `ui/pendientes/ServiciosApp` (dentro de `SyncProvider`) instancia `crearPendientesService` y el escritor con `crearOpsApi(obtenerClienteSupabase())` y los expone por `PendientesProvider`; el escritor llama al pull tras cada `aplicada`. Ninguna pantalla usa aún el escritor (llega en H3).
+- **Banner** `BannerPendientes` («N sin subir (el más viejo: hace X)») en Home y en la pantalla; solo avisa y enlaza. El indicador global siempre visible es T-M2-07.
+- **Cierre de sesión (RF-AUTH-03, E13):** botón «Cerrar sesión» en Ajustes; con pendientes avisa cuántos y ofrece «Exportar JSON», «Cerrar sesión de todos modos» o «Cancelar». Cerrar no borra datos locales. `pwa.test` ahora monta `Ajustes` dentro de `AuthProvider`.
+- Foto de pendientes (CAM-48): punto de extensión en `pendientesService.subir` / `descartar` (ya borra `adjuntos_locales`); la subida de blobs no está.
+
 ## Nota T-M2-05 · escritor y subida de pendientes (CAM-45) — 2026-11-18
 
 - **Capas:** `infra/supabase/opsApi.ts` llama `rpc('aplicar_ops', {ops})` con `.abortSignal` y clasifica en `ok | red | rechazo | no_aplicado` (función pura `clasificarRespuestaRpc`). `infra/sync/` tiene `tiposOp` (Zod + si admite offline), `outboxRepo`, `writer.commit` y `pendientesService.subir/resolver`. Zod 4 es la única dependencia nueva.

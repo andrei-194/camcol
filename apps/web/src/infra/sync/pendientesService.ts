@@ -30,6 +30,9 @@ export function crearPendientesService(opciones: { db: CaminoDB; api: OpsApi; ti
   const outbox = crearOutboxRepo(db)
 
   return {
+    /** Descarta pendientes (acción explícita del usuario, con confirmación en la UI). No toca el servidor. */
+    descartar: (opIds: string[]) => outbox.descartar(opIds),
+
     /**
      * Envía las ops indicadas de una en una, por `created_at`, y se detiene en la primera que no sea
      * ok/ya_aplicada. Las filas en `revision` no se envían hasta que se resuelvan: cuentan como parada.

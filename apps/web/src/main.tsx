@@ -4,7 +4,9 @@ import { BrowserRouter } from 'react-router-dom'
 import { AuthProvider } from './application/auth/AuthProvider'
 import { SyncProvider } from './application/sync/SyncProvider'
 import { db } from './infra/db/db'
+import { crearOpsApi } from './infra/supabase/opsApi'
 import { crearPullApi } from './infra/supabase/pullApi'
+import { ServiciosApp } from './ui/pendientes/ServiciosApp'
 import { crearServicioAuth } from './infra/auth/servicioAuth'
 import { obtenerClienteSupabase } from './infra/supabase/client'
 import { iniciarPersistenciaAlmacenamiento } from './pwa/almacenamiento'
@@ -17,15 +19,18 @@ iniciarPersistenciaAlmacenamiento()
 const clienteSupabase = obtenerClienteSupabase()
 const servicioAuth = crearServicioAuth(clienteSupabase)
 const pullApi = crearPullApi(clienteSupabase)
+const opsApi = crearOpsApi(clienteSupabase)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AuthProvider servicio={servicioAuth}>
       <SyncProvider db={db} api={pullApi}>
-        <BrowserRouter>
-          <AppRoutes />
-          <AvisoActualizacion />
-        </BrowserRouter>
+        <ServiciosApp db={db} api={opsApi}>
+          <BrowserRouter>
+            <AppRoutes />
+            <AvisoActualizacion />
+          </BrowserRouter>
+        </ServiciosApp>
       </SyncProvider>
     </AuthProvider>
   </StrictMode>,

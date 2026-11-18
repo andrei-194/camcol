@@ -27,6 +27,7 @@ beforeEach(async () => {
   await db.articulos.put({ id: 'a1', nombre: 'Café Sierra' })
   await db.terceros.put({ id: 'p1', nombre: 'Don Luis' })
   vi.mocked(descarga.descargarJson).mockClear()
+  await db.open()
 })
 afterEach(() => db.close())
 
@@ -48,7 +49,7 @@ const gasto = (id: string, creada: string): OpOutbox => ({
   datos: { id: 'g-' + id, categoria: 'transporte', valor: 15000 },
 })
 
-function montar(extra?: { pull?: PullApi }) {
+function montar(extra?: { pull?: PullApi['pull'] }) {
   const servicio = crearPendientesService({ db, api: srv })
   const arbol = (
     <PendientesProvider db={db} servicio={servicio}>
@@ -60,7 +61,7 @@ function montar(extra?: { pull?: PullApi }) {
   if (!extra?.pull) return render(arbol)
   return render(
     <AuthProvider servicio={servicioFalso()}>
-      <SyncProvider db={db} api={extra.pull}>
+      <SyncProvider db={db} api={{ pull: extra.pull }}>
         {arbol}
       </SyncProvider>
     </AuthProvider>,
@@ -89,7 +90,7 @@ describe('[RF-SYN-04] lista de pendientes', () => {
       { ...gasto('g3', hace(DIA)), estado: 'revision', resultado: { candidatos: [] } },
     ])
     montar()
-    await screen.findByText(/sin subir/i)
+    await screen.findAllByText(/sin subir/i)
     expect(screen.getByText(/Categoría inválida/)).toBeInTheDocument()
     expect(screen.getByText(/requiere decisión/i)).toBeInTheDocument()
   })

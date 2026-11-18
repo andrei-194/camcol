@@ -35,6 +35,18 @@ export function crearOutboxRepo(db: CaminoDB) {
       })
     },
 
+    /**
+     * Descarte explícito del usuario (RF-SYN-04): borra la op, las filas locales provisionales que dejó
+     * (`_pendiente = op_id`; nunca llegaron al servidor) y sus blobs. No envía nada.
+     */
+    async descartar(opIds: string[]): Promise<void> {
+      await db.transaction('rw', [db.outbox, db.adjuntos_locales, ...tablas()], async () => {
+        for (const t of tablas()) await t.where('_pendiente').anyOf(opIds).delete()
+        await db.adjuntos_locales.where('op_id').anyOf(opIds).delete()
+        await db.outbox.bulkDelete(opIds)
+      })
+    },
+
     async marcarError(opId: string, error: { codigo: string; mensaje: string }): Promise<void> {
       await db.outbox.update(opId, { estado: 'error', error })
     },
