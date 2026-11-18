@@ -1,6 +1,6 @@
 # TASKS — Backlog ordenado del MVP
 
-> Versión 1.0 · Implementa `SPEC.md` según `PLAN.md`. **Un PR por tarea.** TDD: la prueba se escribe **antes** y se ve fallar. Cada tarea cita los IDs que cierra; una tarea no termina si alguno de esos IDs no tiene prueba.
+> Versión 1.1 · Implementa `SPEC.md` según `PLAN.md`. **Un PR por tarea.** TDD: la prueba se escribe **antes** y se ve fallar. Cada tarea cita los IDs que cierra; una tarea no termina si alguno de esos IDs no tiene prueba.
 > Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecha.
 > Cada tarea tiene un issue en Linear (proyecto *Camino PWA*, hitos H1 a H5) con el mismo código; el enlace va junto al código. Rama: `CAM-n-descripcion-corta`.
 
@@ -19,7 +19,7 @@
 - [x] **T-M0-01** ([CAM-26](https://linear.app/caminocol/issue/CAM-26)) Inicializar monorepo ligero (`apps/web` con Vite + React + TS strict + Tailwind + React Router; ESLint, Prettier, Vitest). Cierra: base de RNF-UX-01.
 - [x] **T-M0-02** ([CAM-27](https://linear.app/caminocol/issue/CAM-27)) Mover `tests/core.test.mjs` a `tests/db/core.test.mjs` y ejecutarlo en `npm run test:db`. **Done:** 24 pruebas verdes. Ya cubren RN-INV-01/02/03/04/05, RN-COS-01/02/03, RN-PAG-01 y RN-DOC-01/02: **renombrar las pruebas** para citar esos IDs.
 - [x] **T-M0-03** ([CAM-28](https://linear.app/caminocol/issue/CAM-28)) `supabase init`, `supabase start` y aplicar `0001_core.sql` en local; documentar comandos en `README.md`. Cierra: RNF-REL-03 (migraciones hacia adelante con la CLI).
-- [ ] **T-M0-04** ([CAM-10](https://linear.app/caminocol/issue/CAM-10)) `ci.yml` con lint + typecheck + unit + DB; protección de rama. **Done:** PR de prueba verde.
+- [ ] **T-M0-04** ([CAM-10](https://linear.app/caminocol/issue/CAM-10)) `ci.yml` con lint + typecheck + unit + DB; protección de rama. **Done:** PR de prueba verde. **Avance (2026-11-18):** `ci.yml` ya corre dos trabajos (base de datos y app web) en cada PR. Falta activar la protección de la rama `main` (requiere permisos de administrador en GitHub).
 - [x] **T-M0-05** ([CAM-29](https://linear.app/caminocol/issue/CAM-29)) `docs/runbook.md` (esqueleto): variables de entorno, cómo correr local, procedimiento de pérdida de dispositivo.
 
 ## M1 — Base de datos: sincronización y endurecimiento (`0002_sync.sql`)
@@ -36,6 +36,7 @@
 - [x] **T-M1-08** ([CAM-38](https://linear.app/caminocol/issue/CAM-38)) `sync_pull` simple: **un solo cursor** (`updated_at`); snapshot de catálogo, terceros, stock, pedidos abiertos y de los últimos 90 días; borrado lógico. Sin cursores por tabla ni `has_more` mientras los datos quepan en una respuesta (D-009). Cierra: RF-SYN-08.
 - [x] **T-M1-09** ([CAM-39](https://linear.app/caminocol/issue/CAM-39)) Endurecimiento: `search_path`, `REVOKE` a `anon`, Storage `soportes` + políticas, publicación Realtime. Cierra: RNF-SEC-01/03/04.
 - [ ] **T-M1-10** ([CAM-40](https://linear.app/caminocol/issue/CAM-40)) Pruebas de **integración real** (Supabase local): RLS con JWT de miembro vs no miembro vía PostgREST; **concurrencia** con 2 conexiones finalizando la última unidad. Cierra: RNF-SEC-02, [E6], [E12].
+- [x] **Correcciones surgidas en H1** (no estaban en el plan): [CAM-85](https://linear.app/caminocol/issue/CAM-85) fechas por defecto del esquema en hora de Bogotá (CI fallaba de noche); [CAM-86](https://linear.app/caminocol/issue/CAM-86) finalizar fallaba con 0002 por `touch_padre` (migración 0006); [CAM-87](https://linear.app/caminocol/issue/CAM-87) `test:db` descubre solo las suites. Ver D-012.
 
 **Hecho de M1:** `npm run test:db` y `npm run test:integration` verdes; contratos en `PLAN.md` coinciden con el código.
 
