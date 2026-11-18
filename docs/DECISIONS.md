@@ -181,6 +181,19 @@ Se especificó (solo documentación) lo que el socio aprobó en D-015: el reembo
 10. **Errores del reembolso:** no se edita ni se borra. Un reembolso equivocado es un caso manual fuera del MVP.
 11. **No se construye:** comprobante o documento de reembolso (sin consecutivo), reembolso con transferencia automática, crédito a favor del cliente, devolución parcial de ítems.
 
+## Nota T-M1-18 · reembolsos y control de sobrepago en el servidor (CAM-97, H-06) — 2026-11-18
+
+Migración `0017_reembolsos.sql` (contrato en `PLAN.md` §4.3; pruebas en `tests/db/reembolsos.test.mjs` y `tests/integration/reembolsos.test.mjs`). Cumple lo especificado en T-M1-17; lo que se decidió al implementar, **a revisar**:
+
+1. **Mensajes con el código como prefijo.** `E_SOBREPAGO`, `E_ESTADO`, `E_TOTAL`, `E_PAGO_INMUTABLE`, `DATOS_INVALIDOS` salen como `CODIGO: mensaje (RN-PAG-nn)`; el ID de la regla va dentro del mensaje, porque `aplicar_ops` solo reconoce `^[A-Z][A-Z0-9_]*:`.
+2. **Sin función auxiliar de saldo.** El cobrado neto se calcula en línea en cada trigger y en la op (el PLAN fija una lista cerrada de objetos); el bloqueo `for update` del pedido va antes del cálculo.
+3. **Cobros en PV `cancelado`:** insertar es `E_ESTADO`; editar o borrar un cobro existente también (cualquier campo, no solo el valor), porque dejaría el cobrado neto fuera de `0 ≤ neto ≤ total`. Borrar un cobro de un PV `recibido`/`confirmado` sigue permitido.
+4. **`E_TOTAL`** se evalúa en `trg_pv_totales` solo cuando `total` cambia en un UPDATE; también salta si lo provoca `pv_recalcular` al editar ítems de un PV con cobros.
+5. **Reembolso con `fecha` ausente** usa `now()`; con fecha, medianoche de Bogotá. La fecha acepta hasta mañana (`E_FECHA` si pasa).
+6. **Orden de validación de la op:** formato (`DATOS_INVALIDOS`), `E_FECHA`, `E_REF` (socio, luego pedido), `E_ESTADO`, `E_SOBREPAGO`. El trigger de `pagos` repite estado, motivo y tope para SQL directo.
+7. **`resumen_periodo`** cambió de tipo de retorno (`drop` + `create`); la columna `reembolsos` va al final. Los privilegios del `create` nuevo los cubren los default privileges de 0014.
+8. **Pruebas de concurrencia (reales, Supabase local):** dos transacciones sobre el último saldo reembolsable (la segunda espera el bloqueo y recibe `E_SOBREPAGO`), 10 rondas por `aplicar_ops` con dos socios (un `ok`, un `E_SOBREPAGO`) y la misma carrera con dos cobros. `tests/integration/entorno.mjs` exige `pg`: en un checkout sin `node_modules` hay que correr `npm install` antes.
+
 ## Nota T-M1-15 · validaciones del servidor (CAM-94, H-05/H-07/H-08) — 2026-11-18
 
 - Migración `0015_validaciones_pedido.sql`, solo triggers (sin grants). Contrato en `PLAN.md` §4.3; reglas en SPEC (RF-VEN-03, RF-VEN-05, RN-DOC-02, RN-COS-04).

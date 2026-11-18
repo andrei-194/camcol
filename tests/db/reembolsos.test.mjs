@@ -311,11 +311,11 @@ await test('[RN-PAG-06] resumen_periodo agrega la columna reembolsos (Σ del per
   assert.ok('reembolsos' in antes, 'falta la columna reembolsos');
   const p = await pedido(40000, 'cancelado');
   await aplicar([reembolsar({ pedido_id: p, valor: 10000, medio: 'efectivo', motivo: 'x', fecha: '2026-11-10' })]);
-  await aplicar([reembolsar({ pedido_id: p, valor: 5000, medio: 'efectivo', motivo: 'x', fecha: '2026-12-02' })]);
+  await aplicar([reembolsar({ pedido_id: p, valor: 5000, medio: 'efectivo', motivo: 'x', fecha: '2026-10-20' })]);
   const nov = await one(`select * from resumen_periodo('2026-11-01', '2026-11-30')`);
-  const dic = await one(`select * from resumen_periodo('2026-12-01', '2026-12-31')`);
+  const oct = await one(`select * from resumen_periodo('2026-10-01', '2026-10-31')`);
   assert.equal(Number(nov.reembolsos) - Number(antes.reembolsos), 10000);
-  assert.equal(Number(dic.reembolsos), 5000);
+  assert.equal(Number(oct.reembolsos), 5000);
   for (const k of ['pedidos', 'ventas_netas', 'costo_mercancia', 'gastos', 'utilidad_neta', 'compras_periodo']) {
     assert.equal(Number(nov[k]), Number(antes[k]), `${k} no debe cambiar por un reembolso`);
   }
@@ -352,7 +352,7 @@ await test('[E17] devolver un PV finalizado y reembolsar: stock repuesto, queda 
   const dia = hoy;
   const conPedido = await one(`select * from resumen_periodo($1::date, $1::date)`, [dia]);
   await q(`update pedidos_venta set estado='devuelto', motivo_estado='producto dañado' where id=$1`, [p]);
-  assert.ok(Number((await one(`select count(*) c from movimientos_inventario where tipo='devolucion_cliente' and pedido_venta_id=$1`, [p])).c) > 0, 'stock repuesto');
+  assert.ok(Number((await one(`select count(*) c from movimientos_inventario m join pedidos_venta_items i on i.id = m.pedido_venta_item_id where m.tipo='devolucion_cliente' and i.pedido_id=$1`, [p])).c) > 0, 'stock repuesto');
   assert.equal(Number((await one(`select por_reembolsar from v_por_reembolsar where pedido_id=$1`, [p])).por_reembolsar), 100000);
   const antes = await one(`select * from resumen_periodo($1::date, $1::date)`, [dia]);
   assert.ok(Number(conPedido.pedidos) > Number(antes.pedidos), 'el devuelto dejó de contar en ventas');

@@ -64,7 +64,7 @@ Estado a 2026-11-18. «Pendiente (T-…)» marca lo que aún no existe y la tare
 ├─ docs/spec/{SPEC,PLAN,TASKS}.md             existen
 ├─ supabase/
 │  ├─ config.toml                             existe
-│  ├─ migrations/0001 … 0016                  existen; 0017 pendiente (T-M1-18)
+│  ├─ migrations/0001 … 0016                  existen (0017: T-M1-18, reembolsos)
 │  └─ seed.sql                                pendiente: datos de demo SOLO local
 ├─ scripts/
 │  ├─ test-db.mjs · test-integration.mjs      existen
@@ -112,7 +112,7 @@ Todas solo hacia adelante. Los nombres de los CHECK de 0001 son anónimos.
 | `0014_funciones_sin_anon` | `anon` no ejecuta ninguna función, ni las futuras (H-15) | Hecha |
 | `0015_validaciones_pedido` | Validaciones del servidor (H-05, H-07, H-08) | Hecha |
 | `0016_movimientos_solo_internos` | Insert directo de movimientos solo `ajuste` y `merma` (H-16) | Hecha |
-| `0017` | Reembolsos y control de sobrepago (T-M1-18, CAM-97) | Pendiente |
+| `0017_reembolsos` | Reembolsos y control de sobrepago (T-M1-18, CAM-97) | Hecha |
 
 Endurecimiento vigente (0004 y 0014): `set search_path` fijo en todas las funciones (`detectar_duplicados_tercero` usa `public, extensions` porque `pg_trgm` vive en `extensions`); ninguna función ejecutable por `anon`, sin excepciones; `REVOKE` de tablas a `anon`.
 
@@ -202,7 +202,7 @@ Servidor: OC `borrador` → ítems → `pedida` → (si hay) recepción (los tri
 
 Salida: `{id, entidad, entidad_id, path}`. La entidad debe existir y no estar borrada → `E_REF`; `entidad` desconocida, `entidad_id` o `path` ausentes → `DATOS_INVALIDOS`. El archivo ya está en Storage (`soportes`); la op solo lo vincula, y no valida que el objeto exista en el bucket. Un fallo de subida no invalida el registro principal (RF-SYN-09).
 
-`pago.reembolsar` · **Por implementar en `0017` (T-M1-18, spec T-M1-17, CAM-97).** Solo con conexión (D-009): la PWA no lo encola. Devuelve al cliente dinero ya cobrado de un PV `cancelado` o `devuelto` (SPEC RF-PAG-04..06, RN-PAG-02..07). Lo que sigue es el contrato que 0017 **debe** cumplir.
+`pago.reembolsar` · **Implementada en `0017_reembolsos.sql` (T-M1-18, spec T-M1-17, CAM-97).** Solo con conexión (D-009): la PWA no lo encola. Devuelve al cliente dinero ya cobrado de un PV `cancelado` o `devuelto` (SPEC RF-PAG-04..06, RN-PAG-02..07). Lo que sigue es el contrato que 0017 cumple.
 ```json
 { "id?":"uuid", "pedido_id":"uuid", "valor":40000, "medio":"efectivo|nequi|daviplata|transferencia|tarjeta|otro",
   "motivo":"texto obligatorio", "fecha?":"2026-11-18", "referencia?":"…", "pagado_por?":"uuid de socio" }
