@@ -77,7 +77,7 @@ await test('[RF-COM-02][RF-SYN-09] gasto.registrar y adjunto.vincular', async ()
 
 await test('[RF-VEN-01][RN-PRE-01] pedido_venta.crear (solo con conexión): precios y totales del servidor', async () => {
   const r = await unica([op('pedido_venta.crear', {
-    pedido: { cliente_id: clienteId, origen: 'whatsapp', referencia_origen: `CC-${sufijo}` },
+    pedido: { cliente_id: clienteId, origen: 'whatsapp', referencia_origen: `CC-${sufijo}`, entrega_tipo: 'recoge' },
     items: [{ articulo_id: art.id, cantidad: 2 }],
   })]);
   const res = ok(r);
