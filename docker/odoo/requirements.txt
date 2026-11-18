@@ -1,2 +1,0 @@
-# Dependencias Python extra de los addons camino_*.
-# Vacío por ahora: Odoo ya trae lo necesario. Agrega aquí solo lo que un addon requiera.

@@ -1,48 +1,24 @@
-name: camino
+# Entorno de desarrollo de la app web: Node 22 dentro de Docker, para no instalar nada en el PC.
+# Los node_modules viven en volúmenes de Docker (en D:), no en la carpeta del proyecto.
+#
+#   npm run setup      instala las dependencias de apps/web dentro del contenedor
+#   npm run dev        servidor de desarrollo en http://localhost:5173
+#   npm test | typecheck | lint | build
+#
+# La base de datos local es aparte: Supabase CLI (npm run db:start), no este archivo.
 
 services:
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: postgres
-      POSTGRES_USER: ${POSTGRES_USER:-odoo}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-odoo}
+  dev:
+    image: node:22
+    working_dir: /app
     volumes:
-      - camino-db:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-odoo} -d postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    restart: unless-stopped
-
-  odoo:
-    build:
-      context: .
-      dockerfile: docker/odoo/Dockerfile
-    image: camino-odoo:local
-    depends_on:
-      db:
-        condition: service_healthy
+      - .:/app
+      - web_node_modules:/app/apps/web/node_modules
+    ports:
+      - "5173:5173"
     environment:
-      HOST: db
-      USER: ${POSTGRES_USER:-odoo}
-      PASSWORD: ${POSTGRES_PASSWORD:-odoo}
-    ports:
-      - "127.0.0.1:${ODOO_PORT:-8069}:8069"
-    volumes:
-      - camino-odoo-data:/var/lib/odoo
-      - ./src/addons:/mnt/extra-addons
-      - ./src/config/odoo.conf:/etc/odoo/odoo.conf:ro
-    restart: unless-stopped
-
-  # Captura los correos que envía Odoo en local. Interfaz en http://localhost:8025
-  mailpit:
-    image: axllent/mailpit:latest
-    ports:
-      - "127.0.0.1:8025:8025"
-    restart: unless-stopped
+      - VITE_POLL=1   # el montaje desde Windows no avisa de cambios de archivos
+    command: npm --prefix apps/web run dev:docker
 
 volumes:
-  camino-db:
-  camino-odoo-data:
+  web_node_modules:

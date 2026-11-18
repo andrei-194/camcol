@@ -1,53 +1,83 @@
-# Camino
+# Camino Col
 
-Vitrina virtual de productos campesinos, sobre Odoo Community. Sitio: https://caminocol.com
+Plataforma operativa (PWA móvil) para registrar pedidos de venta, compras a campesinos (también sin señal), inventario, pagos, gastos y analítica. La usan los dos socios. Costo de infraestructura ≈ $0.
 
-## Requisitos
+La vitrina pública (https://caminocol.com, Next.js en Vercel) vive en otro repositorio y no cambia. Los clientes piden por la web, el pedido se confirma por WhatsApp y los socios lo registran aquí.
 
-- Docker Desktop (con Docker Compose)
-- [uv](https://docs.astral.sh/uv/) para las herramientas de desarrollo (Python 3.12+)
+## Estado
 
-## Primeros pasos
+Arranque del proyecto. Existe el esquema de base de datos (`supabase/migrations/0001_core.sql`) con 24 pruebas; la app aún no está construida. Ver el [roadmap](docs/producto/roadmap.md) y [TASKS](docs/spec/TASKS.md).
 
-```bash
-cp .env.example .env          # ajusta las contraseñas
-docker compose up -d --build  # Odoo + Postgres + Mailpit
-```
+## Documentación
 
-| Servicio | URL |
+| Qué | Dónde |
 |---|---|
-| Odoo | http://localhost:8069 |
-| Correos de prueba (Mailpit) | http://localhost:8025 |
-
-La primera vez, Odoo te pide crear la base de datos desde el navegador.
-
-## Comandos habituales
-
-```bash
-docker compose logs -f odoo       # ver logs
-docker compose down               # parar (los datos se conservan)
-docker compose down -v            # parar y BORRAR todos los datos
-
-uv sync                           # instalar herramientas de desarrollo
-uv run ruff check src             # lint
-```
-
-### Tests (TDD)
-
-```bash
-docker compose run --rm odoo odoo -d camino_test -u camino_base \
-  --test-enable --test-tags camino --stop-after-init
-```
-
-En Git Bash de Windows no uses `--test-tags /camino_base`: la barra inicial se convierte en una ruta de Windows y no se ejecuta ningún test. Usa la etiqueta `camino`.
+| Qué construir (requisitos, reglas, escenarios) | [docs/spec/SPEC.md](docs/spec/SPEC.md) |
+| Cómo construirlo (stack, arquitectura, contratos) | [docs/spec/PLAN.md](docs/spec/PLAN.md) |
+| En qué orden | [docs/spec/TASKS.md](docs/spec/TASKS.md) |
+| Hitos y fechas | [docs/producto/roadmap.md](docs/producto/roadmap.md) |
+| Decisiones de arquitectura (ADR) | [docs/adr/](docs/adr/) |
+| Decisiones de negocio y de la spec | [docs/DECISIONS.md](docs/DECISIONS.md) |
+| Catálogo, precios y costos | [docs/negocio/catalogo.md](docs/negocio/catalogo.md) |
+| Cómo trabajamos | [AGENTS.md](AGENTS.md) |
 
 ## Estructura
 
 ```
-docs/      documentación (specs SDD, ADRs, procesos)
-src/       código: addons de Odoo (camino_*) y configuración
-tests/     pruebas fuera de Odoo (integración y e2e)
-docker/    Dockerfile de la imagen
+docs/        spec, roadmap, ADR, decisiones, material del negocio
+supabase/    migraciones SQL (solo hacia adelante)
+tests/       db/ (PGlite), luego integration/ y e2e/
+apps/web/    la PWA (Vite + React + TypeScript + Tailwind)
 ```
 
-Cómo trabajamos: [AGENTS.md](AGENTS.md).
+## Requisitos
+
+- **Docker Desktop.** La app web corre dentro de un contenedor con Node 22, así que no hace falta instalar Node 22 en el PC.
+- Node.js 20 o superior en el PC, solo para las pruebas de base de datos y la CLI de Supabase (se instala con `npm install`).
+
+## Comandos
+
+```bash
+npm install          # herramientas del PC (PGlite y CLI de Supabase)
+npm run test:db      # pruebas del esquema, en memoria con PGlite
+```
+
+### App web (en Docker)
+
+```bash
+npm run setup        # instala las dependencias de apps/web dentro del contenedor (una vez)
+npm run dev          # servidor de desarrollo: http://localhost:5173
+npm test             # pruebas de la app
+npm run typecheck    # tipos (TypeScript estricto)
+npm run lint
+npm run build
+```
+
+Los `node_modules` viven en un volumen de Docker (en D:), no en la carpeta del proyecto. El editor no verá los tipos de las dependencias; es esperado.
+
+### Base de datos local (Supabase en Docker)
+
+La CLI de Supabase viene como devDependency (`npm install`); no hace falta instalarla aparte. Requiere Docker Desktop en ejecución. La primera vez descarga varias imágenes (unos GB).
+
+```bash
+npm run db:start     # levanta Supabase local (Postgres, Auth, Realtime, Storage, Studio)
+npm run db:reset     # recrea la base desde cero y aplica supabase/migrations/*.sql
+npm run db:status    # URLs y claves locales
+npm run db:stop      # detiene los contenedores (los datos se conservan en un volumen)
+```
+
+- `db:reset` es el comando que recrea la base local con todas las migraciones aplicadas.
+- Estudio (UI): http://127.0.0.1:54323 · API: http://127.0.0.1:54321 · Postgres: `postgresql://postgres:postgres@127.0.0.1:54322/postgres`.
+- Las claves locales (`anon`, `service_role`) las imprime `npm run db:status`; son solo de desarrollo y no se copian a archivos versionados. Pon la `anon key` en `.env` como `VITE_SUPABASE_ANON_KEY`.
+- El registro público de Auth está deshabilitado (`enable_signup = false`): crea los usuarios de los socios desde Estudio (Authentication > Users) o con la API de administración.
+- Verificar el esquema: `docker exec supabase_db_camino psql -U postgres -c "\dt"` (también `\dv`, `\df emitir_documento`).
+
+El resto de comandos (`dev`, `test`, `test:integration`, `test:e2e`) se agregan con las tareas de `TASKS.md`.
+
+## Configuración
+
+```bash
+cp .env.example .env
+```
+
+Nunca se suben secretos al repositorio.
