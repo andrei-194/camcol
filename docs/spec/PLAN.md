@@ -50,7 +50,7 @@ Versiones: las fijadas en `apps/web/package.json` y su lockfile (p. ej. Vite 8, 
 **Principios**
 1. **El servidor decide.** Postgres valida y calcula (totales, stock, costos, consecutivos). El cliente solo propone y muestra vistas previas.
 2. **La UI lee del caché local** (stale-while-revalidate): lee de Dexie sin necesitar red; el puller lo refresca.
-3. **Una sola ruta de escritura** (`aplicar_ops`), online u offline: mismo código, misma idempotencia.
+3. **Una sola ruta de escritura para lo que admite offline** (`aplicar_ops`, online u offline: mismo código, misma idempotencia). Los cobros, los cambios de estado y la edición de maestros son **solo online**, por `UPDATE` o RPC, con los triggers como autoridad (§4.5). El contrato de «cobrar y finalizar» atómico se define al iniciar T-M4-05/06.
 4. **Dominio puro y probado** en `domain/`, sin dependencias de React, Dexie ni Supabase.
 5. **Puertos e implementaciones:** `application/` depende de interfaces (puertos) que implementa `infra/`; así se prueba sin red ni IndexedDB reales.
 
@@ -155,11 +155,11 @@ Dedupe: teléfono normalizado (solo dígitos, sin `57` inicial), documento exact
 ```json
 { "pedido": { "id","cliente_id","origen","referencia_origen","fecha","entrega_tipo",
               "direccion_entrega","municipio_entrega","envio_cobrado","envio_costo",
-              "descuento_valor","fecha_entrega_estimada","notas","stock_visto_en" },
+              "descuento_valor","fecha_entrega_estimada","notas" },
   "cliente_nuevo": { …payload tercero.crear… } | null,
   "items": [ { "id","articulo_id","cantidad","precio_lista","descuento_pct","precio_unitario" } ] }
 ```
-Servidor: crea PV en `recibido`; fija `tasa_impuesto` desde el artículo (autoridad del servidor); valida `precio_unitario ≈ precio_lista·(1−pct/100)` (tolerancia $0,01); **advertencias** (no error): `PRECIO_CAMBIO` (lista actual ≠ snapshot), `STOCK` (requerido > disponible_para_prometer).
+Servidor: crea PV en `recibido`; fija `tasa_impuesto` desde el artículo (autoridad del servidor) y calcula los precios con `precio_para` (el precio que envíe el cliente se ignora; ver el detalle de 0010 abajo); **advertencias** (no error): `PRECIO_CAMBIO` (el cliente envió un precio distinto del vigente), `STOCK` (requerido > disponible_para_prometer). `stock_visto_en` no se acepta.
 
 **Implementado en `0010_op_pedido_venta.sql` (T-M1-05, CAM-35).** Solo con conexión (D-009): el servidor no lo distingue, la PWA no lo encola. Todo `id` es opcional (el servidor lo genera). Reglas:
 - `pedido.cliente_id` **o** `cliente_nuevo` (uno solo; ninguno o ambos → `DATOS_INVALIDOS`). `cliente_nuevo` usa `crear_tercero_desde_payload` (0007) forzando `es_cliente`; sin `consentimiento_datos` → `E_CONSENTIMIENTO`; con candidatos y sin `resolucion` la op devuelve `revision` (`resultado.candidatos`) y **no escribe nada**; con `resolucion` (dentro de `cliente_nuevo`) continúa. Cliente inexistente → `E_REF`; un tercero sin rol cliente → `DATOS_INVALIDOS`.
@@ -214,7 +214,7 @@ El servidor bloquea el pedido (`for update`), calcula `cobrado_neto = Σ cobros 
 | Regla | Error |
 |---|---|
 | `valor` numérico, > 0 y entero; `medio` válido; `motivo` no vacío; formato o tipo inválido | `DATOS_INVALIDOS` |
-| `fecha` por defecto hoy en `America/Bogota`; hasta mañana | `E_FECHA` |
+| `fecha` (fecha sin hora, por defecto hoy en `America/Bogota`; hasta mañana). Se guarda en `pagos.fecha` (timestamptz) como `((p->>'fecha')::date)::timestamp at time zone 'America/Bogota'`, para no correr el día | `E_FECHA` |
 | Pedido inexistente o borrado; `pagado_por` que no es socio | `E_REF` |
 | Estado distinto de `cancelado` o `devuelto` | `E_ESTADO` |
 | `valor` > `cobrado_neto` (incluye `cobrado_neto = 0`); no se inserta nada | `E_SOBREPAGO` |
@@ -224,23 +224,27 @@ Salida: `{pago_id, pedido_id, valor, cobrado_neto_restante, por_reembolsar}` (`p
 **Esquema de 0017 (solo hacia adelante, sin editar 0001).**
 1. **CHECK de `pagos`.** Los de `direccion` y de ligadura son anónimos en 0001. La migración los busca en `pg_constraint` por definición (`contype = 'c'` y que mencione `direccion`), los borra y crea tres con nombre: `pagos_direccion_chk` (`direccion in ('cobro','pago','reembolso')`), `pagos_ligadura_chk` (`cobro` y `reembolso` exigen `pedido_venta_id` y no `orden_compra_id`; `pago` al revés) y `pagos_motivo_chk` (`motivo` no vacío si `direccion = 'reembolso'`). `valor > 0` se conserva: el reembolso es una fila positiva con su propia dirección, no un cobro negativo.
 2. **Columna** `pagos.motivo text`.
-3. **Objetos nuevos o reemplazados** (lista cerrada): `op_pago_reembolsar`, la fila de `tipos_op`, los triggers de abajo, la vista `v_por_reembolsar`, y `resumen_periodo` y `sync_pull` (reemplazadas por completo con `create or replace` o `drop` + `create`). No se toca ninguna otra función.
+3. **Objetos nuevos o reemplazados** (lista cerrada): `op_pago_reembolsar`, la fila de `tipos_op`, los triggers de abajo, la vista `v_por_reembolsar`, y las funciones `resumen_periodo`, `sync_pull` y `pv_totales` (reemplazadas por completo con `create or replace` o `drop` + `create`; `pv_totales` solo añade la regla `E_TOTAL`). No se toca ninguna otra función.
 
 **Triggers de `pagos` y su orden.** Postgres dispara los `BEFORE` por orden alfabético de nombre, así que el candado de 0011 gana a los nuevos. Valen para cualquier ruta (op, RPC o SQL directo).
 
-| Orden | Trigger | Evento | Regla |
-|---|---|---|---|
-| 1 | `pagos_candado` (0011) | insert, update, delete de cobros | PV `finalizado`/`devuelto` no admite cobros (RN-PAG-01); no mira reembolsos |
-| 2 | `pagos_reembolso_candado` (nuevo) | insert, update, delete de reembolsos | `update` y `delete` → RN-PAG-05; `insert` exige PV `cancelado`/`devuelto` (RN-PAG-03), `motivo` y `valor ≤ cobrado_neto` (RN-PAG-04) |
-| 3 | `pagos_sobrepago` (nuevo) | insert de cobros | PV `cancelado` → `E_ESTADO` (RN-PAG-02); PV `recibido`/`confirmado` con `cobrado_neto + valor > total` → `E_SOBREPAGO` |
+| Orden | Trigger | Evento | Regla | Código |
+|---|---|---|---|---|
+| 1 | `pagos_candado` (0011) | insert, update, delete de cobros | PV `finalizado`/`devuelto` no admite cobros (RN-PAG-01); no mira reembolsos | el de 0011 |
+| 2 | `pagos_reembolso_candado` (nuevo) | update y delete de reembolsos | No se editan ni se borran (RN-PAG-05) | `E_PAGO_INMUTABLE` |
+| 2 | ídem | insert de reembolsos | Orden de validación: (a) estado `cancelado`/`devuelto` (RN-PAG-03); (b) `motivo` no vacío; (c) `valor ≤ cobrado_neto` (RN-PAG-04) | `E_ESTADO`; `DATOS_INVALIDOS`; `E_SOBREPAGO` |
+| 3 | `pagos_sobrepago` (nuevo) | insert y update del `valor` de cobros | PV `cancelado` → rechazar (RN-PAG-02); PV `recibido`/`confirmado` con `cobrado_neto` + valor por encima del `total` | `E_ESTADO`; `E_SOBREPAGO` |
+| 3 | ídem | update y delete de cobros en PV `cancelado`/`devuelto` | Los cobros no se editan ni se borran: dejarían `cobrado_neto` fuera de `0 ≤ cobrado_neto ≤ total` | `E_ESTADO` |
 
-Los triggers 2 y 3 toman primero `select … from pedidos_venta where id = new.pedido_venta_id for update`, para que dos cobros o reembolsos simultáneos no se sumen por encima del tope. Además `pv_totales` rechaza dejar `total < cobrado_neto`. Desde SQL directo el error sale como excepción con el prefijo del código. Casos de prueba (`tests/db/reembolsos.test.mjs`): uno por RN-PAG-02 a 07 y por E16, E17 y E18, cada uno con su error esperado, además de la regresión de 0011 (un cobro en un PV finalizado sigue rechazado).
+El ID de la regla (RN-PAG-nn) va **dentro del mensaje**, no como prefijo: `aplicar_ops` solo reconoce como código lo que cumple `^[A-Z][A-Z0-9_]*:` y un prefijo con guion saldría como `ERROR_INTERNO`.
+
+Los triggers 2 y 3 toman primero `select … from pedidos_venta where id = new.pedido_venta_id for update`, para que dos cobros o reembolsos simultáneos no se sumen por encima del tope. Además `pv_totales` rechaza con `E_TOTAL` dejar `total < cobrado_neto` (solo cuando `total` cambia). Desde SQL directo el error sale como excepción con el prefijo del código. Casos de prueba (`tests/db/reembolsos.test.mjs`): uno por RN-PAG-02 a 07 y por E16, E17 y E18, cada uno con su error esperado, además de la regresión de 0011 (un cobro en un PV finalizado sigue rechazado). El bloqueo `for update` no se puede probar en PGlite (una sola conexión): T-M1-18 exige además `tests/integration/reembolsos.test.mjs` (dos conexiones sobre el último saldo) y un caso de `pago.reembolsar` en `ops_extremo_a_extremo.test.mjs`.
 
 **Lecturas.**
 - `v_ventas_pedido` y `v_cuentas_por_cobrar` no cambian (RN-PAG-06).
 - Vista nueva `v_por_reembolsar` (`security_invoker`): `pedido_id`, `cliente_id`, `cliente`, `estado`, `total`, `cobrado`, `reembolsado`, `por_reembolsar` (todas numéricas salvo `estado`, `cliente`) para PV `cancelado`/`devuelto` con `cobrado − reembolsado > 0`. Se lee **online**, no se espeja en Dexie.
 - `resumen_periodo` agrega la columna `reembolsos` (cambia el tipo de retorno, por eso `drop` + `create`; se parte de la versión de 0012); la utilidad neta no cambia.
-- `sync_pull` (0005): 0017 la reemplaza. En el arreglo `pagos` de cada pedido y en el `greatest(updated_at…)` el filtro pasa de `direccion = 'cobro'` a `direccion in ('cobro','reembolso')`; el campo `direccion` los distingue y el cliente suma `cobrado_neto` separando ambos. Un reembolso mueve el cursor del pedido. Los PV `cancelado`/`devuelto` sin `finalizado_en` reciente no entran al snapshot inicial: su detalle y sus reembolsos se piden online.
+- `sync_pull` (0005): 0017 la reemplaza. El filtro del arreglo `pagos` de cada pedido pasa de `direccion = 'cobro'` a `direccion in ('cobro','reembolso')` (el `greatest(updated_at…)` de 0005 no filtra por dirección y no cambia); el campo `direccion` los distingue y el cliente suma `cobrado_neto` separando ambos. Un reembolso mueve el cursor del pedido. Los PV `cancelado`/`devuelto` sin `finalizado_en` reciente no entran al snapshot inicial: su detalle y sus reembolsos se piden online.
 
 **Validaciones del servidor (migración 0015, T-M1-15, H-05/H-07/H-08, D-015).** Triggers INVOKER que valen para cualquier ruta de escritura; el error lleva el ID de la regla. Pruebas: `tests/db/validaciones_pedido.test.mjs`.
 - Al pasar a `finalizado`: descuento ≤ subtotal y total ≥ 0 (RF-VEN-03; `pedido_venta.crear` ya lo rechaza con `DATOS_INVALIDOS` desde 0010); con `entrega_tipo = 'transportadora'`, `envio_costo > 0` (RF-VEN-05).
@@ -259,7 +263,7 @@ Los triggers 2 y 3 toman primero `select … from pedidos_venta where id = new.p
 
 Un solo cursor y un snapshot en una respuesta. Sin cursores por tabla, sin `has_more`, sin parámetros de límite o stock. `SECURITY INVOKER` (la RLS aplica: quien no es miembro recibe todo vacío), `search_path` fijo, solo lectura.
 
-Entrada: `desde` = cursor devuelto en la llamada anterior; `null` = sincronización inicial. El cliente puede restarle un margen (p. ej. 2 min): los upserts son idempotentes.
+Entrada: `desde` = cursor devuelto en la llamada anterior; `null` = sincronización inicial. El cliente le resta **2 minutos** (constante) antes de enviarlo: los upserts son idempotentes.
 
 Salida:
 ```json
@@ -322,6 +326,7 @@ De dónde sale cada tabla:
 
 - **Registros creados offline** viven en las mismas tablas con `_pendiente = op_id`, para que las listas los muestren con ⏳. Al aplicarse la op, el siguiente pull trae la fila del servidor y reemplaza a la local (mismo `id`).
 - **Ciclo de vida de la outbox:** nace `pendiente`; `ok` o `ya_aplicada` borran la fila y quitan `_pendiente`; `error` la marca `error` con el código y el mensaje; `revision` la marca `revision`. **No existe `bloqueada`** (D-009): `db.ts` todavía la declara en `EstadoOutbox` y se elimina en T-M2-05.
+- **Fotos:** la subida de adjuntos locales (`path` en Storage, estados de `adjuntos_locales`, reintento) se define al iniciar T-M2-08 (CAM-48).
 - **Se leen online, sin espejo local:** `v_por_reembolsar`, los pagos de pedidos fuera del snapshot, el kardex y los gastos de otros dispositivos.
 
 ### 5.2 Escritor (`infra/sync/writer.ts`)
@@ -335,10 +340,11 @@ commit(op):
        fallo de red/timeout → paso 3 solo si el tipo admite offline; si no, "Requiere conexión".
   3. Transacción Dexie: filas locales con _pendiente + put en outbox (estado "pendiente") + blobs.
 ```
-- **Fallo de red** = `TypeError`/`AbortError`/estado HTTP 0/502-504 del gateway. **Rechazo del servidor** = error PostgREST con código SQLSTATE o `status:error` en el resultado de la op. No confundirlos.
+- **Fallo de red** = `TypeError`, `AbortError`, timeout o 502-504 del gateway. **Rechazo del servidor** = error PostgREST con código SQLSTATE o `status:error` en el resultado de la op. No confundirlos. Todo lo demás (401, 429, otros 5xx) significa «no se aplicó»: se encola con aviso (la op no queda registrada y se puede reenviar), y un 401 pide volver a entrar conservando los datos.
 - **Online:** `navigator.onLine` es solo una pista (si es `false`, se salta el intento y se encola); la verdad es el resultado de la petición.
 - **Nada** reintenta en segundo plano. `pendientesService.subir(opIds)` solo se invoca desde la UI (botón).
-- **Subida de varias ops:** se envían en un lote, por orden de `created_at`; una op que depende de otra (`adjunto.vincular` tras `gasto.registrar`) va en el mismo lote y después de ella. `aplicar_ops` aplica las demás aunque una falle; la dependiente de una fallida responde `E_REF` y queda en `error`. Si `detener_cola` es `true`, el cliente no envía más lotes hasta que el usuario resuelva (cierra H-12). Estado de cada fila según `status`: `ok` y `ya_aplicada` → se borra; `error` → `error`; `revision` → `revision`.
+- **Subida de varias ops:** el cliente las envía **de una en una**, por orden de `created_at`, y se detiene en la primera cuyo resultado no sea `ok` ni `ya_aplicada` (RF-SYN-07; cierra H-12). Las siguientes siguen `pendiente` hasta que el usuario resuelva la que falló, así una dependiente (`adjunto.vincular` tras `gasto.registrar`) nunca se envía antes que su base. El servidor sigue aceptando lotes (D-013), pero el cliente no los usa. Estado de la fila según `status`: `ok` y `ya_aplicada` → se borra; `error` → `error` (con `error: {codigo, mensaje}`); `revision` → `revision` (con `resultado: {candidatos}`).
+- **Resolución de una `revision`:** la UI de decisión escribe la `resolucion` elegida dentro de `datos` de la misma fila y la devuelve a `pendiente` (no es edición del usuario). La fila local `_pendiente` se conserva hasta resolver; con `usar_existente`, el siguiente pull trae el registro real y reemplaza la fila provisional.
 
 ### 5.3 Centro de pendientes (`ui/screens/Pendientes`)
 Lista con resumen legible por tipo (p. ej. "Compra a Don Luis · 10 × Café Sierra · $100.000 · hace 2 d"), checkbox, **Descartar** (confirma; borra blobs) y **Subir seleccionados**. Resultado por fila (✔/⚠/✖). Banner global: "N sin subir (el más viejo: hace X)". **Exportar JSON** (D-009); sin Editar ni Importar.
@@ -371,7 +377,7 @@ Online: llamar `resumen_periodo`, `v_ventas_diarias`, `v_ventas_por_articulo`, `
 - Plantillas en `ui/pdf/`: `Confirmacion`, `Remision` (y `FacturaInterna`), `ComprobanteCompra`. Datos desde el **snapshot del documento** (nunca de las tablas vivas) + `configuracion.negocio`.
 - Contenido: logo/nombre del negocio, tipo y número, fecha, cliente/proveedor, tabla de líneas (descripción, presentación, cantidad, precio, desc., total), descuento global, envío, total en COP, notas y leyenda "Documento interno — no es factura electrónica" (si `estado_fiscal` es nulo).
 - `compartirPdf(blob, nombre)`: `navigator.canShare({files})` → `navigator.share({files, text})` (abre WhatsApp con el adjunto); fallback: descarga. Texto breve sugerido con resumen y total.
-- La `confirmacion` offline usa un número provisional local (`BOR-<device>-<n>`) **solo visual**, nunca persistido como consecutivo.
+- La `confirmacion` va **sin consecutivo** (RF-DOC-01) y puede generarse offline; no lleva número.
 
 ## 8. (Eliminado) Parser de pedidos de WhatsApp
 
@@ -381,7 +387,7 @@ No se construye (D-006). El mensaje que arma la web es texto libre de un solo pr
 - Email + contraseña; **signups deshabilitados**; usuarios creados en el panel; ambos registrados en `miembros` por SQL de administrador. La pertenencia se comprueba por `miembros.user_id`.
 - Sesión persistente. El cliente **no** cierra sesión ante errores de red ni de refresco offline, y un error de red, un 5xx o un fallo de permisos al consultar `miembros` nunca se trata como «no es miembro» (solo cero filas confirmadas lo es). Sin red, la app abre con el último usuario y la última pertenencia positiva recordados en `localStorage` (`camino.auth.usuario`, `camino.miembro.<id>`).
 - `invalid_grant` estando online → pantalla de re-login que **conserva Dexie y la outbox** (la outbox es del dispositivo, no del token).
-- Cerrar sesión usa `signOut({ scope: 'local' })` y llama a `limpiarCacheDeServidor`, que borra el caché del servidor y el cursor pero **conserva** la outbox, `adjuntos_locales`, `kv` y las filas `_pendiente` (regla 10). La advertencia por pendientes y la exportación al cerrar sesión (RF-AUTH-03) son T-M2-06.
+- Cerrar sesión usa `signOut({ scope: 'local' })` y **no** borra datos locales. El caché del servidor se limpia **al iniciar sesión con un usuario distinto** del recordado en `camino.auth.usuario`, antes del primer pull, con `limpiarCacheDeServidor` (T-M2-04): borra el caché y el cursor pero **conserva** la outbox, `adjuntos_locales`, `kv` y las filas `_pendiente` (regla 10). Hoy nadie llama a esa función. La advertencia por pendientes y la exportación al cerrar sesión (RF-AUTH-03) son T-M2-06.
 - Primer arranque requiere conexión para el login inicial y la carga inicial (catálogo, clientes, pedidos abiertos).
 
 ## 10. Estrategia de pruebas (TDD)
