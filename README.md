@@ -40,6 +40,7 @@ apps/web/    la PWA (Vite + React + TypeScript + Tailwind)
 ```bash
 npm install          # herramientas del PC (PGlite y CLI de Supabase)
 npm run test:db      # pruebas del esquema, en memoria con PGlite
+npm run test:integration   # integración REAL contra Supabase local (requiere db:start y db:reset)
 ```
 
 ### App web (en Docker)
@@ -72,7 +73,16 @@ npm run db:stop      # detiene los contenedores (los datos se conservan en un vo
 - El registro público de Auth está deshabilitado (`enable_signup = false`): crea los usuarios de los socios desde Estudio (Authentication > Users) o con la API de administración.
 - Verificar el esquema: `docker exec supabase_db_camino psql -U postgres -c "\dt"` (también `\dv`, `\df emitir_documento`).
 
-El resto de comandos (`dev`, `test`, `test:integration`, `test:e2e`) se agregan con las tareas de `TASKS.md`.
+### Pruebas de integración (Supabase local)
+
+```bash
+npm run db:start && npm run db:reset   # Supabase local con las migraciones aplicadas por la CLI
+npm run test:integration               # RLS por JWT, concurrencia, privilegios de anon y ops de punta a punta
+```
+
+Corren contra Postgres, Auth y PostgREST reales (usan `pg`); no se ejecutan con `npm run test:db`. Leen las claves locales de `supabase status` al correr (no hay secretos en el repo) y crean sus usuarios de prueba con la API de administración de Auth. Se pueden repetir sin reiniciar la base.
+
+El resto de comandos (`test:e2e`) se agregan con las tareas de `TASKS.md`.
 
 ## Configuración
 
