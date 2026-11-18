@@ -165,6 +165,22 @@ Con H1 cerrado, el socio resolvió los hallazgos que seguían sin decisión (tab
 - **H-10 a H-14, H-17:** sin cambios; siguen como se anotan en la tabla (se resuelven al llegar a su tarea).
 - **Impuesto de `pedido_venta.crear` (T-M1-05):** el socio dio por bueno que el servidor use `articulos.tasa_impuesto` (no hay tasa en `configuracion`) y siempre el precio de lista vigente al crear, con advertencia `PRECIO_CAMBIO`.
 
+## Nota T-M1-17 · spec de reembolsos y control de sobrepago (CAM-96, H-06) — 2026-11-18
+
+Se especificó (solo documentación) lo que el socio aprobó en D-015: el reembolso entra al MVP, con control de sobrepago, solo con conexión. Está en `SPEC.md` (RF-PAG-04..06, RN-PAG-02..07, RN-VEN-02, §9.1, E16..E18, L3) y `PLAN.md` §4.3 (`pago.reembolsar`, esquema de `0017`). Implementación: T-M1-18 y T-M4-08. **Valores por defecto, marcados para revisión del socio:**
+
+1. **Modelo:** el reembolso es una fila de `pagos` con `direccion = 'reembolso'` (no un cobro negativo ni un estado nuevo del pedido). El pedido sigue `cancelado` o `devuelto`; «por reembolsar» se deriva (cobrado neto > 0). Los candados de cobros de 0011 no se tocan.
+2. **Cuándo:** solo PV `cancelado` o `devuelto`. No se reembolsa un `confirmado` (si el cliente quiere su dinero, se cancela primero).
+3. **Parcial:** se permite reembolsar por partes y en varias veces hasta dejar el cobrado neto en 0; el tope es el del pedido, no el de cada cobro. La devolución de mercancía sigue siendo solo total (AGENTS: devoluciones parciales fuera).
+4. **Medio:** libre entre los medios válidos; la app sugiere el del último cobro. No se exige devolver por el mismo medio.
+5. **Motivo:** obligatorio en cada reembolso (texto), además del motivo de la cancelación o devolución.
+6. **Quién:** cualquier miembro (L6, sin roles). Se guarda quién lo registró (`created_by`) y, si se indica, qué socio puso el dinero (`pagado_por`).
+7. **Sin reembolso:** no hay acción «condonar». Si los socios deciden quedarse con el dinero (p. ej. cliente que no devuelve mercancía), el aviso «por reembolsar» queda abierto. **Pregunta para el socio (P-008):** ¿hace falta una forma de cerrar ese aviso sin devolver dinero (nota o motivo), o basta con el aviso? Por defecto: basta con el aviso.
+8. **Contabilidad:** las ventas netas, el costo y la utilidad no cambian por el reembolso (un `devuelto`/`cancelado` ya no cuenta en `v_ventas_pedido`). El dinero devuelto se ve en la columna nueva `reembolsos` de `resumen_periodo`, informativa. Caso borde conocido: un pedido finalizado un mes y devuelto en otro desaparece de las ventas del mes de la finalización (comportamiento ya existente, E11).
+9. **Sobrepago:** un cobro que dejaría lo cobrado neto por encima del total se rechaza (`E_SOBREPAGO`); también un cobro en un PV `cancelado` (`E_ESTADO`) y un cambio de totales por debajo de lo cobrado. Los cobros siguen sin op propia (se registran por T-M4-06); el control vive en triggers de `0017`, así que vale para cualquier ruta.
+10. **Errores del reembolso:** no se edita ni se borra. Un reembolso equivocado es un caso manual fuera del MVP.
+11. **No se construye:** comprobante o documento de reembolso (sin consecutivo), reembolso con transferencia automática, crédito a favor del cliente, devolución parcial de ítems.
+
 ## Nota T-M1-15 · validaciones del servidor (CAM-94, H-05/H-07/H-08) — 2026-11-18
 
 - Migración `0015_validaciones_pedido.sql`, solo triggers (sin grants). Contrato en `PLAN.md` §4.3; reglas en SPEC (RF-VEN-03, RF-VEN-05, RN-DOC-02, RN-COS-04).
@@ -201,7 +217,7 @@ Del informe de auditoría, los hallazgos H-01 a H-03 ya tienen tarea (T-M1-12, T
 | Hallazgo | Tema | Pendiente de decidir |
 |---|---|---|
 | H-05 | Pedido con total negativo se finaliza sin cobrar | **Decidido (D-015):** validar en servidor y app. Tarea T-M1-15 (CAM-94) |
-| H-06 | Sin reembolso en cancelación o devolución con cobro; sin control de sobrepago | **Decidido (D-015):** entra al MVP. Spec primero: T-M1-17 (CAM-96) |
+| H-06 | Sin reembolso en cancelación o devolución con cobro; sin control de sobrepago | **Decidido (D-015):** entra al MVP. Spec hecha (T-M1-17, nota «T-M1-17»); implementación T-M1-18 y T-M4-08 |
 | H-07 | Motivos obligatorios, `envio_costo` al finalizar con transportadora y otras reglas de la spec sin exigir | **Decidido (D-015):** van al servidor y a la app. Tarea T-M1-15 (CAM-94) |
 | H-08 | Doble conteo del flete (costo de envío del pedido y gasto vinculado) | **Por defecto (D-015):** una sola vía, documentada en T-M1-15 |
 | H-09 | Stock negativo por mermas y ajustes | **Decidido (D-015):** solo avisar (alerta en la app, T-M6) |
