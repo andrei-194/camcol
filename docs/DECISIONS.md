@@ -125,6 +125,26 @@ La entrada es `[{op_id, tipo, datos}]` y la salida `{detener_cola, resultados:[{
 - Decisiones de detalle (valores por defecto, sin cambio de reglas de negocio): teléfono opcional, pero si viene debe tener 7–15 dígitos; `usar_existente` suma el rol faltante al tercero existente (un cliente que también vende pasa a ser proveedor) para que la compra pueda asociarse sin otra edición online; el consentimiento exigido a clientes (RF-TER-05) se valida aquí también.
 - Las suites usan nombres de prueba bien distintos: la similitud por trigramas (≥ 0,5) marca como duplicados nombres como «Proveedor 3» y «Proveedor 30».
 
+## Nota T-M1-14 · funciones sin acceso de `anon` (CAM-92, H-15) — 2026-11-18
+
+- Causa: el `EXECUTE` por defecto de `PUBLIC` es global; `alter default privileges in schema public ... from public` (0004) no lo quita. Migración `0014_funciones_sin_anon.sql`: revoca `EXECUTE` a `PUBLIC`/`anon` en las existentes, lo concede a `authenticated` y `service_role`, y cambia los privilegios por defecto (global para `PUBLIC`, del esquema para `anon`). Cada migración futura queda cubierta por `tests/db/funciones_sin_anon.test.mjs`.
+- Los privilegios por defecto aplican al rol que ejecuta la migración (en Supabase, `postgres`); verificarlo en T-M1-10 (CAM-40).
+- Consecuencia: `ping()` ya no es público (la prueba exige cero funciones para `anon`). El keep-alive de T-M8-02 usará el JWT de un usuario de servicio en vez de la anon key. Cambia la excepción que decía `PLAN.md` §13.
+
+## Nota H-02 · candado de pedidos finalizados (CAM-88) — 2026-11-18
+
+- Contrato en `PLAN.md` §4.3; migración `0011_candado_finalizados.sql` con tres triggers (`pv_candado`, `pvi_candado`, `pagos_candado`), sin tocar migraciones previas.
+- Decisiones de detalle: el candado de cabecera compara solo los seis campos de dinero, así que `notas`, `estado` y `finalizado_en` siguen editables (la suite `sync_pull` no cambia). El trigger de `pagos` filtra por `direccion = 'cobro'` para no tapar el CHECK que espera `core`. No se reasignan privilegios de funciones: eso es de CAM-92 (otorgar `EXECUTE` a `authenticated` en todas las funciones expondría las `op_*` fuera de `aplicar_ops`).
+- Fuera de alcance (H-17): `costo_unitario` sigue editable en pedidos abiertos; se sobrescribe al finalizar.
+
+## Nota T-M1-06 · `orden_compra.registrar` (CAM-36) — 2026-11-18
+
+Decisiones por defecto, a revisar: (1) la op acepta `inmediata` y `encargo`; en `inmediata` exige recepción total y pago exacto (D-005), en `encargo` permite recepción parcial y pagos opcionales sin pasar del total (el pago posterior de un encargo aún no tiene op propia). (2) Códigos de error nuevos: `E_RECEPCION`, `E_SOBRE_RECEPCION`, `E_VENCIMIENTO` y `E_PAGO`; las validaciones van antes de insertar para no depender de los mensajes de los triggers. (3) Los ítems de la recepción se pueden indicar por posición (`item`) cuando el cliente no manda ids. (4) Un proveedor nuevo con duplicados detiene toda la op en `revision`; no se crea nada hasta que el usuario resuelve. (5) La lista de modalidades admitidas está en una variable de la función para que CAM-90 agregue `apertura` sin cambiar el contrato.
+
+## Nota T-M1-05 · `pedido_venta.crear` (CAM-35) — 2026-11-18
+
+Decisiones por defecto, a revisar: (1) **Impuesto:** `configuracion` solo tiene la clave `negocio` (sin tasa), y el esquema ya guarda la tasa por artículo (`articulos.tasa_impuesto`, hoy 0). La op copia esa tasa al ítem; lo que envíe el cliente se ignora. Si los socios prefieren una tasa global en `configuracion`, es un cambio local a la función. (2) **Precio:** el servidor siempre recalcula `precio_lista` con `precio_para` (incluye el escalón «Llévate 2», D-007) y `precio_unitario`; si el cliente envió otro valor (> $0,01) se corrige y se devuelve `PRECIO_CAMBIO`. RN-PRE-02 («se respeta lo pactado») se pensó para pedidos offline; como los pedidos son solo online (D-009), el precio que vale es el vigente al momento de crear. El pedido, una vez creado, nunca cambia de precio. (3) Artículo sin precio en la lista del cliente ni en la pública: error `E_PRECIO` (no se inventa un precio). (4) `STOCK` compara la suma pedida por artículo contra `v_stock.disponible_para_prometer`; solo advierte (E5). (5) Fecha del pedido hasta mañana (`E_FECHA`), como en la compra; la fecha estimada de entrega sí puede ser futura. (6) Descuento global mayor que el subtotal: `DATOS_INVALIDOS`. (7) El `cliente_id` debe ser un tercero con rol cliente. (8) `stock_visto_en`, `transportadora` y `guia` no se aceptan en la creación (los dos últimos se completan al finalizar). (9) Como en 0008/0009, `pedidos_venta.op_id` queda nulo (el manejador no recibe el `op_id`); la idempotencia la da `sync_ops`.
+
 ## D-014 · El inventario inicial se carga como compra de apertura — 2026-11-18
 
 La auditoría funcional (`docs/auditoria-h1-2026-11-18.md`, H-01) mostró que un ajuste de inventario no fija el costo: solo las compras actualizan `costo_promedio`. Cargar así el stock existente deja el costo en 0, infla el margen de las primeras ventas y deja el capital en bodega en $0.
