@@ -1,15 +1,19 @@
 ﻿import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
+import { AuthProvider } from '../application/auth/AuthProvider'
 import { AppRoutes } from '../routes'
+import { servicioFalso } from '../test/servicioAuthFalso'
 
 describe('pantalla inicial', () => {
-  it('muestra "Camino Col"', () => {
+  it('con sesión de socio muestra "Camino Col"', async () => {
     render(
-      <MemoryRouter initialEntries={['/']}>
-        <AppRoutes />
-      </MemoryRouter>,
+      <AuthProvider servicio={servicioFalso()}>
+        <MemoryRouter initialEntries={['/']}>
+          <AppRoutes />
+        </MemoryRouter>
+      </AuthProvider>,
     )
-    expect(screen.getByRole('heading', { level: 1, name: 'Camino Col' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Camino Col' })).toBeInTheDocument()
   })
 })

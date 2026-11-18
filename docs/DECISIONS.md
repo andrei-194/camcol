@@ -179,6 +179,15 @@ Con H1 cerrado, el socio resolvió los hallazgos que seguían sin decisión (tab
 - Cierra [E6] (doble venta, también por PostgREST con dos JWT), RNF-SEC-02/[E12] (no miembro = 0 filas en todas las tablas y vistas) y la verificación de H-15 (ver Nota T-M1-14). Sin defectos nuevos en las migraciones 0001-0014 reales.
 - Corrección de documentación: el parámetro de `aplicar_ops` es `ops` (no `p_ops`); PostgREST llama por nombre, así que el cliente debe enviar `{ "ops": [...] }`. Se corrigió `PLAN.md` §4.3.
 
+## Nota T-M2-01 · login, guardia de rutas y "Sin acceso" (CAM-41) — 2026-11-18
+
+- **Pertenencia a `miembros`:** el cliente consulta `miembros` filtrando por su `user_id`; la RLS solo muestra la fila a un miembro, así que 0 filas = no miembro (pantalla "Sin acceso", RF-AUTH-04). Cualquier error de red, 5xx o permisos da `desconocido`, **nunca** "no miembro".
+- **Sin red (RF-AUTH-02):** si el token expiró y no hay red, `getSession` falla con error reintentable; la app conserva la sesión de Supabase y abre con el último usuario recordado (`camino.auth.usuario`) y con el último resultado positivo de pertenencia (`camino.miembro.<id>`, ambos en `localStorage`). Si nunca se comprobó la pertenencia en este dispositivo, muestra "Sin conexión" con **Reintentar**, sin cerrar sesión. Primer arranque sigue exigiendo conexión (PLAN §9).
+- **Sesión caducada (`invalid_grant` con servidor alcanzable):** se pasa al login con aviso; no se toca Dexie ni la outbox.
+- **Cierre de sesión:** `signOut({ scope: 'local' })`, que no depende de la red. La advertencia por pendientes y la exportación son T-M2-06 (RF-AUTH-03); hoy solo "Sin acceso" ofrece cerrar sesión.
+- **Credenciales vs. red en el login:** `AuthApiError` 400/401/422 = "Correo o contraseña incorrectos"; error reintentable o `TypeError` de `fetch` = "No hay conexión"; el resto = mensaje genérico (p. ej. 429).
+- Arquitectura: puerto `ServicioAuth` en `domain/auth`, adaptador Supabase en `infra/auth`, `AuthProvider` en `application/auth` (recibe el servicio, por eso las pruebas usan un falso sin red). Se añadió `afterEach(cleanup)` a `test-setup.ts` porque Vitest corre con `globals: false`.
+
 ## Nota auditoría H1 · hallazgos pendientes de decisión — 2026-11-18
 
 Del informe de auditoría, los hallazgos H-01 a H-03 ya tienen tarea (T-M1-12, T-M1-11, T-M1-13). H-04 es el trabajo pendiente de CAM-35/36/37 (aún sin iniciar). Los demás **no tienen tarea ni decisión**; se resuelven cuando el socio decida:

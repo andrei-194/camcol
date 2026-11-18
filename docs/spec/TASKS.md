@@ -51,7 +51,7 @@
 **Meta:** app instalable que abre offline, con escritor, puller y centro de pendientes funcionando sobre una op de ejemplo.
 
 - [ ] **T-M2-00** ([CAM-84](https://linear.app/caminocol/issue/CAM-84)) Spike de iOS (1 día, iPhone real): instalar una PWA mínima, guardar un blob en IndexedDB, comprobar `storage.persist()` tras varios días y compartir un PDF a WhatsApp con `navigator.share`. Registrar el resultado en `docs/DECISIONS.md`. En Windows no existe un simulador de iOS (Xcode solo corre en Mac) y el WebKit de Playwright no reproduce una PWA instalada, así que hace falta un iPhone real o un servicio de dispositivos reales. **Bloquea** el resto de H2.
-- [ ] **T-M2-01** ([CAM-41](https://linear.app/caminocol/issue/CAM-41)) Cliente Supabase, login email+contraseña, guardia de rutas, pantalla "Sin acceso". Cierra: RF-AUTH-01/02/04.
+- [x] **T-M2-01** ([CAM-41](https://linear.app/caminocol/issue/CAM-41)) Cliente Supabase, login email+contraseña, guardia de rutas, pantalla "Sin acceso". Cierra: RF-AUTH-01/02/04.
 - [ ] **T-M2-02** ([CAM-42](https://linear.app/caminocol/issue/CAM-42)) PWA: manifest, íconos, SW con precache, `registerType:'prompt'`, `storage.persist()`, pantalla "Cómo instalar". Cierra: RF-OPS-01/02/03.
 - [ ] **T-M2-03** ([CAM-43](https://linear.app/caminocol/issue/CAM-43)) Dexie v1 (esquema del plan), `device_id` estable, UUID v7, utilidades de formato (COP, fechas Bogotá). Cierra: RNF-UX-01, RF-SYN-11.
 - [ ] **T-M2-04** ([CAM-44](https://linear.app/caminocol/issue/CAM-44)) **Puller** simple: carga inicial y refresco al abrir, al volver a primer plano y con "Actualizar", sin pisar registros `_pendiente`. Cierra: RF-SYN-08. **Pruebas** con `fake-indexeddb` y servidor simulado.
