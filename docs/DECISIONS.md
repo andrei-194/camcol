@@ -250,6 +250,16 @@ Los valores por defecto de la nota «T-M1-17» (solo pedidos `cancelado`/`devuel
 - `navigator.storage.persist()` se pide al arrancar y al evento `appinstalled`. Su estado se muestra en `/ajustes` (pantalla mínima creada aquí; irá creciendo con otras tareas). "Cómo instalar" vive en `/instalar`, enlazada desde Home y Ajustes.
 - Fuera de esta tarea: `_redirects` y `_headers` (CSP) de Cloudflare Pages (PLAN §6, hosting) y el botón nativo `beforeinstallprompt`.
 
+## Nota T-M2-05 · escritor y subida de pendientes (CAM-45) — 2026-11-18
+
+- **Capas:** `infra/supabase/opsApi.ts` llama `rpc('aplicar_ops', {ops})` con `.abortSignal` y clasifica en `ok | red | rechazo | no_aplicado` (función pura `clasificarRespuestaRpc`). `infra/sync/` tiene `tiposOp` (Zod + si admite offline), `outboxRepo`, `writer.commit` y `pendientesService.subir/resolver`. Zod 4 es la única dependencia nueva.
+- **Clasificación:** red = TypeError/AbortError/timeout/502-504; rechazo = error con SQLSTATE de 5 caracteres (los `PGRSTnnn` no lo son) o `status:error` de la op; 401, 429 y otros 5xx = `no_aplicado` (se encola con aviso; el 401 marca `requiereLogin`). Un 5xx con SQLSTATE sigue siendo `no_aplicado`.
+- **Revisión:** en tipos que admiten offline la fila se guarda en outbox como `revision` (con `resultado.candidatos`) y la fila local `_pendiente` se conserva, para no perder lo capturado si se cierra la app; en `pedido_venta.crear` (solo online) se devuelve a la UI sin encolar.
+- **Resolución:** `resolver(opId, resolucion)` escribe `resolucion` en `datos.proveedor_nuevo`/`datos.cliente_nuevo` si existen (como exige el contrato de compras y pedidos) y si no en `datos.resolucion` (`tercero.crear`); luego la fila vuelve a `pendiente`.
+- **`subir`:** una fila en `error` se puede reenviar (la op no quedó registrada); una fila en `revision` no se envía y detiene la subida hasta resolverla. Fallo de red o `no_aplicado` deja la fila `pendiente` y detiene.
+- `'bloqueada'` salió de `EstadoOutbox`; el esquema Dexie no cambia (sigue `version(1)`), no hizo falta `version(2)`.
+- Sin cableado a la UI ni al cliente real todavía: `crearEscritor` y `crearPendientesService` reciben `db` y un `OpsApi` (`crearOpsApi(obtenerClienteSupabase())`); el centro de pendientes (CAM-46) los instancia.
+
 ## Nota auditoría H1 · hallazgos pendientes de decisión — 2026-11-18
 
 Del informe de auditoría, los hallazgos H-01 a H-03 ya tienen tarea (T-M1-12, T-M1-11, T-M1-13). H-04 es el trabajo pendiente de CAM-35/36/37 (aún sin iniciar). Los demás **no tienen tarea ni decisión**; se resuelven cuando el socio decida:

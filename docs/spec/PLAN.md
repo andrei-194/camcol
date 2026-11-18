@@ -325,7 +325,7 @@ De dónde sale cada tabla:
 | `outbox`, `adjuntos_locales`, `kv` | Solo locales; nunca se limpian al cerrar sesión |
 
 - **Registros creados offline** viven en las mismas tablas con `_pendiente = op_id`, para que las listas los muestren con ⏳. Al aplicarse la op, el siguiente pull trae la fila del servidor y reemplaza a la local (mismo `id`).
-- **Ciclo de vida de la outbox:** nace `pendiente`; `ok` o `ya_aplicada` borran la fila y quitan `_pendiente`; `error` la marca `error` con el código y el mensaje; `revision` la marca `revision`. **No existe `bloqueada`** (D-009): `db.ts` todavía la declara en `EstadoOutbox` y se elimina en T-M2-05.
+- **Ciclo de vida de la outbox:** nace `pendiente`; `ok` o `ya_aplicada` borran la fila y quitan `_pendiente`; `error` la marca `error` con el código y el mensaje; `revision` la marca `revision`. **No existe `bloqueada`** (D-009) (eliminada de `EstadoOutbox` en T-M2-05).
 - **Fotos:** la subida de adjuntos locales (`path` en Storage, estados de `adjuntos_locales`, reintento) se define al iniciar T-M2-08 (CAM-48).
 - **Se leen online, sin espejo local:** `v_por_reembolsar`, los pagos de pedidos fuera del snapshot, el kardex y los gastos de otros dispositivos.
 
