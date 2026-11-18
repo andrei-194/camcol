@@ -1,59 +1,35 @@
-# Siguiente ronda: H2 (app base offline), en `release/h2`
+# Siguiente ronda: H3 (operación diaria)
 
-Estado a 2026-11-18. `main` en `79c6e94` (PR #27). **H1 cerrado.** Línea base de pruebas: `npm run test:db` 15 suites en verde; app web 81 pruebas en verde; `npm run test:integration` 33 pruebas (corridas antes de las migraciones 0015 y 0016; vuelve a correrlas).
+Estado a 2026-11-18. **H2 completo** en `release/h2` (PR #29 listo para fusionar a `main`). Línea base: `npm run test:db` 16 suites; app web 194 pruebas; `npm run test:integration` 5 suites (con reembolsos); `npm run test:e2e` (Chromium y WebKit, contra Supabase local).
 
-Lee primero `AGENTS.md` (flujo de ramas nuevo, D-017) y `docs/DECISIONS.md` (D-009, D-015, D-016, D-017 y las notas T-M2-01 y T-M2-02).
+Lee primero `AGENTS.md` (flujo D-017), `docs/DECISIONS.md` (D-009, D-015, D-016, D-017 y las notas T-M2-xx) y `docs/spec/TASKS.md` (M3, M4, M5).
 
-## Paso 0: la release `release/h2`
+## Paso 0
 
-La rama `release/h2` **ya existe** en GitHub (creada desde `main`). El PR en borrador se abre al integrar la primera tarea, porque GitHub no deja abrirlo sin commits propios:
+1. El socio fusiona el PR #29 (`release/h2` → `main`). Los issues de H2 pasan a *Done*.
+2. Crear `release/h3` desde `main` actualizado y subirla (`git checkout -B release/h3 origin/main && git push -u origin release/h3`). El PR en borrador se abre con la primera tarea integrada.
 
-```bash
-git fetch && git checkout release/h2 && git pull
-# tras la primera integración:
-gh pr create --draft --base main --head release/h2 --title "release: H2 app base offline" --body-file .github/pull_request_template.md
-```
+## Tareas (bloques de TASKS.md)
 
-Solo existirá **ese** PR en todo H2. Las tareas se integran en `release/h2` sin PR (ver «Integrar una tarea» en `AGENTS.md`). Linear: *In Progress* al empezar, *In Review* al integrar en la release, *Done* cuando el PR de la release se fusione.
+- **M3 · Terceros y catálogo:** T-M3-01 a T-M3-05 (CAM-50 a CAM-54). Terceros con búsqueda local y formulario; duplicados; edición online; catálogo; `domain/pricing` con paridad contra `precio_para`.
+- **M4 · Pedidos de venta:** T-M4-01 a T-M4-08 (CAM-55 a CAM-60, y CAM-98 para reembolsos). Dominio de totales y estados con paridad contra los triggers; formulario «Nuevo pedido»; cobros y estados; documentos; reembolsos.
+- **M5 · Compras:** T-M5-01 a T-M5-04. Formulario de compra offline, recepción, pagos, comprobante.
+- El E2E de H2 se amplía con estas pantallas (compra con proveedor nuevo, recepción, pago, foto y costo promedio: [E1] completo).
 
-## Hecho en H2
+Empieza por M3 (T-M3-01 y T-M3-04 son independientes), y T-M4-01 y T-M3-05 (dominio puro con pruebas de paridad) se pueden hacer en paralelo. Las pantallas dependen de ellos.
 
-T-M2-01 login y guardia de rutas (CAM-41) · T-M2-02 PWA instalable (CAM-42) · T-M2-03 Dexie, `device_id`, UUID v7 y formatos (CAM-43).
+## Pendientes y huecos conocidos de H2
 
-## Tareas pendientes (una por agente)
-
-| Issue | Tarea | Depende de | Notas |
-|---|---|---|---|
-| CAM-44 | T-M2-04 Puller | T-M2-03 | Una sola fila `sync_meta` con `tabla = 'global'` (D-016). Deriva `terceros.roles` de `es_cliente`/`es_proveedor`. No pisa registros `_pendiente`. |
-| CAM-45 | T-M2-05 Escritor | T-M2-03 | Llama a `aplicar_ops` con el cuerpo `{ "ops": [...] }` (el parámetro se llama `ops`). Solo se encolan compra, proveedor, gasto y adjunto. |
-| CAM-97 | T-M1-18 Reembolsos en el servidor (migración 0017) | spec T-M1-17 (hecha) | Solo base de datos; independiente de la app. Rojo primero en `tests/db/reembolsos.test.mjs`. Va en esta release para no abrir otra. |
-| CAM-46 | T-M2-06 Centro de pendientes | CAM-45 | Nada se envía sin pulsar «Subir». Agrega el aviso por pendientes al cerrar sesión (RF-AUTH-03). |
-| CAM-47 | T-M2-07 Indicadores (conexión, pendientes, «datos al …») | CAM-44 y CAM-45 | Sin Realtime (D-009). |
-| CAM-48 | T-M2-08 Fotos locales y `adjunto.vincular` | CAM-45 | |
-| CAM-49 | T-M2-09 E2E Playwright base | CAM-45 y CAM-46 | Cierra H2. No se empieza H3 hasta que pase. |
-| CAM-84 | T-M2-00 Spike en iPhone real | — | **Lo hace el socio** (necesita un iPhone físico). |
-
-**Oleadas sugeridas** (integración siempre de una en una): A = CAM-44, CAM-45 y CAM-97 en paralelo; B = CAM-46, CAM-47 y CAM-48 cuando 44 y 45 estén en la release; C = CAM-49.
-
-## Lo aprendido (para no repetirlo)
-
-- **Rojo primero es obligatorio.** CAM-41 y CAM-42 se integraron sin él; no se repite. Excepciones, anotadas en la descripción del PR de la release.
-- `npm run setup` usa `npm ci`: si cambias dependencias, corre `docker compose run --rm dev npm --prefix apps/web install` y sube el `package-lock.json`. En una fusión con conflicto en el lock, toma el de la release y vuelve a instalar.
-- Cada worktree tiene su propio volumen de `node_modules` en Docker. No dejes `npm run dev` ocupando el puerto 5173 mientras otro agente corre; para pruebas usa `test`, `typecheck`, `lint` y `build`.
-- `npm run test:integration` necesita `npm run db:start` y `npm run db:reset` (Docker, todo en D:). Al terminar, `npm run db:stop`.
-- Las migraciones reservadas: `0017` para CAM-97. No edites migraciones existentes; `funciones_sin_anon` descubre las nuevas y exige que `anon` no ejecute ninguna función de `public` (no hagas grants masivos).
-- La outbox sobrevive a re-login y actualizaciones (regla 10). Al cambiar de usuario usa solo `limpiarCacheDeServidor` de `infra/db/db.ts`.
-- `/instalar` es pública; `/` y `/ajustes` van tras el login.
-- Un fallo de red nunca cierra la sesión ni se trata como «no es miembro» (nota T-M2-01).
+- **Arranque sin red lento:** sin conexión, la app queda en «Cargando…» varios segundos (≈ 6 s en WebKit) por la comprobación de sesión y de socio. Medirlo en el teléfono y, si hace falta, ponerle tiempo límite (tarea aparte).
+- **⏳ en las filas:** el dato local lo marca (`_pendiente`), pero ninguna lista lo muestra todavía; se hace con las listas de H3.
+- **Cableado:** el escritor ya está instanciado pero ninguna pantalla lo usa; las pantallas de H3 deben usar `commit()`.
+- **Pantalla «Cómo instalar» y pantallas a 360 px:** sin revisión visual en navegador.
+- La fusión pendiente con `main` de las decisiones del `PLAN.md` §9: el puller guarda el dueño del caché en `kv.cache_usuario`.
+- El `PLAN.md` y la SPEC pasaron 2 rondas de revisión EGM (informes en `docs/revisiones/`); falta revisar `SPEC.md` y una ronda 3 del plan. Se hace por bloque, antes de empezar cada uno.
 
 ## Pendiente del socio (no lo hace un agente)
 
 - **CAM-10:** proteger `main` en GitHub (exigir PR y CI verde, sin pushes directos; `release/*` sin protección). Requiere permisos de administrador.
 - **T-M2-00 (CAM-84):** spike en iPhone real.
-- **Verificación manual de la PWA** (lista en la nota T-M2-02): instalar en Chrome Android y Safari iPhone, abrir en modo avión tras la primera carga, comprobar que una versión nueva solo se aplica al tocar «Actualizar», y revisar `/ajustes` y las pantallas a 360 px.
-- Reemplazar los íconos provisionales de la vitrina si se quiere identidad propia del back-office.
-- Revisar los valores por defecto de reembolsos (nota T-M1-17 y addendum D-015).
-
-## Fuera de esta ronda
-
-H3 (terceros, catálogo, pedidos y compras en pantalla, incluida T-M4-08 CAM-98), headers y redirecciones de Cloudflare Pages (T-M8) y despliegue.
+- **Verificación manual de la PWA y de las fotos** en iPhone y Android: instalar, abrir en modo avión tras la primera carga, actualizar solo al tocar «Actualizar», compresión y respaldo a JPEG de las fotos, subida real al bucket `soportes`, y revisar a 360 px.
+- Reemplazar los íconos provisionales de la vitrina si se quiere identidad propia.
