@@ -11,8 +11,9 @@ Estado a 2026-11-18. Ya en `main`: esquema (0001–0006), `aplicar_ops` (0003), 
 | CAM-37 | `gasto.registrar` y `adjunto.vincular` | `0009_op_gasto_adjunto.sql` | `tests/db/op_gasto_adjunto.test.mjs` |
 | CAM-35 | `pedido_venta.crear` (solo con conexión) | `0010_op_pedido_venta.sql` | `tests/db/op_pedido_venta.test.mjs` |
 | CAM-88 | Candado de pedidos finalizados (H-02) | `0011_candado_finalizados.sql` | `tests/db/candado_finalizados.test.mjs` (rama `CAM-88-candado-pedido-finalizado`, en rojo) |
-| CAM-90 | Compra de apertura para el inventario inicial (H-01, D-014) | `0013_compra_apertura.sql` | `tests/db/compra_apertura.test.mjs` (rama `CAM-90-compra-apertura`, en rojo) |
-| CAM-89 | Cerrar la escritura directa (H-03) | `0012_cerrar_escritura_directa.sql` | `tests/db/escritura_directa.test.mjs` (rama `CAM-89-cerrar-escritura-directa`, en rojo) |
+| CAM-90 | Compra de apertura para el inventario inicial (H-01, D-014) | `0012_compra_apertura.sql` | `tests/db/compra_apertura.test.mjs` (rama `CAM-90-compra-apertura`, en rojo) |
+| CAM-92 | Funciones sin acceso de `anon` (H-15) | `0014_funciones_sin_anon.sql` | `tests/db/funciones_sin_anon.test.mjs` (rama `CAM-92-funciones-sin-anon`, en rojo) |
+| CAM-89 | Cerrar la escritura directa (H-03) | `0013_cerrar_escritura_directa.sql` | `tests/db/escritura_directa.test.mjs` (rama `CAM-89-cerrar-escritura-directa`, en rojo) |
 
 El alcance, las pruebas y el criterio de "hecho" de cada una están en su issue de Linear. Después, en serie: CAM-40 (integración real con Supabase local, T-M1-10), que cierra H1.
 
@@ -31,13 +32,13 @@ El alcance, las pruebas y el criterio de "hecho" de cada una están en su issue 
 ## Orden de fusión
 
 1. ~~CAM-34~~ (hecha).
-2. **CAM-88** y **CAM-37**, en paralelo (independientes entre sí).
+2. **CAM-88**, **CAM-92** y **CAM-37**, en paralelo (independientes entre sí; AGENTS dice «una tarea por vez» para cada agente, y las tareas independientes pueden ir en paralelo con agentes distintos).
 3. **CAM-36** y después **CAM-35** (reutilizan `crear_tercero_desde_payload` de 0007).
 4. **CAM-90**, después de CAM-36 (la op de compra debe aceptar `modalidad: "apertura"`).
 5. **CAM-89**, con todas las operaciones ya fusionadas (los candados se prueban contra los flujos reales).
 6. **CAM-40** (integración real con Supabase), que cierra H1.
 
-Las ramas de CAM-88, 89 y 90 ya existen con su prueba en rojo y `main` fusionado; el agente que tome cada tarea sigue esa rama (rebasando o fusionando `main` de nuevo) y abre el PR. Las migraciones `0011`–`0013` están reservadas. Hallazgos de la auditoría sin tarea: ver la nota «auditoría H1» en `docs/DECISIONS.md`.
+Las ramas de CAM-88, 89 y 90 ya existen con su prueba en rojo y `main` fusionado; el agente que tome cada tarea sigue esa rama (rebasando o fusionando `main` de nuevo) y abre el PR. Las migraciones `0011`–`0014` están reservadas (0012 apertura se fusiona antes que 0013 escritura directa, para que `db push` las aplique en orden). Hallazgos de la auditoría sin tarea: ver la nota «auditoría H1» en `docs/DECISIONS.md`.
 
 ## Fuera de esta ronda
 

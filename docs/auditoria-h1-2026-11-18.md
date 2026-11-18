@@ -4,7 +4,7 @@ Un agente auditor leyó la documentación y puso a prueba lo construido hasta `0
 
 ## Veredicto
 
-Con lo construido hoy **no se puede administrar el negocio**: hay una base de datos sólida y sin aplicación encima. `apps/web` es solo una pantalla de arranque y de las operaciones de escritura solo existe `tercero.crear`. `pedido_venta.crear`, `orden_compra.registrar`, `gasto.registrar` y `adjunto.vincular` devuelven `TIPO_DESCONOCIDO` (tareas CAM-35/36/37, en curso).
+Con lo construido hoy **no se puede administrar el negocio**: hay una base de datos sólida y sin aplicación encima. `apps/web` es solo una pantalla de arranque y de las operaciones de escritura solo existe `tercero.crear`. `pedido_venta.crear`, `orden_compra.registrar`, `gasto.registrar` y `adjunto.vincular` devuelven `TIPO_DESCONOCIDO` (tareas CAM-35/36/37, pendientes).
 
 Con los datos metidos directamente en la base, el ciclo del negocio **sí cuadra** contra cálculo manual: compra con costo promedio, pedido, confirmación, cobros, finalización con descuento de stock, margen, devolución, documentos con consecutivo sin huecos, IVA, fechas en hora de Bogotá, reportes y `sync_pull`.
 
@@ -19,7 +19,7 @@ Con los datos metidos directamente en la base, el ciclo del negocio **sí cuadra
 | H-01 | Alto | Un ajuste de inventario inicial no fija el costo: las primeras ventas salen con 100 % de margen | **D-014**, tarea T-M1-12 (CAM-90) |
 | H-02 | Alto | Un pedido finalizado se puede reescribir (cabecera, costo de ítems, cobros) y falsea ventas y utilidad | Tarea T-M1-11 (CAM-88) |
 | H-03 | Alto | Se pueden crear ventas y compras «fantasma» y editar consecutivos y costo promedio a mano | Tarea T-M1-13 (CAM-89) |
-| H-04 | Alto | Falta la ruta de escritura de pedido, compra y gasto, y con ella la validación del servidor | En curso: T-M1-05/06/07 |
+| H-04 | Alto | Falta la ruta de escritura de pedido, compra y gasto, y con ella la validación del servidor | Pendiente: T-M1-05/06/07 |
 | H-05 | Medio | Un pedido con total negativo se finaliza gratis | Pendiente de decisión |
 | H-06 | Medio | Sin reembolso en cancelación o devolución con cobro; sin control de sobrepago | Pendiente de decisión |
 | H-07 | Medio | Reglas de la spec sin exigir en la base (motivos, `envio_costo`, fechas, coordenadas) | Pendiente de decisión |
@@ -29,9 +29,12 @@ Con los datos metidos directamente en la base, el ciclo del negocio **sí cuadra
 | H-11 | Medio | La conversión libra a gramo no existe en la base ni tiene prueba de paridad | Pendiente (T-M5-01) |
 | H-12 | Bajo | En el servidor la cola no se detiene tras una `revision` (PLAN §4.3 lo declara) | A confirmar en el cliente (T-M2-05/06) |
 | H-13 | Bajo | Redondeo a pesos, teléfono con extensión rechazado, falsos positivos de duplicados | A revisar con la UI |
+| H-15 | Medio | Las funciones creadas después de 0004 son ejecutables por `anon` (el `EXECUTE` de `PUBLIC` no se revoca a las futuras); RLS protege los datos, pero se viola RNF-SEC-03 | Tarea T-M1-14 (CAM-92) |
+| H-16 | Bajo | Insertar a mano movimientos de inventario `compra`/`venta` mueve el costo promedio sin orden ni recepción | Pendiente de decisión |
+| H-17 | Bajo | `costo_unitario` de ítems editable en pedidos abiertos | Se anota |
 | H-14 | Bajo | `anular_documento` de un id inexistente no falla; `v_cuentas_por_cobrar` omite pedidos `recibido` con anticipo | A revisar con la UI |
 
-La evidencia reproducible (SQL y salida) de H-01 a H-03 quedó en los issues y en las pruebas en rojo: `tests/db/compra_apertura.test.mjs`, `tests/db/candado_finalizados.test.mjs`, `tests/db/escritura_directa.test.mjs`.
+La evidencia reproducible (SQL y salida) de H-01 a H-03 y H-15 quedó en los issues y en las pruebas en rojo: `tests/db/compra_apertura.test.mjs`, `tests/db/candado_finalizados.test.mjs`, `tests/db/escritura_directa.test.mjs`, `tests/db/funciones_sin_anon.test.mjs`. Una segunda auditoría (2026-11-18) confirmó que cada prueba en rojo es satisfacible con una migración mínima, que las migraciones 0011 a 0014 no se estorban entre sí ni a las operaciones planeadas, y reprodujo H-01, H-05, H-09 y H-12.
 
 ## Lo que no se pudo verificar
 
