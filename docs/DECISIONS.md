@@ -231,6 +231,15 @@ Del informe de auditoría, los hallazgos H-01 a H-03 ya tienen tarea (T-M1-12, T
 
 **Aviso de numeración:** el PR #9 (`docs: estado del proyecto…`) usó el número CAM-88 en su rama, pero en Linear CAM-88 es la tarea H-02 (candado de pedidos finalizados). Un `git log --grep CAM-88` mezcla ambos; el commit `919f731` es el de documentación.
 
+## D-016 · Base local Dexie, device_id y UUID v7 (T-M2-03, CAM-43) — 2026-11-18
+
+- **Esquema v1 = PLAN §5.1 sin cambios.** `sync_meta` queda con clave `tabla` pero, por D-009 (cursor único de `sync_pull`), el puller usa una sola fila `tabla = 'global'`. `terceros.roles` no viene del servidor: el puller lo deriva de `es_cliente`/`es_proveedor` (`['cliente','proveedor']`) para poder indexar por rol. `gastos` existe localmente aunque `sync_pull` no los trae (los escribe el cliente).
+- **La outbox no se pierde (regla 10).** Las versiones de Dexie solo agregan (`version(n+1).stores().upgrade()`); no se borra la base ni se retoca `version(1)`. Al cerrar sesión o cambiar de usuario solo se usa `limpiarCacheDeServidor`: borra el caché espejo y el cursor, y conserva `outbox`, `adjuntos_locales`, `kv` y las filas `_pendiente`.
+- **`device_id`:** UUID v7 en `kv` (`clave = 'device_id'`), creado con una transacción de escritura para que dos pestañas no generen dos. Es etiqueta de diagnóstico; el orden de eventos lo decide el servidor (RF-SYN-11).
+- **UUID v7 propio** (~40 líneas, sin dependencia): monótono dentro del milisegundo y si el reloj retrocede.
+- **Formato:** `Intl` con `es-CO`; COP redondeado a entero, sin `-$ 0`; agrupación de miles siempre (es-CO no agrupa 4 dígitos por defecto); fechas por `America/Bogota` por nombre. Una fecha de calendario `AAAA-MM-DD` (p. ej. `gastos.fecha`) no se convierte de zona, para que no se corra un día.
+- **Sin `navigator.storage.persist()` por ahora.** iOS/Safari puede desalojar IndexedDB de una PWA no instalada; queda como idea para T-M2-06 (centro de pendientes) o la tarea PWA, sin decidir aquí.
+
 ## Contexto de negocio
 
 - [docs/negocio/catalogo.md](negocio/catalogo.md): estructura de productos, artículos, precios y costos, cruzando el sitio y el costeo oficial.
