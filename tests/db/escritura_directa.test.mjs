@@ -1,4 +1,4 @@
-// Pruebas de la migración 0012_cerrar_escritura_directa.sql (H-03, CAM-89). Ejecutar: npm run test:db
+// Pruebas de la migración 0013_cerrar_escritura_directa.sql (H-03, CAM-89). Ejecutar: npm run test:db
 // Hallazgo de auditoría: nada se escribe saltándose la ruta única (AGENTS regla 4) ni los consecutivos/costos del servidor.
 import { PGlite } from '@electric-sql/pglite';
 import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
@@ -14,7 +14,7 @@ await db.exec(`
   create function auth.uid() returns uuid language sql stable as
     $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 `);
-for (const f of ['0001_core.sql', '0002_sync.sql', '0006_fix_touch_padre.sql', '0012_cerrar_escritura_directa.sql']) {
+for (const f of ['0001_core.sql', '0002_sync.sql', '0006_fix_touch_padre.sql', '0013_cerrar_escritura_directa.sql']) {
   if (!existsSync(new URL(`../../supabase/migrations/${f}`, import.meta.url))) {
     console.log(`  (aún no existe ${f}: las pruebas de cierre deben fallar)`);
     continue;
@@ -53,14 +53,24 @@ await q(`insert into recepcion_items (recepcion_id, orden_item_id, cantidad) val
 
 console.log('\nH-03 · cerrar la escritura directa');
 
-await test('[AGENTS-4] no se inserta un pedido de venta ya finalizado ni con finalizado_en', async () => {
+await test('[H-03] no se inserta un pedido de venta ya finalizado ni con finalizado_en', async () => {
   await rejects(`insert into pedidos_venta (cliente_id, estado, subtotal, finalizado_en) values ($1,'finalizado',500000, now())`, [cli]);
   await rejects(`insert into pedidos_venta (cliente_id, estado) values ($1,'confirmado')`, [cli]);
 });
 
-await test('[AGENTS-4] no se inserta una orden de compra ya recibida', async () => {
+await test('[H-03] no se inserta una orden de compra ya recibida', async () => {
   await rejects(`insert into ordenes_compra (proveedor_id, estado, total) values ($1,'recibida',1000000)`, [prov]);
   await rejects(`insert into ordenes_compra (proveedor_id, estado) values ($1,'pedida')`, [prov]);
+});
+
+await test('[RN-DOC-01] control: emitir una remisión sigue dando el siguiente consecutivo sin huecos', async () => {
+  const p = (await one(`insert into pedidos_venta (cliente_id) values ($1) returning id`, [cli])).id;
+  await q(`insert into pedidos_venta_items (pedido_id, articulo_id, cantidad, precio_lista, precio_unitario) values ($1,$2,1,20000,20000)`, [p, art]);
+  await q(`update pedidos_venta set estado='confirmado' where id=$1`, [p]);
+  await q(`insert into pagos (direccion, pedido_venta_id, medio, valor) values ('cobro',$1,'efectivo',20000)`, [p]);
+  await q(`update pedidos_venta set estado='finalizado' where id=$1`, [p]);
+  const d = await one(`select * from emitir_documento('remision', $1)`, [p]);
+  assert.equal(d.numero, 'RM-000001');
 });
 
 await test('[RN-DOC-01] los consecutivos no se editan a mano (sin huecos)', async () => {
@@ -76,13 +86,13 @@ await test('[RN-COS-01] el costo_promedio del artículo no se edita a mano', asy
   await rejects(`update articulos set costo_promedio = 1 where id = $1`, [art]);
 });
 
-await test('[RN-INV-04] no se borra una recepción ni sus ítems (el stock no se reversa)', async () => {
+await test('[H-03] no se borra una recepción ni sus ítems (el stock no se reversa)', async () => {
   await rejects(`delete from recepcion_items where recepcion_id = $1`, [rec]);
   await rejects(`delete from recepciones where id = $1`, [rec]);
   assert.equal(Number((await one(`select fisico from v_stock where articulo_id=$1`, [art])).fisico), 10);
 });
 
-await test('[RN-INV-03] no se archiva (deleted_at) un pedido finalizado', async () => {
+await test('[H-03] no se archiva (deleted_at) un pedido finalizado', async () => {
   const p = (await one(`insert into pedidos_venta (cliente_id) values ($1) returning id`, [cli])).id;
   await q(`insert into pedidos_venta_items (pedido_id, articulo_id, cantidad, precio_lista, precio_unitario) values ($1,$2,1,20000,20000)`, [p, art]);
   await q(`update pedidos_venta set estado='confirmado' where id=$1`, [p]);
@@ -97,7 +107,7 @@ await test('[RF-INV-03] un ajuste o merma exige motivo', async () => {
   await q(`insert into movimientos_inventario (articulo_id, tipo, cantidad, motivo) values ($1,'merma',-1,'se humedeció')`, [art]);
 });
 
-await test('[AGENTS-4] control: un pedido y una orden en su estado inicial se crean normal', async () => {
+await test('[H-03] control: un pedido y una orden en su estado inicial se crean normal', async () => {
   await q(`insert into pedidos_venta (cliente_id) values ($1)`, [cli]);
   await q(`insert into ordenes_compra (proveedor_id) values ($1)`, [prov]);
 });
