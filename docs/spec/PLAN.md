@@ -90,8 +90,8 @@ Entregada y probada (24 pruebas). **No editarla** una vez aplicada a un proyecto
 2. `terceros.productos_ofrecidos text`.
 3. Tabla `adjuntos(id uuid pk, entidad text, entidad_id uuid, path text, mime text, creado_por, created_at, op_id uuid unique)`.
 4. Tabla `configuracion(clave text pk, valor jsonb)`; clave `negocio` = `{razon_social, nit, direccion, telefono, email, ciudad, leyenda_documento, logo_path}`.
-5. Funciones: `detectar_duplicados_tercero(telefono, numero_documento, nombre)`, `aplicar_ops(jsonb)`, `sync_pull(desde)`, `ping()` (pública, devuelve 1), `uso_bd()` (tamaño de la BD para la alerta de cuota).
-6. **Endurecimiento:** `set search_path = public` en todas las funciones; `REVOKE EXECUTE ON ALL FUNCTIONS … FROM anon, public` y `GRANT` solo a `authenticated` (excepto `ping`); `REVOKE` de tablas a `anon`.
+5. Funciones: `detectar_duplicados_tercero(telefono, numero_documento, nombre)`, `aplicar_ops(jsonb)`, `sync_pull(desde)`, `ping()` (devuelve 1; solo `authenticated`, ver 0014), `uso_bd()` (tamaño de la BD para la alerta de cuota).
+6. **Endurecimiento:** `set search_path = public` en todas las funciones; `REVOKE EXECUTE ON ALL FUNCTIONS … FROM anon, public` y `GRANT` solo a `authenticated` y `service_role`, sin excepción (0014 corrige además los privilegios por defecto de `PUBLIC`, que alcanzaban a toda función nueva: `anon` no ejecuta ninguna, incluida `ping()`); `REVOKE` de tablas a `anon`.
 7. Bucket de Storage privado `soportes` + políticas "solo miembros".
 8. Publicación Realtime (`supabase_realtime`) para: `pedidos_venta`, `ordenes_compra`, `terceros`, `articulos`, `precios`, `movimientos_inventario`.
 9. Índices para `sync_pull` (`updated_at` por tabla) y para duplicados (`terceros(telefono)` normalizado).
@@ -137,9 +137,17 @@ Dedupe: teléfono normalizado (solo dígitos, sin `57` inicial), documento exact
 ```
 Servidor: crea PV en `recibido`; fija `tasa_impuesto` desde el artículo (autoridad del servidor); valida `precio_unitario ≈ precio_lista·(1−pct/100)` (tolerancia $0,01); **advertencias** (no error): `PRECIO_CAMBIO` (lista actual ≠ snapshot), `STOCK` (requerido > disponible_para_prometer).
 
+**Implementado en `0010_op_pedido_venta.sql` (T-M1-05, CAM-35).** Solo con conexión (D-009): el servidor no lo distingue, la PWA no lo encola. Todo `id` es opcional (el servidor lo genera). Reglas:
+- `pedido.cliente_id` **o** `cliente_nuevo` (uno solo; ninguno o ambos → `DATOS_INVALIDOS`). `cliente_nuevo` usa `crear_tercero_desde_payload` (0007) forzando `es_cliente`; sin `consentimiento_datos` → `E_CONSENTIMIENTO`; con candidatos y sin `resolucion` la op devuelve `revision` (`resultado.candidatos`) y **no escribe nada**; con `resolucion` (dentro de `cliente_nuevo`) continúa. Cliente inexistente → `E_REF`; un tercero sin rol cliente → `DATOS_INVALIDOS`.
+- `pedido`: `origen` (`web`/`whatsapp`/`manual`, por defecto `manual`), `entrega_tipo` (por defecto `transportadora`) y otros valores → `DATOS_INVALIDOS`. `fecha` hasta mañana (`E_FECHA`; por defecto ahora). `envio_cobrado`, `envio_costo`, `descuento_valor` ≥ 0; el descuento global no puede superar el subtotal. `subtotal`, `impuestos` y `total` que envíe el cliente se ignoran: los calculan los triggers.
+- `items` no vacío; `cantidad > 0`, `descuento_pct` entre 0 y 100, artículo existente (`E_REF`). **Precios del servidor:** `precio_lista = precio_para(artículo, cliente, cantidad)` (lista del cliente con respaldo en la pública; escalón por cantidad, «Llévate 2», D-007); `precio_unitario = round(precio_lista·(1−descuento_pct/100), 2)`; sin precio en ninguna lista → `E_PRECIO`. `tasa_impuesto` sale del artículo (lo del cliente se ignora).
+- **Advertencias** (no error), en `resultado.advertencias`: `{codigo:'PRECIO_CAMBIO', item, articulo_id, campo:'precio_lista'|'precio_unitario', precio_enviado, precio_actual}` cuando el cliente envió un precio distinto (> $0,01) del que calculó el servidor (se guarda el del servidor); `{codigo:'STOCK', item, articulo_id, requerido, disponible}` cuando la suma pedida del artículo supera `v_stock.disponible_para_prometer` ([E5]: el pedido se acepta igual).
+- Atomicidad: cualquier fallo deshace cliente nuevo, pedido e ítems. Idempotencia por `op_id` (`ya_aplicada`, sin duplicar cliente). No reserva ni mueve stock (RF-VEN-08).
+- Salida: `{pedido_id, cliente_id, estado:'recibido', subtotal, impuestos, total, item_ids, advertencias}`. Como en 0008/0009, `pedidos_venta.op_id` queda nulo.
+
 `orden_compra.registrar`
 ```json
-{ "orden": { "id","proveedor_id","modalidad","fecha","fecha_esperada","condicion_pago","dias_credito","notas" },
+{ "orden": { "id","proveedor_id","modalidad":"inmediata|encargo|apertura","fecha","fecha_esperada","condicion_pago","dias_credito","notas" },
   "proveedor_nuevo": { …payload tercero.crear… } | null,
   "items": [ { "id","articulo_id","cantidad","costo_unitario","unidad_origen","cantidad_origen" } ],
   "recepcion": { "id","fecha","notas","items":[ { "id","orden_item_id","cantidad","lote_codigo","fecha_vencimiento" } ] } | null,
@@ -147,9 +155,26 @@ Servidor: crea PV en `recibido`; fija `tasa_impuesto` desde el artículo (autori
 ```
 Servidor: OC `borrador` → ítems → `pedida` → (si hay) recepción (los triggers suman stock y costo) → pagos (`direccion='pago'`). **Todo atómico.** Compra inmediata = con `recepcion` y `pagos`.
 
-`gasto.registrar` → `{ id, fecha, categoria, concepto, valor, orden_compra_id?, pedido_venta_id?, pagado_por? }`
+**Implementado en `0008_op_compra.sql` (T-M1-06, CAM-36).** Funciona offline (D-009). Todo `id` es opcional (el servidor lo genera); sin señal, el cliente manda los suyos. Reglas:
+- `orden.proveedor_id` **o** `proveedor_nuevo` (uno solo; ninguno o ambos → `DATOS_INVALIDOS`). `proveedor_nuevo` usa `crear_tercero_desde_payload` (0007) forzando `es_proveedor`; con candidatos y sin `resolucion` la op devuelve `revision` (`resultado.candidatos`) y **no escribe nada**; con `resolucion` (`usar_existente` / `crear_igual`, dentro de `proveedor_nuevo`) continúa. Proveedor inexistente → `E_REF`.
+- `modalidad`: `inmediata` (por defecto), `encargo` o `apertura` (ver abajo); otra → `DATOS_INVALIDOS`. `condicion_pago` solo `contado` (D-005); crédito → `DATOS_INVALIDOS`.
+- `items` no vacío; `cantidad > 0`, `costo_unitario >= 0`, artículo existente (`E_REF`). El total lo calcula el servidor.
+- `recepcion.items[]` apunta al ítem por `orden_item_id` o por su posición `item` (base 0, para ids generados por el servidor). Ítem ajeno → `E_REF`; recibir más de lo pedido (sumando filas) → `E_SOBRE_RECEPCION` ([E8], RN-COM-01); artículo con `controla_vencimiento` sin `fecha_vencimiento` → `E_VENCIMIENTO` (RN-COM-02). Lotes, stock y costo promedio los fijan los triggers de 0001.
+- `inmediata`: exige recepción **total** (`E_RECEPCION`) y pagos que sumen **exactamente** el total (`E_PAGO`). `encargo`: recepción opcional (parcial o total) y pagos opcionales, sin superar el total (`E_PAGO`).
+- Pagos: `valor > 0`, `medio` válido (si no, `DATOS_INVALIDOS`), `pagado_por` debe ser socio (`E_REF`). Fechas de orden, recepción y pagos: hasta mañana (`E_FECHA`); por defecto la de la orden.
+- Atomicidad: cualquier fallo deshace proveedor nuevo, orden, recepción, movimientos y pagos ([E1]); la op fallida no se registra y se puede reenviar. Idempotencia por `op_id` (`ya_aplicada`, sin duplicar proveedor).
+- Salida: `{orden_id, proveedor_id, estado, total, item_ids, recepcion_id, pago_ids}`. Como en 0009, `ordenes_compra.op_id` queda nulo (el manejador no recibe el `op_id`).
+- **`modalidad: "apertura"` (CAM-90, `0012_compra_apertura.sql`, RN-COM-04):** la `0012` reemplaza la función con `create or replace` (la `0008` no se edita) y añade `apertura` a `v_modalidades`. Exige recepción **total** (`E_RECEPCION`) y **no admite `pagos`** (`E_PAGO`; un trigger también rechaza cualquier pago directo). Proveedor: el genérico «Inventario inicial», existente (`proveedor_id`) o creado con `proveedor_nuevo`. No cuenta en `compras_periodo` ni genera cuenta por pagar. El resto del contrato no cambia.
 
-`adjunto.vincular` → `{ id, entidad:'tercero'|'pago'|'orden_compra'|'gasto', entidad_id, path, mime }`
+`gasto.registrar` → `{ id?, fecha?, categoria, concepto?, valor, orden_compra_id?, pedido_venta_id?, pagado_por? }`
+
+**Implementado en `0009_op_gasto_adjunto.sql` (T-M1-07, CAM-37).** Ambas ops funcionan offline (D-009). Salida de `gasto.registrar`: el gasto creado `{id, fecha, categoria, concepto, valor, orden_compra_id, pedido_venta_id, pagado_por}`. `id` es opcional (el servidor lo genera). Validaciones: `categoria` no vacía; `valor` numérico, mayor que cero y entero (COP sin decimales) → `DATOS_INVALIDOS`; `fecha` `AAAA-MM-DD` (por defecto hoy en `America/Bogota`; formato inválido → `DATOS_INVALIDOS`; posterior a mañana → `E_FECHA`); `orden_compra_id`, `pedido_venta_id` o `pagado_por` inexistentes (o borrados) → `E_REF`. El gasto entra a `resumen_periodo` por su `fecha`. La idempotencia la da `sync_ops`; el manejador no recibe el `op_id`, así que `gastos.op_id` y `adjuntos.op_id` quedan nulos, y un `id` repetido con otro `op_id` responde `E_DUPLICADO` (PK).
+
+`adjunto.vincular` → `{ id?, entidad:'pago'|'gasto'|'recepcion'|'orden_compra'|'tercero', entidad_id, path, mime? }`
+
+Salida: `{id, entidad, entidad_id, path}`. La entidad debe existir y no estar borrada → `E_REF`; `entidad` desconocida, `entidad_id` o `path` ausentes → `DATOS_INVALIDOS`. El archivo ya está en Storage (`soportes`); la op solo lo vincula, y no valida que el objeto exista en el bucket. Un fallo de subida no invalida el registro principal (RF-SYN-09).
+
+**Candado de pedidos finalizados (migración 0011, H-02).** No es una op, sino triggers que valen para cualquier ruta de escritura (op, RPC o SQL directo). En un pedido de venta `finalizado` o `devuelto`: (1) `pv_candado` rechaza (`RN-VEN-03`) cualquier cambio de `subtotal`, `descuento_valor`, `impuestos`, `total`, `envio_cobrado` o `envio_costo` en la cabecera; (2) `pvi_candado` rechaza (`RN-COS-02`) cambiar `costo_unitario` de sus ítems; (3) `pagos_candado` rechaza (`RN-PAG-01`) insertar, editar o borrar sus cobros (solo filas con `direccion = 'cobro'`). Siguen permitidos: la transición `finalizado → devuelto` con su reposición de stock, las notas y los demás campos no monetarios. Al finalizar el padre aún está `confirmado`, así que `trg_pv_estado` fija el costo sin chocar; `pv_candado` se dispara antes de `pv_totales` (orden alfabético de triggers).
 
 ### 4.4 Contrato `sync_pull(desde timestamptz default null) → jsonb` (migración 0005, D-009)
 
@@ -178,7 +203,7 @@ Salida:
 
 
 ### 4.5 Otras RPC
-`emitir_documento`, `anular_documento`, `resumen_periodo`, `precio_para` (ya en 0001). Cambios de estado y edición de maestros: `UPDATE` directo (RLS) **o** RPC; en ambos casos los triggers de 0001 son la autoridad. `ping()` público, devuelve `1`.
+`emitir_documento`, `anular_documento`, `resumen_periodo`, `precio_para` (ya en 0001). Cambios de estado y edición de maestros: `UPDATE` directo (RLS) **o** RPC; en ambos casos los triggers de 0001 son la autoridad. `ping()` devuelve `1` (solo `authenticated`).
 
 ## 5. Cliente: datos locales y sincronización
 
@@ -285,7 +310,7 @@ No se construye (D-006). El mensaje que arma la web es texto libre de un solo pr
 
 - **Backup** (`backup.yml`, diario): `pg_dump --format=custom --no-owner` contra la cadena de conexión (secret), **cifrado con `age`** (clave pública en secret `AGE_RECIPIENT`), subido como artefacto con retención 30 días; copia semanal opcional a Google Drive. Los objetos de **Storage** no están en `pg_dump`: script semanal que los descarga vía API.
 - `restore-check.sh`: restaura el último dump en un Postgres local (Docker) y corre consultas de humo (conteos, `v_stock`, un `emitir_documento` de prueba en transacción con rollback). **Se ejecuta y se documenta antes de salir a producción** y luego trimestralmente.
-- **Keep-alive** (`keepalive.yml`, diario): `POST /rest/v1/rpc/ping` con la anon key. Verificar la política de pausa vigente.
+- **Keep-alive** (`keepalive.yml`, diario): `POST /rest/v1/rpc/ping` con el JWT de un usuario de servicio (la anon key ya no puede ejecutar `ping()`, 0014; se define en T-M8-02). Verificar la política de pausa vigente.
 - **Monitoreo de cuota:** pantalla de Ajustes → "Uso" (tamaño de BD vía RPC `uso_bd()` y conteo de adjuntos) con alerta al 70 % de 500 MB.
 - Imágenes: comprimir a WebP (≤ ~150 KB, lado largo ≤ 1280 px) **en el cliente** antes de subir.
 
@@ -304,7 +329,7 @@ No se construye (D-006). El mensaje que arma la web es texto libre de un solo pr
 ## 14. Seguridad (checklist de implementación)
 
 - [ ] RLS activo en tablas **y** vistas con `security_invoker`.
-- [ ] Ninguna función ejecutable por `anon` salvo `ping()`.
+- [ ] Ninguna función ejecutable por `anon` (sin excepciones; la prueba `funciones_sin_anon` recorre todas las migraciones).
 - [ ] `service_role` ausente del cliente, del repo y de los logs.
 - [ ] CSP probada (sin `unsafe-inline` si es viable; permitir solo el dominio de Supabase).
 - [ ] Storage privado; sin URLs públicas.

@@ -117,7 +117,7 @@ Fuente de verdad: `0001_core.sql`. Entidades: `terceros` (roles cliente/proveedo
 - **RF-VEN-10** Mientras el estado sea `recibido`/`confirmado` los ítems son editables (en `confirmado`, ajustando la reserva); después de finalizar, no.
 
 ### 7.5 Compras (COM)
-- **RF-COM-01** Crear OC con: proveedor (buscar o crear), modalidad (`inmediata` | `encargo`), ítems (artículo, cantidad, costo unitario; opcional unidad/cantidad de origen), fecha esperada (encargo), notas.
+- **RF-COM-01** Crear OC con: proveedor (buscar o crear), modalidad (`inmediata` | `encargo` | `apertura`, esta última solo para el inventario inicial, RN-COM-04), ítems (artículo, cantidad, costo unitario; opcional unidad/cantidad de origen), fecha esperada (encargo), notas.
 - **RF-COM-02** **Compra inmediata (flujo de campo):** una sola operación que crea la OC en `pedida`, registra la **recepción total** y el **pago**. Debe poder hacerse **offline**.
 - **RF-COM-03** **Encargo:** OC `pedida` con fecha esperada; la recepción (parcial o total) se registra después. Offline permitido.
 - **RF-COM-04** Recepción: por ítem, cantidad, **lote** y **fecha de vencimiento** (obligatoria si el artículo la exige). Suma stock y recalcula costo promedio.
@@ -201,6 +201,7 @@ Fuente de verdad: `0001_core.sql`. Entidades: `terceros` (roles cliente/proveedo
 - **RN-COM-01** No se recibe más de lo pedido (sobre-recepción prohibida). Recepción parcial cambia la OC a `recibida_parcial`; completa → `recibida`.
 - **RN-COM-02** Artículos con `controla_vencimiento` exigen fecha de vencimiento al recibir; el lote se crea o reutiliza por (`articulo`, `código`). Si no se da código se genera.
 - **RN-COM-03** Una OC con ítems recibidos no se edita ni cancela.
+- **RN-COM-04** El inventario inicial se carga como **compra de apertura** (`modalidad = 'apertura'`, proveedor genérico «Inventario inicial»), no como ajuste: suma stock y fija el costo promedio como cualquier compra. Exige recepción total, **no admite pagos**, no cuenta en `compras_periodo` ni como gasto del periodo y no genera cuenta por pagar. La modalidad de una orden de apertura ya pedida no se cambia. Un ajuste de inventario nunca fija costo (D-014).
 
 **Documentos**
 - **RN-DOC-01** Consecutivos por tipo y **sin huecos** (se asignan en la misma transacción). `numero = prefijo-000000` (RM, FI, CP).
