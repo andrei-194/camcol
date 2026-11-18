@@ -12,15 +12,18 @@ export function IndicadoresEstado({ db = dbGlobal }: { db?: CaminoDB }) {
   return (
     <section
       aria-label="Estado de la app"
-      className="sticky top-0 z-10 flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-stone-200 bg-stone-50 px-3 py-1 text-sm text-stone-700"
+      className="sticky top-0 z-10 flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-borde bg-fondo px-3 py-1 text-pequeno text-texto-secundario"
     >
-      <span role="status" className={enLinea ? 'text-emerald-800' : 'font-medium text-amber-800'}>
+      <span
+        role="status"
+        className={`inline-flex items-center font-semibold before:mr-1.5 before:inline-block before:size-2 before:rounded-full before:bg-current before:content-[''] ${enLinea ? 'text-exito' : 'text-advertencia'}`}
+      >
         {enLinea ? 'En línea' : 'Sin conexión'}
       </span>
       <Link
         to="/pendientes"
         data-atencion={atencion}
-        className={`inline-flex min-h-8 items-center underline ${atencion ? 'font-medium text-red-700' : 'text-stone-800'}`}
+        className={`inline-flex min-h-8 items-center underline ${atencion ? 'font-semibold text-peligro' : 'text-texto'}`}
       >
         {etiquetaPendientes}
         {atencion && ` · ${conAtencion} ${conAtencion === 1 ? 'requiere' : 'requieren'} atención`}

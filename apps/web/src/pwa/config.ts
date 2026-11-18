@@ -1,8 +1,8 @@
 import type { VitePWAOptions } from 'vite-plugin-pwa'
 
-// Colores de marca (los mismos de la vitrina caminocol.com): cacao y crema.
-export const COLOR_TEMA = '#5A3A2A'
-export const COLOR_FONDO = '#F6EFE2'
+// Barra de estado y fondo de arranque: blanco, como la barra de estado de la app (docs/producto/diseno.md).
+export const COLOR_TEMA = '#FFFFFF'
+export const COLOR_FONDO = '#FFFFFF'
 
 /**
  * Configuración PWA de Camino Col (RF-OPS-01/02/03, PLAN §6).

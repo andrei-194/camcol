@@ -13,7 +13,7 @@ export function RequireAuth() {
     case 'cargando':
       return (
         <main className="flex min-h-screen items-center justify-center px-4">
-          <p role="status" className="text-stone-600">
+          <p role="status" className="text-texto-secundario">
             Cargando…
           </p>
         </main>
