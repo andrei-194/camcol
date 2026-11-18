@@ -4,10 +4,12 @@ name: CI
 # y las comprobaciones de la app web: pruebas, tipos, lint y build.
 # Pendiente: pruebas de integración con Supabase local (T-M1-10) y E2E (T-M2-09).
 
+# Las tareas se integran en `release/*` sin PR (D-017): el CI corre en cada push a la release,
+# en el PR único de la release a `main` y en `main`.
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, 'release/**']
 
 jobs:
   base-de-datos:
