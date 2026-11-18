@@ -203,7 +203,7 @@ Salida:
 
 
 ### 4.5 Otras RPC
-`emitir_documento`, `anular_documento`, `resumen_periodo`, `precio_para` (ya en 0001). Cambios de estado y edición de maestros: `UPDATE` directo (RLS) **o** RPC; en ambos casos los triggers de 0001 son la autoridad. `ping()` devuelve `1` (solo `authenticated`).
+`emitir_documento`, `anular_documento`, `resumen_periodo`, `precio_para` (ya en 0001). Cambios de estado y edición de maestros: `UPDATE` directo (RLS) **o** RPC; en ambos casos los triggers de 0001 son la autoridad. Desde `0013` (T-M1-13, H-03) los triggers también rechazan lo que se salta `aplicar_ops`: inserts de pedidos u órdenes en estado distinto del inicial, edición de `consecutivos` (solo avanza `emitir_documento`) y de `costo_promedio`, borrado de recepciones, archivado de pedidos finalizados y ajustes o mermas sin motivo. Contrato de las RPC sin cambios. `ping()` devuelve `1` (solo `authenticated`).
 
 ## 5. Cliente: datos locales y sincronización
 

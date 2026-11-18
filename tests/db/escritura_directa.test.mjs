@@ -89,7 +89,7 @@ await test('[RN-COS-01] el costo_promedio del artículo no se edita a mano', asy
 await test('[H-03] no se borra una recepción ni sus ítems (el stock no se reversa)', async () => {
   await rejects(`delete from recepcion_items where recepcion_id = $1`, [rec]);
   await rejects(`delete from recepciones where id = $1`, [rec]);
-  assert.equal(Number((await one(`select fisico from v_stock where articulo_id=$1`, [art])).fisico), 10);
+  assert.equal(Number((await one(`select fisico from v_stock where articulo_id=$1`, [art])).fisico), 9); // 10 recibidos - 1 vendido en la remisión de arriba
 });
 
 await test('[H-03] no se archiva (deleted_at) un pedido finalizado', async () => {

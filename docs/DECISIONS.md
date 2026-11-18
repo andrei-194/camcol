@@ -153,6 +153,14 @@ La auditoría funcional (`docs/auditoria-h1-2026-11-18.md`, H-01) mostró que un
 
 **Implementado en `0012_compra_apertura.sql` (CAM-90).** Notas: (1) **un ajuste no fija costo**: solo las compras (incluida la de apertura) mueven `costo_promedio`; queda documentado para que nadie cargue el inventario inicial como ajuste. (2) Decisiones por defecto, a revisar: en la op `orden_compra.registrar` la apertura exige recepción total y rechaza `pagos` con `E_PAGO`; el proveedor «Inventario inicial» se crea con `proveedor_nuevo` (o se reutiliza por `proveedor_id`), sin fila sembrada en la migración; un trigger impide cambiar la modalidad de/hacia `apertura` en una orden ya pedida; `v_cuentas_por_pagar` y `resumen_periodo` excluyen la apertura (tampoco cuenta como gasto del periodo). (3) El privilegio de ejecución de las funciones nuevas lo cubre 0014.
 
+## Nota T-M1-13 · cerrar la escritura directa (CAM-89, H-03) — 2026-11-18
+
+- **Diseño (opción a):** triggers que validan y rechazan, en `0013_cerrar_escritura_directa.sql`. No se revocan privilegios de tabla (las ops y los triggers internos siguen escribiendo con normalidad). Todo es trigger INVOKER, así que también vale para superusuario y PGlite.
+- Candados: `pedidos_venta` solo nace `recibido` y sin `finalizado_en`; `ordenes_compra` solo nace `borrador`; `consecutivos` no se borra y solo avanza de a uno **dentro de `emitir_documento`**; `articulos.costo_promedio` solo cambia desde un trigger anidado (`pg_trigger_depth() > 1`, o sea el de movimientos); `recepciones` y `recepcion_items` no se borran; un pedido `finalizado` o `devuelto` no se archiva; `ajuste` y `merma` exigen motivo (RF-INV-03).
+- `emitir_documento` se redefinió (`create or replace`, copia de 0001 más `search_path` fijo) con una marca transaccional `camino.emitiendo`, que el candado de `consecutivos` comprueba. Límite conocido: la marca es un ajuste de sesión; un miembro que la fije a mano podría subir un consecutivo de a uno. Cerrarlo del todo exigiría revocar `UPDATE` sobre `consecutivos`, que se descartó por KISS.
+- Se adaptó `tests/db/sync_pull.test.mjs` (carga 0006 y 0013; el stock y el costo salen de una compra recibida; los pedidos se finalizan por la ruta legítima). En la prueba nueva, el stock tras la remisión es 9 (10 recibidos menos 1 vendido), no 10.
+- **H-16 queda pendiente de decisión del socio** (no se decidió aquí): un miembro puede insertar a mano un movimiento `compra`/`venta` y mover el costo promedio. Los candados de 0013 no lo cubren; si se decide restringir los tipos en inserts directos, va en una migración nueva.
+
 ## Nota auditoría H1 · hallazgos pendientes de decisión — 2026-11-18
 
 Del informe de auditoría, los hallazgos H-01 a H-03 ya tienen tarea (T-M1-12, T-M1-11, T-M1-13). H-04 es el trabajo pendiente de CAM-35/36/37 (aún sin iniciar). Los demás **no tienen tarea ni decisión**; se resuelven cuando el socio decida:
@@ -168,7 +176,7 @@ Del informe de auditoría, los hallazgos H-01 a H-03 ya tienen tarea (T-M1-12, T
 | H-11 | Conversión libra a gramo no existe en la base ni tiene prueba de paridad | cubrir en T-M5-01 |
 | H-12 | La cola no se detiene en el servidor tras una `revision` (PLAN §4.3 lo declara) | confirmar que el cliente (T-M2-05/06) se detiene |
 | H-15 | Las funciones creadas después de 0004 son ejecutables por `anon` | tarea T-M1-14 (CAM-92), ya con prueba en rojo |
-| H-16 | Un miembro puede insertar a mano movimientos de inventario de tipo `compra`/`venta` (mueve `costo_promedio` sin orden ni recepción) | restringir los tipos permitidos en inserts directos; encaja en T-M1-13 si se decide |
+| H-16 | Un miembro puede insertar a mano movimientos de inventario de tipo `compra`/`venta` (mueve `costo_promedio` sin orden ni recepción) | restringir los tipos permitidos en inserts directos. **No incluido en T-M1-13 (CAM-89); pregunta abierta del socio** |
 | H-17 | `costo_unitario` de los ítems es editable en pedidos abiertos (se sobrescribe al finalizar) | sin impacto en resultados; se anota |
 | H-13/H-14 | Detalles menores (redondeo a pesos, `anular_documento` inexistente, `v_cuentas_por_cobrar` sin pedidos `recibido`) | revisar al llegar a la UI |
 
