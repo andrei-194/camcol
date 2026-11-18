@@ -67,7 +67,7 @@
 - [ ] **T-M3-02** ([CAM-51](https://linear.app/caminocol/issue/CAM-51)) Detección de duplicados al crear (online: aviso; offline: se resuelve al sincronizar). Cierra: RF-TER-04.
 - [ ] **T-M3-03** ([CAM-52](https://linear.app/caminocol/issue/CAM-52)) Edición y borrado lógico (solo online). Cierra: RF-TER-06.
 - [ ] **T-M3-04** ([CAM-53](https://linear.app/caminocol/issue/CAM-53)) Catálogo: productos, artículos (presentación, unidades, banderas), listas y precios con escalones, asignar lista a cliente. Carga inicial con los 10 artículos de `docs/negocio/catalogo.md`. Cierra: RF-CAT-01/02/03/04.
-- [ ] **T-M3-05** ([CAM-54](https://linear.app/caminocol/issue/CAM-54)) `domain/pricing` + pruebas de propiedad; **paridad** con `precio_para` de Postgres. Cierra: RN-PRE-01.
+- [x] **T-M3-05** ([CAM-54](https://linear.app/caminocol/issue/CAM-54)) `domain/pricing` + pruebas de propiedad; **paridad** con `precio_para` de Postgres. Cierra: RN-PRE-01.
 
 ## M4 — Pedidos de venta
 - [x] **T-M4-01** ([CAM-55](https://linear.app/caminocol/issue/CAM-55)) `domain/totals` y `domain/pedidoEstados` + **prueba de paridad** con triggers/totales de SQL (fast-check + PGlite). Cierra: RF-VEN-03, RN-COS-03.
