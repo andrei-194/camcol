@@ -77,6 +77,11 @@ body {
   line-height: 1.5;
 }
 
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--color-acento);
+}
+
 ::selection {
   background: var(--color-acento);
   color: var(--color-sobre-acento);
