@@ -202,6 +202,14 @@ Con H1 se vio que un PR por tarea genera conflictos constantes (todas las tareas
 - **Conflictos habituales:** `package-lock.json` (tomar el de la release y correr `npm install` en Docker), `DECISIONS.md` y `TASKS.md` (conservar las dos partes). Las notas de decisión de tareas se escriben sin número («Nota T-M2-04») para no chocar.
 - **Cuándo abrir PR por tarea:** nunca, salvo que el socio lo pida para una tarea concreta (por ejemplo una de mucho riesgo).
 
+## Nota revisión EGM del PLAN, ronda 2 (CAM-100) — 2026-11-18
+
+- **Envío de pendientes de una en una** (RF-SYN-07): el cliente sube las ops por orden y se detiene en la primera que no sea `ok`/`ya_aplicada`. El servidor sigue aceptando lotes (D-013). Cierra H-12.
+- **RN-PRE-02 corregida** en la SPEC: el servidor fija el precio con la lista vigente y avisa `PRECIO_CAMBIO`; ya no hay PV offline (D-009).
+- **Limpieza del caché local:** se hace al iniciar sesión con un usuario distinto del recordado (T-M2-04), no al cerrar sesión.
+- **Reembolsos (0017):** códigos `E_PAGO_INMUTABLE`, `E_TOTAL`, `E_ESTADO`, `E_SOBREPAGO`; el ID de la regla va en el mensaje, no como prefijo; los cobros de un PV `cancelado`/`devuelto` no se editan ni se borran.
+- **Diferido a su tarea:** «cobrar y finalizar» atómico (T-M4-05/06) y la subida de fotos (T-M2-08).
+
 ## Addendum D-015 · reembolsos (T-M1-17) — 2026-11-18
 
 Los valores por defecto de la nota «T-M1-17» (solo pedidos `cancelado`/`devuelto`, reembolso parcial en varias veces, medio libre, motivo obligatorio, cualquier miembro, sin editar ni borrar, sin comprobantes) y la pregunta **P-008** (sin acción «condonar»; basta el aviso «por reembolsar») **se mantienen** al no haber objeción del socio a 2026-11-18. Si objeta, se ajustan en T-M1-18 (CAM-97) antes de implementar.
