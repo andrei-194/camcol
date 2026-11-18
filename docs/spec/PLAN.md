@@ -96,7 +96,7 @@ Entregada y probada (24 pruebas). **No editarla** una vez aplicada a un proyecto
 8. Publicación Realtime (`supabase_realtime`) para: `pedidos_venta`, `ordenes_compra`, `terceros`, `articulos`, `precios`, `movimientos_inventario`.
 9. Índices para `sync_pull` (`updated_at` por tabla) y para duplicados (`terceros(telefono)` normalizado).
 
-### 4.3 Contrato `aplicar_ops(p_ops jsonb) → jsonb`
+### 4.3 Contrato `aplicar_ops(ops jsonb) → jsonb`
 
 **Implementado en `0003_aplicar_ops.sql` (T-M1-03, CAM-33).** Esta es la forma vigente del núcleo; los payloads de más abajo los implementan T-M1-04..07.
 
@@ -289,11 +289,20 @@ No se construye (D-006). El mensaje que arma la web es texto libre de un solo pr
 | Dominio | Vitest + fast-check | precios, escalones, totales, estados, stock estimado |
 | **Paridad cliente↔servidor** | Vitest + PGlite | Propiedad: para pedidos aleatorios, `domain/totals` = totales de Postgres (±0,01) |
 | Base de datos | PGlite (0001+0002) | Reglas, triggers, `aplicar_ops`, `sync_pull`, RLS con roles simulados |
-| Integración real | Supabase CLI local + `pg` | **Concurrencia** (2 conexiones finalizando pedidos sobre el último stock), RLS por JWT real, PostgREST |
+| Integración real | Supabase CLI local + `pg` (`npm run test:integration`) | **Concurrencia** (2 conexiones finalizando pedidos sobre el último stock), RLS por JWT real, PostgREST |
 | Repos locales | Vitest + `fake-indexeddb` | outbox, escritor (red OK/caída/timeout/rechazo), puller, `_pendiente` |
 | Componentes | Testing Library | formularios, Pendientes, banners |
 | E2E | Playwright (Chromium + **WebKit**) + `context.setOffline` | E1–E15 de la spec |
 | PWA | Lighthouse CI (instalable, offline) | manifest, SW |
+
+**Integración real (T-M1-10, CAM-40).** `tests/integration/*.test.mjs`, corridas por `scripts/test-integration.mjs`; **no** entran en `npm run test:db` (que usa PGlite y corre en CI sin Docker). Requisito: `npm run db:start` y `npm run db:reset` (la CLI aplica 0001-0014 al Postgres real). Las claves de desarrollo se leen de `supabase status -o json` en tiempo de ejecución; los usuarios (`socio-a@integracion.test`, `socio-b@integracion.test`, `no-miembro@integracion.test`) se crean con la API de administración de Auth y se reutilizan entre corridas. Las suites son repetibles sin reiniciar la base. Cada nombre de prueba cita su ID.
+
+| Suite | Cubre |
+|---|---|
+| `concurrencia.test.mjs` | [E6] / RN-INV-03: dos conexiones `pg` reales finalizan pedidos sobre la última unidad (con bloqueo observado en `pg_stat_activity`, en 10 rondas simultáneas, con 3 pedidos y por PostgREST con dos JWT): uno gana, el otro recibe «Stock insuficiente», stock nunca negativo; con stock para ambos, ninguno se bloquea de más |
+| `rls.test.mjs` | RNF-SEC-02 / [E12]: miembro ve las mismas filas que el administrador en todas las tablas; no miembro autenticado ve 0 filas en todas las tablas y vistas, no inserta/edita/borra, `aplicar_ops` responde `NO_AUTORIZADO`; sin sesión (anon) recibe 401/403 |
+| `privilegios.test.mjs` | RNF-SEC-03 / H-15 en Supabase real: privilegios por defecto del rol `postgres`, función nueva sin `EXECUTE` para `anon`, `ping()` y todas las funciones de `public` rechazadas para `anon` por PostgREST |
+| `ops_extremo_a_extremo.test.mjs` | Ops 0007-0012 con JWT de miembro: `tercero.crear`, compra apertura e inmediata, gasto, adjunto, pedido, cobro, finalización, remisión, idempotencia, rechazo vs. revisión, `sync_pull` |
 
 **Cobertura mínima:** `domain/` ≥ 90 %, `infra/sync/` ≥ 85 %, SQL: todo requisito RN con ≥ 1 prueba. Las pruebas existentes en `tests/core.test.mjs` pasan a `tests/db/` y deben seguir en verde.
 

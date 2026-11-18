@@ -128,7 +128,7 @@ La entrada es `[{op_id, tipo, datos}]` y la salida `{detener_cola, resultados:[{
 ## Nota T-M1-14 · funciones sin acceso de `anon` (CAM-92, H-15) — 2026-11-18
 
 - Causa: el `EXECUTE` por defecto de `PUBLIC` es global; `alter default privileges in schema public ... from public` (0004) no lo quita. Migración `0014_funciones_sin_anon.sql`: revoca `EXECUTE` a `PUBLIC`/`anon` en las existentes, lo concede a `authenticated` y `service_role`, y cambia los privilegios por defecto (global para `PUBLIC`, del esquema para `anon`). Cada migración futura queda cubierta por `tests/db/funciones_sin_anon.test.mjs`.
-- Los privilegios por defecto aplican al rol que ejecuta la migración (en Supabase, `postgres`); verificarlo en T-M1-10 (CAM-40).
+- Los privilegios por defecto aplican al rol que ejecuta la migración (en Supabase, `postgres`). **Verificado en Supabase real (CAM-40):** con `db reset`, las 48 funciones de `public` no son ejecutables por `anon` ni `PUBLIC`, una función nueva creada por `postgres` nace sin `EXECUTE` para ellos, y PostgREST responde 401/42501 a `anon` en `ping()` y en toda función de `public` (`tests/integration/privilegios.test.mjs`).
 - Consecuencia: `ping()` ya no es público (la prueba exige cero funciones para `anon`). El keep-alive de T-M8-02 usará el JWT de un usuario de servicio en vez de la anon key. Cambia la excepción que decía `PLAN.md` §13.
 
 ## Nota H-02 · candado de pedidos finalizados (CAM-88) — 2026-11-18
@@ -160,6 +160,12 @@ La auditoría funcional (`docs/auditoria-h1-2026-11-18.md`, H-01) mostró que un
 - `emitir_documento` se redefinió (`create or replace`, copia de 0001 más `search_path` fijo) con una marca transaccional `camino.emitiendo`, que el candado de `consecutivos` comprueba. Límite conocido: la marca es un ajuste de sesión; un miembro que la fije a mano podría subir un consecutivo de a uno. Cerrarlo del todo exigiría revocar `UPDATE` sobre `consecutivos`, que se descartó por KISS.
 - Se adaptó `tests/db/sync_pull.test.mjs` (carga 0006 y 0013; el stock y el costo salen de una compra recibida; los pedidos se finalizan por la ruta legítima). En la prueba nueva, el stock tras la remisión es 9 (10 recibidos menos 1 vendido), no 10.
 - **H-16 queda pendiente de decisión del socio** (no se decidió aquí): un miembro puede insertar a mano un movimiento `compra`/`venta` y mover el costo promedio. Los candados de 0013 no lo cubren; si se decide restringir los tipos en inserts directos, va en una migración nueva.
+
+## Nota T-M1-10 · integración real con Supabase local (CAM-40) — 2026-11-18
+
+- `npm run test:integration` corre `tests/integration/*.test.mjs` contra Supabase local (Postgres, Auth y PostgREST reales, `pg` como devDependency). Separado de `test:db`: necesita Docker y no corre en CI por ahora (el CI usa solo PGlite; correrlo en CI requeriría `supabase start`, unos GB de imágenes; queda como decisión de operación).
+- Cierra [E6] (doble venta, también por PostgREST con dos JWT), RNF-SEC-02/[E12] (no miembro = 0 filas en todas las tablas y vistas) y la verificación de H-15 (ver Nota T-M1-14). Sin defectos nuevos en las migraciones 0001-0014 reales.
+- Corrección de documentación: el parámetro de `aplicar_ops` es `ops` (no `p_ops`); PostgREST llama por nombre, así que el cliente debe enviar `{ "ops": [...] }`. Se corrigió `PLAN.md` §4.3.
 
 ## Nota auditoría H1 · hallazgos pendientes de decisión — 2026-11-18
 
