@@ -93,13 +93,17 @@ export function Pendientes() {
     try {
       const r = await ctx.servicio.subir(ids)
       const hechos = new Set(r.resultados.map((x) => x.op_id))
+      const fotos = r.adjuntos
       setResultados([
+        ...(fotos && (fotos.vinculadas || fotos.fallidas || fotos.esperando)
+          ? [{ op_id: 'fotos', texto: `Fotos: ${fotos.vinculadas} subidas · ${fotos.fallidas} con error (se reintentan al volver a subir) · ${fotos.esperando} esperando su registro` }]
+          : []),
         ...r.resultados.map((x) => ({ op_id: x.op_id, texto: `${lineaResultado(x)} · ${resumenes[x.op_id] ?? ''}` })),
         ...ids.filter((id) => !hechos.has(id)).map((id) => ({ op_id: id, texto: `Sin intentar · ${resumenes[id] ?? ''}` })),
       ])
       setElegidos(new Set())
       ctx.avisarCambio()
-      if (r.resultados.some((x) => x.status === 'ok' || x.status === 'ya_aplicada')) void sync?.actualizar()
+      if (r.resultados.some((x) => x.status === 'ok' || x.status === 'ya_aplicada') || r.adjuntos?.vinculadas) void sync?.actualizar()
     } catch {
       setAviso('No se pudo subir. Inténtalo de nuevo.')
     } finally {

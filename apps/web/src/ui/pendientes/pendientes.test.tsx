@@ -178,6 +178,23 @@ describe('[RF-SYN-03] nada se envía sin pulsar «Subir seleccionados»', () => 
   })
 })
 
+describe('[RF-SYN-09] resumen de fotos tras subir', () => {
+  it('muestra cuántas fotos se subieron, fallaron o esperan', async () => {
+    const adjuntos = { subirListas: vi.fn(async () => ({ vinculadas: 2, fallidas: 1, esperando: 0 })) }
+    await db.outbox.put(gasto('g1', hace(DIA)))
+    render(
+      <PendientesProvider db={db} servicio={crearPendientesService({ db, api: srv, adjuntos })}>
+        <MemoryRouter>
+          <Pendientes />
+        </MemoryRouter>
+      </PendientesProvider>,
+    )
+    fireEvent.click(await screen.findByRole('checkbox'))
+    fireEvent.click(screen.getByRole('button', { name: /subir seleccionados/i }))
+    expect(await screen.findByText(/Fotos: 2 subidas · 1 con error/)).toBeInTheDocument()
+  })
+})
+
 describe('[RF-SYN-04] descartar', () => {
   it('pide confirmación y no borra si se cancela', async () => {
     await db.outbox.put(gasto('g1', hace(DIA)))
