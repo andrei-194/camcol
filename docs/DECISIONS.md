@@ -260,6 +260,13 @@ Los valores por defecto de la nota «T-M1-17» (solo pedidos `cancelado`/`devuel
 - `'bloqueada'` salió de `EstadoOutbox`; el esquema Dexie no cambia (sigue `version(1)`), no hizo falta `version(2)`.
 - Sin cableado a la UI ni al cliente real todavía: `crearEscritor` y `crearPendientesService` reciben `db` y un `OpsApi` (`crearOpsApi(obtenerClienteSupabase())`); el centro de pendientes (CAM-46) los instancia.
 
+## Nota T-M2-04 · puller (CAM-44) — 2026-11-18
+
+- **Quién es el dueño del caché: `kv.cache_usuario` (Dexie), no `camino.auth.usuario`.** El servicio de auth sobrescribe `camino.auth.usuario` en cada inicio de sesión, así que al llegar al puller ya no se sabe quién era el usuario anterior. El puller guarda en `kv` el id del usuario cuyo caché hay en la base y, si al activarse la sesión es otro, llama a `limpiarCacheDeServidor` antes del primer pull. Primera instalación (sin valor): no limpia. `kv` nunca se limpia (regla 10).
+- `SyncProvider` (dentro de `AuthProvider`) corre el pull al quedar la sesión en `activo` y en cada `visibilitychange` a visible; un solo pull en vuelo a la vez. El botón «Actualizar datos» vive en Ajustes (`ui/BotonActualizar`); el indicador global «datos al …» es T-M2-07. Falta el pull «tras cada escritura exitosa» de PLAN §5.4: lo agrega el escritor (T-M2-05) llamando a `actualizar()`.
+- Red vs rechazo (`ErrorPull`): sin código de error PostgREST, status 0 o 502-504, o timeout (20 s) = `red`; cualquier otro error con código = `rechazo`. En ambos casos no se borra nada, no se mueve el cursor y no se toca la sesión. Una respuesta que no se pueda aplicar (`datos`) revierte la transacción completa.
+- LWW: solo se descarta la fila del servidor si su `updated_at` es **estrictamente** más viejo que el local (los pagos cambian sin mover el `updated_at` del padre, así que un igual se aplica). Las filas `_pendiente` nunca se pisan. Los pagos de pedidos se guardan tal cual, sea `cobro` o `reembolso` (0017).
+
 ## Nota auditoría H1 · hallazgos pendientes de decisión — 2026-11-18
 
 Del informe de auditoría, los hallazgos H-01 a H-03 ya tienen tarea (T-M1-12, T-M1-11, T-M1-13). H-04 es el trabajo pendiente de CAM-35/36/37 (aún sin iniciar). Los demás **no tienen tarea ni decisión**; se resuelven cuando el socio decida:
