@@ -45,6 +45,7 @@ const res = (r, i = 0) => r.resultados[i].resultado;
 const conteo = async (t) => Number((await one(`select count(*) n from ${t}`)).n);
 const movs = async () => conteo('movimientos_inventario');
 const advertencias = (r) => res(r).advertencias.map((a) => a.codigo);
+const deLista = (r) => advertencias(r).filter((c) => c !== 'STOCK');   // sin el ruido de stock (no hay inventario en estas pruebas)
 
 // Datos base
 const CLI = uid(900);
@@ -145,15 +146,15 @@ await test('[D-007][RN-PRE-01] "Llévate 2": el servidor aplica el escalón por 
   assert.equal(Number(it[0].precio_lista), 15000);
   assert.equal(Number(it[1].precio_lista), 14000);
   assert.equal(Number(it[1].precio_unitario), 14000);
-  assert.deepEqual(res(r).advertencias, []);
+  assert.deepEqual(deLista(r), []);
 });
 
 await test('[RN-PRE-02] precio de lista alterado por el cliente: se corrige y se advierte PRECIO_CAMBIO', async () => {
   const r = await aplicar([crear(6, pedido(6, { items: [
     { id: uid(61), articulo_id: CAFE, cantidad: 2, precio_lista: 15000, precio_unitario: 15000 }] }))]);
   assert.equal(r.resultados[0].status, 'ok', JSON.stringify(r));
-  assert.deepEqual(advertencias(r), ['PRECIO_CAMBIO']);
-  const a = res(r).advertencias[0];
+  assert.deepEqual(deLista(r), ['PRECIO_CAMBIO']);
+  const a = res(r).advertencias.find((x) => x.codigo === 'PRECIO_CAMBIO');
   assert.equal(a.item, 0);
   assert.equal(a.articulo_id, CAFE);
   assert.equal(Number(a.precio_enviado), 15000);
@@ -168,7 +169,7 @@ await test('[RN-PRE-02] precio_unitario inventado por el cliente se recalcula en
   const r = await aplicar([crear(7, pedido(7, { items: [
     { id: uid(71), articulo_id: CREMA, cantidad: 1, precio_lista: 22000, precio_unitario: 1000 }] }))]);
   assert.equal(r.resultados[0].status, 'ok', JSON.stringify(r));
-  assert.deepEqual(advertencias(r), ['PRECIO_CAMBIO']);
+  assert.deepEqual(deLista(r), ['PRECIO_CAMBIO']);
   const it = await one(`select * from pedidos_venta_items where id = $1`, [uid(71)]);
   assert.equal(Number(it.precio_unitario), 22000);
 });
@@ -177,7 +178,7 @@ await test('[RN-PRE-02] si el cliente envía precios correctos no hay advertenci
   const r = await aplicar([crear(8, pedido(8, { items: [
     { id: uid(81), articulo_id: CREMA, cantidad: 1, precio_lista: 22000.005, precio_unitario: 22000 }] }))]);
   assert.equal(r.resultados[0].status, 'ok', JSON.stringify(r));
-  assert.deepEqual(res(r).advertencias, []);
+  assert.deepEqual(deLista(r), []);
 });
 
 await test('[RF-VEN-02] descuento_pct por ítem: el servidor calcula el precio pactado y lo guarda', async () => {
@@ -189,7 +190,7 @@ await test('[RF-VEN-02] descuento_pct por ítem: el servidor calcula el precio p
   assert.equal(Number(it.descuento_pct), 10);
   assert.equal(Number(it.precio_unitario), 19800);
   assert.equal(Number((await one(`select subtotal from pedidos_venta where id = $1`, [uid(90)])).subtotal), 39600);
-  assert.deepEqual(res(r).advertencias, []);
+  assert.deepEqual(deLista(r), []);
 });
 
 await test('[RN-PRE-01] lista del cliente con respaldo en la pública cuando no tiene precio propio', async () => {
