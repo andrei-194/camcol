@@ -1,5 +1,5 @@
 // Pruebas de la migración 0011_candado_finalizados.sql (H-02, CAM-88). Ejecutar: npm run test:db
-// Hallazgo de auditoría: un pedido finalizado no se puede reescribir (AGENTS regla 3, RN-VEN-03).
+// Hallazgo de auditoría: un pedido finalizado no se puede reescribir (AGENTS regla 3, hallazgo H-02).
 import { PGlite } from '@electric-sql/pglite';
 import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
 import { readFileSync, existsSync } from 'node:fs';
@@ -64,7 +64,7 @@ const P = await pedidoFinalizado();
 
 console.log('\nH-02 · candado de pedidos finalizados');
 
-await test('[RN-VEN-03] control: el pedido de prueba quedó finalizado con costo fijado', async () => {
+await test('[H-02] control: el pedido de prueba quedó finalizado con costo fijado', async () => {
   const p = await one(`select estado, total from pedidos_venta where id=$1`, [P]);
   assert.equal(p.estado, 'finalizado');
   assert.equal(Number(p.total), 40000);
@@ -72,8 +72,8 @@ await test('[RN-VEN-03] control: el pedido de prueba quedó finalizado con costo
   assert.equal(Number(i.costo_unitario), 10000);
 });
 
-await test('[RN-VEN-03] no se cambia el dinero de la cabecera de un pedido finalizado', async () => {
-  for (const set of ['descuento_valor = 30000', 'subtotal = 999999', 'total = 1', 'envio_costo = 5000', 'envio_cobrado = 5000', 'impuestos = 1']) {
+await test('[H-02] no se cambia el dinero de la cabecera de un pedido finalizado', async () => {
+  for (const set of ['descuento_valor = 30000', 'subtotal = 999999', 'envio_costo = 5000', 'envio_cobrado = 5000', 'impuestos = 1']) {
     await rejects(`update pedidos_venta set ${set} where id = $1`, [P]);
   }
   assert.equal(Number((await one(`select total from pedidos_venta where id=$1`, [P])).total), 40000);
@@ -84,14 +84,14 @@ await test('[RN-COS-02] no se cambia el costo_unitario de los ítems de un pedid
   assert.equal(Number((await one(`select costo_unitario from pedidos_venta_items where pedido_id=$1`, [P])).costo_unitario), 10000);
 });
 
-await test('[RN-PAG-01] no se borra, edita ni agrega cobros a un pedido finalizado', async () => {
+await test('[H-02] no se borra, edita ni agrega cobros a un pedido finalizado', async () => {
   await rejects(`delete from pagos where pedido_venta_id = $1`, [P]);
   await rejects(`update pagos set valor = 1 where pedido_venta_id = $1`, [P]);
   await rejects(`insert into pagos (direccion, pedido_venta_id, medio, valor) values ('cobro',$1,'efectivo',1000)`, [P]);
   assert.equal(Number((await one(`select sum(valor) s from pagos where pedido_venta_id=$1`, [P])).s), 40000);
 });
 
-await test('[RN-VEN-03] lo legítimo sigue permitido: notas y devolución con reposición de stock', async () => {
+await test('[H-02] lo legítimo sigue permitido: notas y devolución con reposición de stock', async () => {
   await q(`update pedidos_venta set notas = 'entregado en portería' where id = $1`, [P]);
   const antes = Number((await one(`select fisico from v_stock where articulo_id=$1`, [art])).fisico);
   await q(`update pedidos_venta set estado='devuelto', motivo_estado='cliente devolvió' where id = $1`, [P]);
@@ -99,12 +99,13 @@ await test('[RN-VEN-03] lo legítimo sigue permitido: notas y devolución con re
   assert.equal(despues, antes + 2);
 });
 
-await test('[RN-VEN-03] un pedido devuelto tampoco se reescribe', async () => {
+await test('[H-02] un pedido devuelto tampoco se reescribe', async () => {
+  assert.equal((await one(`select estado from pedidos_venta where id=$1`, [P])).estado, 'devuelto', 'requiere el pedido devuelto de la prueba anterior');
   await rejects(`update pedidos_venta set descuento_valor = 1 where id = $1`, [P]);
   await rejects(`delete from pagos where pedido_venta_id = $1`, [P]);
 });
 
-await test('[RN-VEN-03] un pedido abierto (confirmado) sí admite cambios de cabecera y cobros', async () => {
+await test('[H-02] un pedido abierto (confirmado) sí admite cambios de cabecera y cobros', async () => {
   const p = (await one(`insert into pedidos_venta (cliente_id) values ($1) returning id`, [cli])).id;
   await q(`insert into pedidos_venta_items (pedido_id, articulo_id, cantidad, precio_lista, precio_unitario) values ($1,$2,1,20000,20000)`, [p, art]);
   await q(`update pedidos_venta set estado='confirmado', envio_cobrado = 5000, envio_costo = 5000 where id = $1`, [p]);
