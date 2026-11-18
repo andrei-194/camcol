@@ -141,7 +141,7 @@ await test('[RF-SYN-01] respeta el orden del arreglo (orden estable)', async () 
     op(42, 'prueba.nota', { id: uid(142), texto: 'c' }),
   ]);
   assert.deepEqual(r.resultados.map((x) => x.op_id), [uid(40), uid(41), uid(42)]);
-  const orden = (await q(`select op_id from sync_ops where op_id = any($1) order by created_at, op_id`, [[uid(40), uid(41), uid(42)]]));
+  const orden = (await q(`select op_id from sync_ops where op_id = any($1) order by aplicado_en, op_id`, [[uid(40), uid(41), uid(42)]]));
   assert.equal(orden.length, 3);
 });
 
