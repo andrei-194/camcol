@@ -119,6 +119,12 @@ Detalle completo en [negocio/catalogo.md](negocio/catalogo.md). Cierra P-006 y P
 
 La entrada es `[{op_id, tipo, datos}]` y la salida `{detener_cola, resultados:[{op_id, status, resultado?, error?:{codigo,mensaje}}]}`, con `status` `ok`, `ya_aplicada`, `revision` o `error` (sin `bloqueada`, D-009). Cada operación corre en su sub-bloque; las fallidas o en revisión no se registran en `sync_ops` y pueden reenviarse. Los tipos se registran en `tipos_op` desde cada migración. Detalle en `PLAN.md` §4.3, que reemplaza el contrato anterior (`payload`, `device_id`).
 
+## Nota T-M1-04 · `tercero.crear` (CAM-34) — 2026-11-18
+
+- Contrato en `PLAN.md` §4.3; migración `0007_op_tercero.sql`. La lógica vive en `crear_tercero_desde_payload` para que `pedido_venta.crear` y `orden_compra.registrar` la reutilicen con `cliente_nuevo`/`proveedor_nuevo`.
+- Decisiones de detalle (valores por defecto, sin cambio de reglas de negocio): teléfono opcional, pero si viene debe tener 7–15 dígitos; `usar_existente` suma el rol faltante al tercero existente (un cliente que también vende pasa a ser proveedor) para que la compra pueda asociarse sin otra edición online; el consentimiento exigido a clientes (RF-TER-05) se valida aquí también.
+- Las suites usan nombres de prueba bien distintos: la similitud por trigramas (≥ 0,5) marca como duplicados nombres como «Proveedor 3» y «Proveedor 30».
+
 ## Contexto de negocio
 
 - [docs/negocio/catalogo.md](negocio/catalogo.md): estructura de productos, artículos, precios y costos, cruzando el sitio y el costeo oficial.
