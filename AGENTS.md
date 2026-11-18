@@ -49,7 +49,7 @@ apps/web/        la PWA (se crea en T-M0-01)
 1. Tomar el siguiente issue del ciclo en Linear (respetar las dependencias que indica) y pasarlo a *In Progress*.
 2. Crear la rama `CAM-n-descripcion-corta` desde `main`.
 3. Releer en `SPEC.md` los IDs que cierra la tarea.
-4. Escribir la prueba, verla fallar, implementar, verla pasar. Correr todo: `npm run test:db`.
+4. Escribir la prueba, verla fallar, implementar, verla pasar. Correr todo: `npm run test:db` (descubre solo los `tests/db/*.test.mjs`; solo añade tu archivo).
 5. Abrir el PR con la plantilla (`.github/pull_request_template.md`), mencionando `CAM-n`; pasar el issue a *In Review*.
 6. Al fusionar: marcar la tarea `[x]` en `TASKS.md` y cerrar el issue.
 
