@@ -22,7 +22,7 @@ export interface Tercero extends Fila {
   roles?: Array<'cliente' | 'proveedor'>
 }
 
-export type EstadoOutbox = 'pendiente' | 'error' | 'revision' | 'bloqueada'
+export type EstadoOutbox = 'pendiente' | 'error' | 'revision'
 
 export interface OpOutbox {
   op_id: string

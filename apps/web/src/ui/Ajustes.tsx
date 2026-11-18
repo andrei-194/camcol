@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { BotonActualizar } from './BotonActualizar'
+import { BotonCerrarSesion } from './pendientes/BotonCerrarSesion'
 import { estadoAlmacenamiento, type EstadoAlmacenamiento } from '../pwa/almacenamiento'
 
 export const TEXTO_ALMACENAMIENTO: Record<EstadoAlmacenamiento, string> = {
@@ -33,6 +35,8 @@ export function Ajustes() {
         </h2>
         <p className="text-base text-stone-700">{estado ? TEXTO_ALMACENAMIENTO[estado] : 'Revisando…'}</p>
       </section>
+      <BotonActualizar />
+      <BotonCerrarSesion />
       <Link to="/instalar" className="text-base text-emerald-800 underline">
         Cómo instalar la app
       </Link>

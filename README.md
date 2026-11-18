@@ -26,7 +26,7 @@ La vitrina pública (https://caminocol.com, Next.js en Vercel) vive en otro repo
 ```
 docs/        spec, roadmap, ADR, decisiones, material del negocio
 supabase/    migraciones SQL (solo hacia adelante)
-tests/       db/ (PGlite), luego integration/ y e2e/
+tests/       db/ (PGlite) e integration/ (Supabase local); los E2E viven en apps/web/e2e/
 apps/web/    la PWA (Vite + React + TypeScript + Tailwind)
 ```
 
@@ -82,7 +82,15 @@ npm run test:integration               # RLS por JWT, concurrencia, privilegios 
 
 Corren contra Postgres, Auth y PostgREST reales (usan `pg`); no se ejecutan con `npm run test:db`. Leen las claves locales de `supabase status` al correr (no hay secretos en el repo) y crean sus usuarios de prueba con la API de administración de Auth. Se pueden repetir sin reiniciar la base.
 
-El resto de comandos (`test:e2e`) se agregan con las tareas de `TASKS.md`.
+### E2E (Playwright, Chromium y WebKit)
+
+```bash
+npm run db:start && npm run db:reset   # Supabase local (requisito)
+npm run test:e2e                       # E2E de la app en Docker contra Supabase local
+npm run test:e2e -- --project=chromium # solo un navegador
+```
+
+Corre dentro de la imagen oficial de Playwright (servicio `e2e` de `docker-compose.yml`; baja ≈ 2 GB la primera vez, en el disco de Docker en D:) y necesita haber hecho `npm run setup`. El script lee las claves de `supabase status`, crea el usuario de prueba `e2e@e2e.test` y construye la app en modo `e2e` (con un gancho solo de prueba que no existe en producción). Los E2E están en `apps/web/e2e/`; **no** forman parte de `test:db` ni del CI (ver nota T-M2-09 de `docs/DECISIONS.md`).
 
 ## Configuración
 

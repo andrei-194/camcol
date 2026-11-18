@@ -193,7 +193,7 @@ Fuente de verdad: `0001_core.sql`. Entidades: `terceros` (roles cliente/proveedo
 
 **Precios**
 - **RN-PRE-01** Precio aplicable: lista del cliente (o pública) y el escalón de mayor `cantidad_minima` ≤ cantidad; si la lista del cliente no tiene precio, se usa la pública.
-- **RN-PRE-02** El precio pactado de un ítem **no cambia** si luego cambia la lista; al sincronizar un PV offline se **advierte** si el precio de lista actual difiere del snapshot, pero se respeta lo pactado.
+- **RN-PRE-02** El precio de un ítem lo fija el **servidor** al crear el PV, con el precio de lista vigente (`precio_para`); el precio que envíe el cliente se ignora y, si difiere del vigente, la op **advierte** `PRECIO_CAMBIO`. Una vez creado, el precio del ítem **no cambia** aunque cambie la lista. (D-009: el PV se crea solo con conexión; se eliminó el caso del PV offline.)
 
 **Pedidos de venta**
 - **RN-VEN-01** Un PV acepta ítems sin stock (D5). `confirmado` exige ≥ 1 ítem.
@@ -287,7 +287,7 @@ Más tarde: banner "Tienes N sin subir (el más viejo: hace X)" → Pendientes �
 ### 10.4 Conflictos y casos borde
 - **Doble envío por respuesta perdida:** idempotencia por `op_id` (RF-SYN-05).
 - **Dos socios venden la última unidad:** el conflicto aparece al **confirmar/finalizar** (online); la reserva y el chequeo usan bloqueo de fila; el segundo recibe aviso, nunca sobreventa (RN-INV-03).
-- **Precio cambió:** se respeta el pactado, con advertencia (RN-PRE-02).
+- **Precio cambió:** el servidor usa el precio vigente y avisa con `PRECIO_CAMBIO` (RN-PRE-02).
 - **Cliente/proveedor duplicado:** estado `revision` con candidatos (RF-TER-04, RF-SYN-06).
 - **Reloj del celular incorrecto:** `fecha` de negocio puede venir del cliente (acotada a ≤ ahora + 1 día); el orden y `created_at` los pone el servidor.
 - **Pérdida de almacenamiento local (iOS):** PWA instalada + almacenamiento persistente + exportación de pendientes + sincronizar pronto (RF-OPS-02, RF-SYN-10).

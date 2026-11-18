@@ -2,7 +2,9 @@ name: CI
 
 # Verde obligatorio para fusionar (T-M0-04). Corre las pruebas de base de datos (PGlite)
 # y las comprobaciones de la app web: pruebas, tipos, lint y build.
-# Pendiente: pruebas de integración con Supabase local (T-M1-10) y E2E (T-M2-09).
+# Las pruebas de integración (T-M1-10) y los E2E de Playwright (T-M2-09) NO corren aquí: necesitan Supabase local
+# (varios GB de imágenes) y la imagen de Playwright. Se corren en local (`npm run test:integration`, `npm run test:e2e`).
+# Si se quisieran en CI, sería un job manual (workflow_dispatch) que levante Supabase con la CLI (nota T-M2-09 de DECISIONS.md).
 
 # Las tareas se integran en `release/*` sin PR (D-017): el CI corre en cada push a la release,
 # en el PR único de la release a `main` y en `main`.

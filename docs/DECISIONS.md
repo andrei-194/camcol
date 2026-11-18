@@ -181,6 +181,19 @@ Se especificó (solo documentación) lo que el socio aprobó en D-015: el reembo
 10. **Errores del reembolso:** no se edita ni se borra. Un reembolso equivocado es un caso manual fuera del MVP.
 11. **No se construye:** comprobante o documento de reembolso (sin consecutivo), reembolso con transferencia automática, crédito a favor del cliente, devolución parcial de ítems.
 
+## Nota T-M1-18 · reembolsos y control de sobrepago en el servidor (CAM-97, H-06) — 2026-11-18
+
+Migración `0017_reembolsos.sql` (contrato en `PLAN.md` §4.3; pruebas en `tests/db/reembolsos.test.mjs` y `tests/integration/reembolsos.test.mjs`). Cumple lo especificado en T-M1-17; lo que se decidió al implementar, **a revisar**:
+
+1. **Mensajes con el código como prefijo.** `E_SOBREPAGO`, `E_ESTADO`, `E_TOTAL`, `E_PAGO_INMUTABLE`, `DATOS_INVALIDOS` salen como `CODIGO: mensaje (RN-PAG-nn)`; el ID de la regla va dentro del mensaje, porque `aplicar_ops` solo reconoce `^[A-Z][A-Z0-9_]*:`.
+2. **Sin función auxiliar de saldo.** El cobrado neto se calcula en línea en cada trigger y en la op (el PLAN fija una lista cerrada de objetos); el bloqueo `for update` del pedido va antes del cálculo.
+3. **Cobros en PV `cancelado`:** insertar es `E_ESTADO`; editar o borrar un cobro existente también (cualquier campo, no solo el valor), porque dejaría el cobrado neto fuera de `0 ≤ neto ≤ total`. Borrar un cobro de un PV `recibido`/`confirmado` sigue permitido.
+4. **`E_TOTAL`** se evalúa en `trg_pv_totales` solo cuando `total` cambia en un UPDATE; también salta si lo provoca `pv_recalcular` al editar ítems de un PV con cobros.
+5. **Reembolso con `fecha` ausente** usa `now()`; con fecha, medianoche de Bogotá. La fecha acepta hasta mañana (`E_FECHA` si pasa).
+6. **Orden de validación de la op:** formato (`DATOS_INVALIDOS`), `E_FECHA`, `E_REF` (socio, luego pedido), `E_ESTADO`, `E_SOBREPAGO`. El trigger de `pagos` repite estado, motivo y tope para SQL directo.
+7. **`resumen_periodo`** cambió de tipo de retorno (`drop` + `create`); la columna `reembolsos` va al final. Los privilegios del `create` nuevo los cubren los default privileges de 0014.
+8. **Pruebas de concurrencia (reales, Supabase local):** dos transacciones sobre el último saldo reembolsable (la segunda espera el bloqueo y recibe `E_SOBREPAGO`), 10 rondas por `aplicar_ops` con dos socios (un `ok`, un `E_SOBREPAGO`) y la misma carrera con dos cobros. `tests/integration/entorno.mjs` exige `pg`: en un checkout sin `node_modules` hay que correr `npm install` antes.
+
 ## Nota T-M1-15 · validaciones del servidor (CAM-94, H-05/H-07/H-08) — 2026-11-18
 
 - Migración `0015_validaciones_pedido.sql`, solo triggers (sin grants). Contrato en `PLAN.md` §4.3; reglas en SPEC (RF-VEN-03, RF-VEN-05, RN-DOC-02, RN-COS-04).
@@ -194,13 +207,21 @@ Se especificó (solo documentación) lo que el socio aprobó en D-015: el reembo
 
 Con H1 se vio que un PR por tarea genera conflictos constantes (todas las tareas tocan `DECISIONS.md`, `TASKS.md`, `PLAN.md`, `package.json` y el lock) y mucho trabajo de fusión manual. Sustituye el primer punto de D-012.
 
-- **`main` solo recibe un PR por release:** de `release/<hito>` (`release/h2`, `release/h3`…). La release se crea desde `main` al empezar el hito, y se abre su PR en borrador para que el CI corra en cada push; se marca listo al cerrar el hito. Lo revisa y fusiona el socio.
+- **`main` solo recibe un PR por release:** de `release/<hito>` (`release/h2`, `release/h3`…). La release se crea desde `main` al empezar el hito, y su PR se abre en borrador al integrar la primera tarea (GitHub no permite abrirlo sin commits propios), para que el CI corra en cada push; se marca listo al cerrar el hito. Lo revisa y fusiona el socio.
 - **Una rama por tarea,** `CAM-n-descripcion-corta`, creada **desde la release**. Se integra en la release **sin PR**: fusionar la release en la rama, resolver conflictos, todo en verde, `git merge --no-ff` a la release y push. Las tareas se integran de una en una; si el push se rechaza, se repite desde la fusión.
 - **Linear:** *In Progress* al empezar; *In Review* al integrarse en la release; *Done* cuando el PR de la release se fusiona a `main`.
 - **Pruebas y TDD:** se mantienen. El rojo primero (commit aparte) sigue siendo obligatorio; una tarea que no lo cumpla lo anota en el PR de la release. CAM-41 y CAM-42 (H2) se integraron sin rojo primero y se aceptaron por defecto, sin repetirlo.
 - **`main` protegido** (CAM-10): exige PR y CI verde, sin pushes directos. Las ramas `release/*` y de tarea no se protegen. Un arreglo urgente sobre `main` va en rama desde `main` con su PR, y luego se fusiona `main` en la release.
 - **Conflictos habituales:** `package-lock.json` (tomar el de la release y correr `npm install` en Docker), `DECISIONS.md` y `TASKS.md` (conservar las dos partes). Las notas de decisión de tareas se escriben sin número («Nota T-M2-04») para no chocar.
 - **Cuándo abrir PR por tarea:** nunca, salvo que el socio lo pida para una tarea concreta (por ejemplo una de mucho riesgo).
+
+## Nota revisión EGM del PLAN, ronda 2 (CAM-100) — 2026-11-18
+
+- **Envío de pendientes de una en una** (RF-SYN-07): el cliente sube las ops por orden y se detiene en la primera que no sea `ok`/`ya_aplicada`. El servidor sigue aceptando lotes (D-013). Cierra H-12.
+- **RN-PRE-02 corregida** en la SPEC: el servidor fija el precio con la lista vigente y avisa `PRECIO_CAMBIO`; ya no hay PV offline (D-009).
+- **Limpieza del caché local:** se hace al iniciar sesión con un usuario distinto del recordado (T-M2-04), no al cerrar sesión.
+- **Reembolsos (0017):** códigos `E_PAGO_INMUTABLE`, `E_TOTAL`, `E_ESTADO`, `E_SOBREPAGO`; el ID de la regla va en el mensaje, no como prefijo; los cobros de un PV `cancelado`/`devuelto` no se editan ni se borran.
+- **Diferido a su tarea:** «cobrar y finalizar» atómico (T-M4-05/06) y la subida de fotos (T-M2-08).
 
 ## Addendum D-015 · reembolsos (T-M1-17) — 2026-11-18
 
@@ -241,6 +262,34 @@ Los valores por defecto de la nota «T-M1-17» (solo pedidos `cancelado`/`devuel
 - Íconos: se reutilizan los de la vitrina (`caminocol.com`: montaña y camino en cacao sobre crema, 192, 512 y maskable 512) y `apple-touch-icon` de 180 px derivado del 512. **Pendiente de reemplazo** si los socios quieren íconos específicos del back-office. `theme_color` #5A3A2A, `background_color` #F6EFE2.
 - `navigator.storage.persist()` se pide al arrancar y al evento `appinstalled`. Su estado se muestra en `/ajustes` (pantalla mínima creada aquí; irá creciendo con otras tareas). "Cómo instalar" vive en `/instalar`, enlazada desde Home y Ajustes.
 - Fuera de esta tarea: `_redirects` y `_headers` (CSP) de Cloudflare Pages (PLAN §6, hosting) y el botón nativo `beforeinstallprompt`.
+
+## Nota T-M2-06 · centro de pendientes (CAM-46) — 2026-11-18
+
+- **Pantalla** `/pendientes` (`ui/pendientes/`, protegida por el login, enlazada desde Home): lista por `created_at` con resumen legible, estado y antigüedad; checkbox; **Subir seleccionados** (único camino de envío, vía `pendientesService.subir`, de una en una; resultado ✔/⚠/✖ por fila); **Descartar** con confirmación; **Decidir** en filas `revision` (candidatos, «Usar existente» / «Crear igual» vía `resolver`; la fila vuelve a `pendiente` y hay que pulsar Subir); **Exportar JSON**. Sin Editar ni Importar (D-009).
+- Las filas en `revision` seleccionadas se omiten al subir (detendrían la cola); primero se decide. Tras subir con algún ✔ se pide un pull (`useSync()?.actualizar()`).
+- `pendientesService.descartar(opIds)` (nuevo): borra la op, las filas locales con `_pendiente = op_id` (nunca llegaron al servidor) y los `adjuntos_locales` de esa op, en una transacción. No toca el servidor. Si se descarta una op base, las dependientes (p. ej. `adjunto.vincular`) fallarán al subir y también se descartan.
+- **Exportación** (`infra/sync/exportar.ts`): formato de PLAN §5.3; el campo `fotos_locales_sin_exportar` cuenta las filas de `adjuntos_locales`. Archivo `camino-pendientes-AAAA-MM-DD.json` (fecha de Bogotá).
+- **Cableado:** `ui/pendientes/ServiciosApp` (dentro de `SyncProvider`) instancia `crearPendientesService` y el escritor con `crearOpsApi(obtenerClienteSupabase())` y los expone por `PendientesProvider`; el escritor llama al pull tras cada `aplicada`. Ninguna pantalla usa aún el escritor (llega en H3).
+- **Banner** `BannerPendientes` («N sin subir (el más viejo: hace X)») en Home y en la pantalla; solo avisa y enlaza. El indicador global siempre visible es T-M2-07.
+- **Cierre de sesión (RF-AUTH-03, E13):** botón «Cerrar sesión» en Ajustes; con pendientes avisa cuántos y ofrece «Exportar JSON», «Cerrar sesión de todos modos» o «Cancelar». Cerrar no borra datos locales. `pwa.test` ahora monta `Ajustes` dentro de `AuthProvider`.
+- Fotos (CAM-48): `ServiciosApp` inyecta `crearAdjuntosService` (almacén `crearAlmacenSoportes`) en `pendientesService`; tras «Subir seleccionados» la pantalla muestra el resumen de fotos (subidas / con error / esperando). `descartar` borra los `adjuntos_locales` de la op. Sin botón aparte para reintentar solo fotos: se reintentan en la siguiente subida manual.
+
+## Nota T-M2-05 · escritor y subida de pendientes (CAM-45) — 2026-11-18
+
+- **Capas:** `infra/supabase/opsApi.ts` llama `rpc('aplicar_ops', {ops})` con `.abortSignal` y clasifica en `ok | red | rechazo | no_aplicado` (función pura `clasificarRespuestaRpc`). `infra/sync/` tiene `tiposOp` (Zod + si admite offline), `outboxRepo`, `writer.commit` y `pendientesService.subir/resolver`. Zod 4 es la única dependencia nueva.
+- **Clasificación:** red = TypeError/AbortError/timeout/502-504; rechazo = error con SQLSTATE de 5 caracteres (los `PGRSTnnn` no lo son) o `status:error` de la op; 401, 429 y otros 5xx = `no_aplicado` (se encola con aviso; el 401 marca `requiereLogin`). Un 5xx con SQLSTATE sigue siendo `no_aplicado`.
+- **Revisión:** en tipos que admiten offline la fila se guarda en outbox como `revision` (con `resultado.candidatos`) y la fila local `_pendiente` se conserva, para no perder lo capturado si se cierra la app; en `pedido_venta.crear` (solo online) se devuelve a la UI sin encolar.
+- **Resolución:** `resolver(opId, resolucion)` escribe `resolucion` en `datos.proveedor_nuevo`/`datos.cliente_nuevo` si existen (como exige el contrato de compras y pedidos) y si no en `datos.resolucion` (`tercero.crear`); luego la fila vuelve a `pendiente`.
+- **`subir`:** una fila en `error` se puede reenviar (la op no quedó registrada); una fila en `revision` no se envía y detiene la subida hasta resolverla. Fallo de red o `no_aplicado` deja la fila `pendiente` y detiene.
+- `'bloqueada'` salió de `EstadoOutbox`; el esquema Dexie no cambia (sigue `version(1)`), no hizo falta `version(2)`.
+- Sin cableado a la UI ni al cliente real todavía: `crearEscritor` y `crearPendientesService` reciben `db` y un `OpsApi` (`crearOpsApi(obtenerClienteSupabase())`); el centro de pendientes (CAM-46) los instancia.
+
+## Nota T-M2-04 · puller (CAM-44) — 2026-11-18
+
+- **Quién es el dueño del caché: `kv.cache_usuario` (Dexie), no `camino.auth.usuario`.** El servicio de auth sobrescribe `camino.auth.usuario` en cada inicio de sesión, así que al llegar al puller ya no se sabe quién era el usuario anterior. El puller guarda en `kv` el id del usuario cuyo caché hay en la base y, si al activarse la sesión es otro, llama a `limpiarCacheDeServidor` antes del primer pull. Primera instalación (sin valor): no limpia. `kv` nunca se limpia (regla 10).
+- `SyncProvider` (dentro de `AuthProvider`) corre el pull al quedar la sesión en `activo` y en cada `visibilitychange` a visible; un solo pull en vuelo a la vez. El botón «Actualizar datos» vive en Ajustes (`ui/BotonActualizar`); el indicador global «datos al …» es T-M2-07. Falta el pull «tras cada escritura exitosa» de PLAN §5.4: lo agrega el escritor (T-M2-05) llamando a `actualizar()`.
+- Red vs rechazo (`ErrorPull`): sin código de error PostgREST, status 0 o 502-504, o timeout (20 s) = `red`; cualquier otro error con código = `rechazo`. En ambos casos no se borra nada, no se mueve el cursor y no se toca la sesión. Una respuesta que no se pueda aplicar (`datos`) revierte la transacción completa.
+- LWW: solo se descarta la fila del servidor si su `updated_at` es **estrictamente** más viejo que el local (los pagos cambian sin mover el `updated_at` del padre, así que un igual se aplica). Las filas `_pendiente` nunca se pisan. Los pagos de pedidos se guardan tal cual, sea `cobro` o `reembolso` (0017).
 
 ## Nota auditoría H1 · hallazgos pendientes de decisión — 2026-11-18
 
@@ -284,3 +333,24 @@ Del informe de auditoría, los hallazgos H-01 a H-03 ya tienen tarea (T-M1-12, T
 | P-003 | Supuestos S1–S5 de la spec (flete, deducciones, costo promedio, IVA, pull automático) | SPEC §5 |
 
 **Resueltas:** P-001 → D-002 · P-002 → D-006 · P-004 → D-005 · P-005 → D-008 · P-006 y P-007 → D-007.
+
+## Nota T-M2-08 · fotos locales y subida posterior (CAM-48) — 2026-11-18
+
+- **Capas:** `lib/imagen.ts` (`comprimirImagen`, motor inyectable; real = `createImageBitmap` con orientación EXIF + `OffscreenCanvas`/canvas), `infra/sync/adjuntosService.ts` (`guardar`, `subirListas`), `infra/supabase/soportes.ts` (Storage `soportes`, `upsert: true` para que reintentar sea idempotente). Sin UI de captura ni dependencias nuevas.
+- **Compresión:** WebP; prueba calidades 0,8 a 0,4 y, si no alcanza 150 KB, reduce el lado un 15 % (mínimo 320 px). Si `toBlob('image/webp')` devuelve otro tipo (iOS Safari sin codificación WebP) recae en JPEG (`.jpg`). Si aun así pasa de 150 KB al mínimo, se guarda igual (mejor pesada que perdida).
+- **`path`:** `<entidad>/<entidad_id>/<uuid del adjunto>.<webp|jpg>`. La política `soportes_solo_miembros` (0004) solo exige ser miembro: el formato es convención nuestra; el servidor tampoco comprueba que el objeto exista al vincular.
+- **Estados:** `local`, `subiendo` (si la app muere aquí se trata como `local`), `subida`, `vinculada` (se borra el blob), `error` (+ motivo). Fallo de red al vincular deja `subida` (no vuelve a subir). El `id` del adjunto es también el `op_id` de `adjunto.vincular`, así reenviar es idempotente.
+- **Regla 5 y enganche:** `guardar` nunca sube. `pendientesService.subir(opIds)` (acción explícita) llama a `adjuntos.subirListas()` después de las ops, salvo que alguna terminara en `red`/`no_aplicado`; devuelve `ResumenSubida.adjuntos`. Una foto solo se sube si su `op_id` ya no está en outbox (aplicada); una op aplicada online también cuenta, porque nunca estuvo en outbox. Un fallo de foto no altera el resultado de las ops; los `error` se reintentan en la siguiente acción manual. **Para CAM-46:** inyectar `adjuntos` al crear `pendientesService` y mostrar `adjuntos` del resumen; para reintentar solo fotos basta llamar `adjuntos.subirListas()` desde un botón.
+- **Límites:** sin tiempo límite en la subida a Storage (supabase-js no lo trae). `crearAdjuntosService` aún no se conecta a la app (no hay pantalla de captura). En pruebas, `fake-indexeddb` no conserva `Blob.size`; el IndexedDB real guarda Blobs nativamente.
+- **Verificación de APIs (T-M2-08, regla 7):** contrastado con la documentación vigente (Context7: supabase-js/storage-js y MDN). `storage.from(b).upload(path, blob, {contentType, upsert})` devuelve `{ data, error }` (`error: StorageError`), `upsert` va por defecto en `false` (se envía `x-upsert`), y con un `Blob` el tipo viaja en el propio blob (`contentType` solo importa para otros cuerpos): `soportes.ts` ya es coherente, sin cambios. `toBlob(cb, type, quality)` y `OffscreenCanvas.convertToBlob` exportan **PNG** si el formato no está soportado y `toBlob` puede dar `null`; el respaldo a JPEG se decide por `blob.type !== 'image/webp'`, no por suposición. `createImageBitmap` aplica EXIF por defecto (`imageOrientation: 'from-image'`), que pasamos explícito. Sin cambios de código. Pruebas probadas en rojo rompiendo a propósito (sin tope de lado, sin tope de peso, sin espera a la op, sin reutilizar `subida`): fallaron 9 pruebas; se restauró.
+- **Falta verificar en dispositivo real (iPhone y Android):** que `toBlob('image/webp')` en el Safari de iOS usado devuelva WebP o PNG (y que entonces se use JPEG), que `OffscreenCanvas.convertToBlob` exista o caiga al canvas normal, que la foto de cámara salga con la orientación correcta, el peso final (≈ ≤ 150 KB) y el tiempo de compresión, y la subida real al bucket `soportes` con una sesión de miembro (política de 0004). Un `convertToBlob` que rechace (EncodingError) hoy sube como error de compresión, no como `null`.
+
+## Nota T-M2-09 · E2E base con Playwright (CAM-49) — 2026-11-18
+
+- **Qué es.** `apps/web/e2e/e1-sin-red.spec.ts`: con Supabase local real, primera carga con red (login y app shell precacheado), se corta la red (`context.setOffline(true)`), la app abre desde el service worker, se crea un gasto con el escritor real, queda en la outbox con su marca `_pendiente` (el ⏳) y el indicador cuenta «1 pendiente»; al volver la red aparece el banner «1 sin subir», **no sale ninguna petición `aplicar_ops`** (ni siquiera tras 2 s) y el servidor no tiene el dato hasta pulsar «Subir seleccionados»; entonces el pendiente desaparece, hay exactamente una petición y el gasto existe en el servidor (consultado con la clave de servicio). Corre en **Chromium y WebKit** (viewport 360 px).
+- **Alcance de [E1].** Cubre la mecánica sin red → ⏳ → banner → subida manual. **No** cubre todavía la compra con proveedor nuevo, recepción, pago y foto, ni el recálculo del costo promedio: faltan las pantallas de H3. El ⏳ se verifica en el dato (`_pendiente` = `op_id`); la etiqueta visible en la fila llega con las pantallas de H3. Cuando existan, este E2E se amplía a la compra completa de [E1].
+- **Gancho solo de prueba.** No hay pantalla para crear compras, proveedores ni gastos hasta H3. `src/e2e/GanchoE2E.tsx` expone `window.__camino_e2e.commit(...)` (llama al **mismo** escritor de `ServiciosApp`, sin duplicar lógica) y `fila(tabla, id)`. Solo se importa si `import.meta.env.MODE === 'e2e'` (`vite build --mode e2e`). `src/e2e/bundle.test.ts` construye de verdad en modo `production` y en `e2e`: el primero **no** contiene la marca `__camino_e2e` y el segundo sí (así la comprobación puede fallar). Corre con `npm test`.
+- **Cómo corre.** `npm run test:e2e` (host) → `scripts/test-e2e.mjs` lee las claves de `supabase status`, crea el usuario `e2e@e2e.test` y su fila en `miembros` con la API de administración, y lanza el servicio `e2e` de `docker-compose.yml` (perfil `e2e`, imagen oficial `mcr.microsoft.com/playwright:v1.65.1-noble`, versión **igual** a `@playwright/test` exacto en `apps/web/package.json`). Dentro, Playwright construye en modo `e2e` y sirve con `vite preview`; el navegador alcanza el Supabase del PC por `host.docker.internal`. La clave de servicio llega solo por entorno al proceso de prueba (jamás al bundle: a este solo va la anon key). Sin secretos en el repo. Argumentos extra pasan a Playwright (`npm run test:e2e -- --project=chromium`). Requisito: `npm run db:start` y `npm run db:reset`.
+- **Ubicación.** Los E2E viven en `apps/web/e2e/` (no en `tests/e2e/` como decía el mapa del repo) para resolver `@playwright/test` desde los `node_modules` del volumen de Docker, y Vitest los excluye. El mapa de AGENTS.md y el README se ajustan.
+- **CI.** Desactivado: necesita Supabase local (varios GB de imágenes) y la imagen de Playwright, igual que `test:integration`. Queda anotado en `ci.yml`; el E2E se corre en local antes de cerrar cada hito. Si se quisiera en CI, sería un job manual (`workflow_dispatch`) que levante Supabase con la CLI.
+- **Hallazgos para revisar.** (1) Sin red, el arranque queda en «Cargando…» varios segundos (en WebKit ≈ 6 s; en Chromium la comprobación de 5 s del primer intento fue insuficiente): `supabase-js` intenta refrescar/consultar con la red caída antes de caer a la sesión recordada. No pierde datos, pero es lento en finca; conviene medirlo en el teléfono y, si hace falta, acotarlo con un tiempo límite en `cargarSesion`/`esMiembro` (tarea aparte). El E2E espera hasta 20 s. (2) El título «Camino Col» y el aviso «Lista para usarse sin conexión.» también aparecen en el login: el E2E espera la barra «Estado de la app» (solo con sesión) para saber que entró. (3) Con `setOffline` ambos motores emiten el evento `offline`, así que el escritor encola con motivo `sin_conexion` (la rama de fallo por petición ya la cubren las pruebas del escritor).

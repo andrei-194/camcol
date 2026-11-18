@@ -2,6 +2,8 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { existsSync, readFileSync } from 'node:fs'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { AuthProvider } from '../application/auth/AuthProvider'
+import { servicioFalso } from '../test/servicioAuthFalso'
 import { AppRoutes } from '../routes'
 import { Ajustes, TEXTO_ALMACENAMIENTO } from '../ui/Ajustes'
 import { estadoAlmacenamiento, solicitarAlmacenamientoPersistente } from './almacenamiento'
@@ -90,9 +92,11 @@ describe('[RF-OPS-02] funciona sin conexión y almacenamiento persistente', () =
   it('Ajustes muestra el estado del almacenamiento', async () => {
     vi.stubGlobal('navigator', { storage: { persisted: vi.fn().mockResolvedValue(true) } })
     render(
-      <MemoryRouter>
-        <Ajustes />
-      </MemoryRouter>,
+      <AuthProvider servicio={servicioFalso()}>
+        <MemoryRouter>
+          <Ajustes />
+        </MemoryRouter>
+      </AuthProvider>,
     )
     await waitFor(() => expect(screen.getByText(TEXTO_ALMACENAMIENTO.persistente)).toBeInTheDocument())
   })

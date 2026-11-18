@@ -156,4 +156,32 @@ await test('[RF-SYN-04] sync_pull entrega al miembro lo recién creado (pedido, 
   assert.ok(texto.includes(pedidoId), 'el pedido debe venir en sync_pull');
 });
 
+await test('[RF-PAG-04][RN-PAG-03/04][E16] pago.reembolsar (solo con conexión): cancelar con cobro, reembolsar por partes, por reembolsar y resumen', async () => {
+  const cli2 = (await admin.query(`insert into terceros (nombre, es_cliente) values ($1, true) returning id`, [`Cliente reembolso ${sufijo}`])).rows[0].id;
+  const p = (await admin.query(`insert into pedidos_venta (cliente_id, entrega_tipo) values ($1,'recoge') returning id`, [cli2])).rows[0].id;
+  await admin.query(`insert into pedidos_venta_items (pedido_id, articulo_id, cantidad, precio_lista, precio_unitario) values ($1,$2,5,20000,20000)`, [p, art.id]);
+  await admin.query(`update pedidos_venta set estado='confirmado' where id=$1`, [p]);
+  await admin.query(`insert into pagos (direccion, pedido_venta_id, medio, valor) values ('cobro',$1,'nequi',40000)`, [p]);
+  const sobre = await rest(T, 'POST', 'pagos', { body: { direccion: 'cobro', pedido_venta_id: p, medio: 'efectivo', valor: 60001 } });
+  assert.ok(sobre.status >= 400, 'el cobro por encima del total debía rechazarse por PostgREST');
+  await admin.query(`update pedidos_venta set estado='cancelado', motivo_estado='cliente desistió' where id=$1`, [p]);
+  const por = await rest(T, 'GET', `v_por_reembolsar?pedido_id=eq.${p}&select=por_reembolsar,cobrado,reembolsado`);
+  assert.equal(Number(por.json[0].por_reembolsar), 40000);
+  const r1 = await unica([op('pago.reembolsar', { pedido_id: p, valor: 15000, medio: 'nequi', motivo: 'parcial' })]);
+  assert.equal(Number(ok(r1).cobrado_neto_restante), 25000);
+  const exceso = await unica([op('pago.reembolsar', { pedido_id: p, valor: 25001, medio: 'nequi', motivo: 'exceso' })]);
+  assert.equal(exceso.resultados[0].error.codigo, 'E_SOBREPAGO');
+  const mismo = op('pago.reembolsar', { pedido_id: p, valor: 25000, medio: 'nequi', motivo: 'resto' });
+  const r2 = await unica([mismo]);
+  assert.equal(ok(r2).por_reembolsar, false);
+  assert.equal((await unica([mismo])).resultados[0].status, 'ya_aplicada');
+  assert.equal((await rest(T, 'GET', `v_por_reembolsar?pedido_id=eq.${p}&select=pedido_id`)).json.length, 0);
+  const hoy = (await admin.query(`select (now() at time zone 'America/Bogota')::date::text d`)).rows[0].d;
+  const resumen = await rpc(T, 'resumen_periodo', { p_desde: hoy, p_hasta: hoy });
+  assert.ok(Number(resumen.json[0].reembolsos) >= 40000, JSON.stringify(resumen.json));
+  const s = await rpc(T, 'sync_pull', { desde: '2000-01-01T00:00:00Z' });   // un PV cancelado no entra al snapshot inicial
+  const ped = s.json.pedidos_venta.find((x) => x.id === p);
+  assert.deepEqual(ped.pagos.map((g) => g.direccion).sort(), ['cobro', 'reembolso', 'reembolso']);
+});
+
 await admin.end();

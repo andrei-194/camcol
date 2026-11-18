@@ -20,5 +20,26 @@ services:
       - VITE_POLL=1   # el montaje desde Windows no avisa de cambios de archivos
     command: npm --prefix apps/web run dev:docker
 
+  # E2E (CAM-49): imagen oficial de Playwright (Chromium + WebKit ya instalados). Su versión debe coincidir con
+  # `@playwright/test` de apps/web/package.json. Solo se usa con `npm run test:e2e` (perfil `e2e`).
+  # Alcanza el Supabase local del PC por `host.docker.internal`.
+  e2e:
+    profiles: ["e2e"]
+    image: mcr.microsoft.com/playwright:v1.65.1-noble
+    working_dir: /app/apps/web
+    ipc: host
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - .:/app
+      - web_node_modules:/app/apps/web/node_modules
+    environment:
+      - E2E_SUPABASE_URL
+      - E2E_ANON_KEY
+      - E2E_SERVICE_KEY
+      - E2E_EMAIL
+      - E2E_PASSWORD
+    command: npx playwright test
+
 volumes:
   web_node_modules:
