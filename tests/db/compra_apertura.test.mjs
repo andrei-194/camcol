@@ -68,15 +68,18 @@ await test('[RN-COM-04][RN-COS-01] una compra de apertura suma stock y fija el c
 });
 
 await test('[RN-COM-04] la compra de apertura no cuenta en compras_periodo', async () => {
+  assert.ok(apertura, 'la compra de apertura debe existir (modalidad apertura)');
   const p = await periodo();
   assert.equal(num(p.compras_periodo), 0);
 });
 
 await test('[RN-COM-04] la compra de apertura no genera cuenta por pagar', async () => {
+  assert.ok(apertura, 'la compra de apertura debe existir (modalidad apertura)');
   assert.equal((await q(`select 1 from v_cuentas_por_pagar where orden_id=$1`, [apertura])).length, 0);
 });
 
 await test('[RN-COM-04] una compra de apertura no admite pagos', async () => {
+  assert.ok(apertura, 'la compra de apertura debe existir (modalidad apertura)');
   await rejects(`insert into pagos (direccion, orden_compra_id, medio, valor) values ('pago',$1,'efectivo',130000)`, [apertura]);
 });
 
