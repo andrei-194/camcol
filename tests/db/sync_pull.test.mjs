@@ -18,6 +18,8 @@ await db.exec(`
 await db.exec(migracion('0001_core.sql'));
 await db.exec(migracion('0002_sync.sql'));
 await db.exec(migracion('0005_sync_pull.sql'));
+await db.exec(migracion('0006_fix_touch_padre.sql'));
+await db.exec(migracion('0013_cerrar_escritura_directa.sql'));
 
 const USER_A = '00000000-0000-0000-0000-00000000000a';
 const USER_X = '00000000-0000-0000-0000-0000000000ff';
@@ -53,9 +55,13 @@ const prod = (await one(`insert into productos (nombre) values ('Café molido') 
 const cafe = (await one(`insert into articulos (producto_id, proveedor_id, nombre, presentacion_cantidad, presentacion_unidad)
                          values ($1,$2,'Café Sierra 500 g',500,'g') returning id`, [prod, prov])).id;
 const lista = (await one(`insert into listas_precio (nombre, es_publica) values ('Mayorista', false) returning id`)).id;
-await q(`update articulos set costo_promedio = 12000 where id = $1`, [cafe]);
 await q(`insert into precios (lista_id, articulo_id, precio) values ($1,$2,20000)`, [lista, cafe]);
-await q(`insert into movimientos_inventario (articulo_id, tipo, cantidad, costo_unitario) values ($1,'ajuste',10,12000)`, [cafe]);
+// Stock 10 y costo promedio 12000 por la ruta legítima (0013 prohíbe editar costo_promedio): una compra recibida
+const oc0 = (await one(`insert into ordenes_compra (proveedor_id) values ($1) returning id`, [prov])).id;
+const oci0 = (await one(`insert into ordenes_compra_items (orden_id, articulo_id, cantidad, costo_unitario) values ($1,$2,10,12000) returning id`, [oc0, cafe])).id;
+await q(`update ordenes_compra set estado='pedida' where id=$1`, [oc0]);
+const rec0 = (await one(`insert into recepciones (orden_id) values ($1) returning id`, [oc0])).id;
+await q(`insert into recepcion_items (recepcion_id, orden_item_id, cantidad) values ($1,$2,10)`, [rec0, oci0]);
 
 // Pedido abierto (recibido) con ítem y un cobro parcial
 const pedido = (await one(`insert into pedidos_venta (cliente_id, origen) values ($1,'whatsapp') returning id`, [cli])).id;
@@ -152,10 +158,15 @@ await test('[RF-SYN-08] borrado lógico: la fila llega marcada con deleted_at', 
 });
 
 await test('[RF-SYN-08] pedido finalizado hace más de 90 días no viene en el snapshot; uno reciente sí', async () => {
-  // Se insertan ya finalizados: finalizar por UPDATE choca hoy con touch_padre de 0002
-  // ("tuple to be updated was already modified"), hallazgo ajeno a esta tarea (ver DECISIONS).
-  const mk = async () => (await one(
-    `insert into pedidos_venta (cliente_id, estado, finalizado_en) values ($1,'finalizado', now()) returning id`, [cli])).id;
+  // Se finalizan por la ruta legítima (0013 rechaza insertar pedidos ya finalizados; 0006 corrigió touch_padre)
+  const mk = async () => {
+    const p = (await one(`insert into pedidos_venta (cliente_id) values ($1) returning id`, [cli])).id;
+    await q(`insert into pedidos_venta_items (pedido_id, articulo_id, cantidad, precio_lista, precio_unitario) values ($1,$2,1,20000,20000)`, [p, cafe]);
+    await q(`update pedidos_venta set estado='confirmado' where id=$1`, [p]);
+    await q(`insert into pagos (direccion, pedido_venta_id, medio, valor) values ('cobro',$1,'efectivo',20000)`, [p]);
+    await q(`update pedidos_venta set estado='finalizado' where id=$1`, [p]);
+    return p;
+  };
   const viejo = await mk();
   const reciente = await mk();
   await q(`update pedidos_venta set finalizado_en = now() - interval '100 days' where id=$1`, [viejo]);
