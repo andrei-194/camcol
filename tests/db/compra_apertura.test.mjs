@@ -14,7 +14,8 @@ await db.exec(`
   create function auth.uid() returns uuid language sql stable as
     $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 `);
-for (const f of ['0001_core.sql', '0002_sync.sql', '0006_fix_touch_padre.sql', '0012_compra_apertura.sql']) {
+for (const f of ['0001_core.sql', '0002_sync.sql', '0003_aplicar_ops.sql', '0006_fix_touch_padre.sql', '0007_op_tercero.sql',
+  '0008_op_compra.sql', '0012_compra_apertura.sql']) {
   if (!existsSync(new URL(`../../supabase/migrations/${f}`, import.meta.url))) {
     console.log(`  (aún no existe ${f}: las pruebas de apertura deben fallar)`);
     continue;
@@ -105,6 +106,51 @@ await test('[RN-COS-01] el costo promedio mezcla apertura y compras posteriores'
   // 10 a 13.000 (apertura) − 1 vendida + 5 a 14.000 → (9·13.000 + 5·14.000) / 14
   const c = num((await one(`select costo_promedio c from articulos where id=$1`, [art])).c);
   assert.ok(Math.abs(c - (9 * 13000 + 5 * 14000) / 14) < 0.01, `costo ${c}`);
+});
+
+// --- Punta a punta por aplicar_ops (op orden_compra.registrar con modalidad "apertura") ---
+const aplicar = async (op) => (await one(`select aplicar_ops($1::jsonb) r`, [JSON.stringify([op])])).r.resultados[0];
+const prod2 = (await one(`insert into productos (nombre, categoria) values ('Panela', 'Panela') returning id`)).id;
+const art2 = (await one(`insert into articulos (producto_id, proveedor_id, nombre, presentacion_cantidad, presentacion_unidad)
+                         values ($1,$2,'Panela 500 g',500,'g') returning id`, [prod2, don])).id;
+const opApertura = (n, extra = {}) => ({
+  op_id: `eeeeeeee-0000-0000-0000-${String(n).padStart(12, '0')}`, tipo: 'orden_compra.registrar',
+  datos: {
+    orden: { modalidad: 'apertura' },
+    proveedor_nuevo: { nombre: ['', 'Zzqx apertura', 'Wvuk apertura', 'Jhgf apertura'][n] },
+    items: [{ articulo_id: art2, cantidad: 20, costo_unitario: 4000 }],
+    recepcion: { items: [{ item: 0, cantidad: 20 }] },
+    ...extra,
+  },
+});
+const stockDe = async (a) => num((await one(`select fisico from v_stock where articulo_id=$1`, [a])).fisico);
+const nOrdenes = async () => num((await one(`select count(*) n from ordenes_compra`)).n);
+
+await test('[RN-COM-04] aplicar_ops: apertura con proveedor_nuevo recibe todo, fija costo y no es deuda ni compra', async () => {
+  const antes = num((await periodo()).compras_periodo);
+  const r = await aplicar(opApertura(1));
+  assert.equal(r.status, 'ok', JSON.stringify(r));
+  const id = r.resultado.orden_id;
+  assert.equal(await stockDe(art2), 20);
+  assert.equal(num((await one(`select costo_promedio c from articulos where id=$1`, [art2])).c), 4000);
+  assert.equal((await one(`select modalidad from ordenes_compra where id=$1`, [id])).modalidad, 'apertura');
+  assert.equal((await q(`select 1 from v_cuentas_por_pagar where orden_id=$1`, [id])).length, 0);
+  assert.equal(num((await periodo()).compras_periodo), antes);
+});
+
+await test('[RN-COM-04] aplicar_ops: apertura rechaza pagos y no escribe nada', async () => {
+  const antes = await nOrdenes();
+  const r = await aplicar(opApertura(2, { pagos: [{ medio: 'efectivo', valor: 80000 }] }));
+  assert.notEqual(r.status, 'ok');
+  assert.equal(r.error?.codigo, 'E_PAGO', JSON.stringify(r));
+  assert.equal(await nOrdenes(), antes);
+});
+
+await test('[RN-COM-04] aplicar_ops: apertura exige recepción total', async () => {
+  const antes = await nOrdenes();
+  const r = await aplicar(opApertura(3, { recepcion: { items: [{ item: 0, cantidad: 5 }] } }));
+  assert.equal(r.error?.codigo, 'E_RECEPCION', JSON.stringify(r));
+  assert.equal(await nOrdenes(), antes);
 });
 
 console.log(`\n${passed} pruebas ok`);
