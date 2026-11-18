@@ -131,6 +131,12 @@ La entrada es `[{op_id, tipo, datos}]` y la salida `{detener_cola, resultados:[{
 - Los privilegios por defecto aplican al rol que ejecuta la migración (en Supabase, `postgres`); verificarlo en T-M1-10 (CAM-40).
 - Consecuencia: `ping()` ya no es público (la prueba exige cero funciones para `anon`). El keep-alive de T-M8-02 usará el JWT de un usuario de servicio en vez de la anon key. Cambia la excepción que decía `PLAN.md` §13.
 
+## Nota H-02 · candado de pedidos finalizados (CAM-88) — 2026-11-18
+
+- Contrato en `PLAN.md` §4.3; migración `0011_candado_finalizados.sql` con tres triggers (`pv_candado`, `pvi_candado`, `pagos_candado`), sin tocar migraciones previas.
+- Decisiones de detalle: el candado de cabecera compara solo los seis campos de dinero, así que `notas`, `estado` y `finalizado_en` siguen editables (la suite `sync_pull` no cambia). El trigger de `pagos` filtra por `direccion = 'cobro'` para no tapar el CHECK que espera `core`. No se reasignan privilegios de funciones: eso es de CAM-92 (otorgar `EXECUTE` a `authenticated` en todas las funciones expondría las `op_*` fuera de `aplicar_ops`).
+- Fuera de alcance (H-17): `costo_unitario` sigue editable en pedidos abiertos; se sobrescribe al finalizar.
+
 ## D-014 · El inventario inicial se carga como compra de apertura — 2026-11-18
 
 La auditoría funcional (`docs/auditoria-h1-2026-11-18.md`, H-01) mostró que un ajuste de inventario no fija el costo: solo las compras actualizan `costo_promedio`. Cargar así el stock existente deja el costo en 0, infla el margen de las primeras ventas y deja el capital en bodega en $0.

@@ -151,6 +151,8 @@ Servidor: OC `borrador` → ítems → `pedida` → (si hay) recepción (los tri
 
 `adjunto.vincular` → `{ id, entidad:'tercero'|'pago'|'orden_compra'|'gasto', entidad_id, path, mime }`
 
+**Candado de pedidos finalizados (migración 0011, H-02).** No es una op, sino triggers que valen para cualquier ruta de escritura (op, RPC o SQL directo). En un pedido de venta `finalizado` o `devuelto`: (1) `pv_candado` rechaza (`RN-VEN-03`) cualquier cambio de `subtotal`, `descuento_valor`, `impuestos`, `total`, `envio_cobrado` o `envio_costo` en la cabecera; (2) `pvi_candado` rechaza (`RN-COS-02`) cambiar `costo_unitario` de sus ítems; (3) `pagos_candado` rechaza (`RN-PAG-01`) insertar, editar o borrar sus cobros (solo filas con `direccion = 'cobro'`). Siguen permitidos: la transición `finalizado → devuelto` con su reposición de stock, las notas y los demás campos no monetarios. Al finalizar el padre aún está `confirmado`, así que `trg_pv_estado` fija el costo sin chocar; `pv_candado` se dispara antes de `pv_totales` (orden alfabético de triggers).
+
 ### 4.4 Contrato `sync_pull(desde timestamptz default null) → jsonb` (migración 0005, D-009)
 
 Un solo cursor y un snapshot en una respuesta. Sin cursores por tabla, sin `has_more`, sin parámetros de límite o stock. `SECURITY INVOKER` (la RLS aplica: quien no es miembro recibe todo vacío), `search_path` fijo, solo lectura.
