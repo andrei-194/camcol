@@ -41,7 +41,7 @@ Versiones: **última estable** de cada paquete al iniciar; fijarlas con lockfile
                                 │ HTTPS (solo cuando hay red)
 ┌───────────────────────────────▼──────────────────────────────────────────────┐
 │ Supabase: Postgres = fuente de verdad (reglas en triggers/funciones)         │
-│   RPC: aplicar_ops(jsonb) · sync_pull(jsonb) · emitir_documento · …          │
+│   RPC: aplicar_ops(jsonb) · sync_pull(desde) · emitir_documento · …          │
 │   RLS "solo miembros" · Realtime (avisa cambios) · Storage privado           │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -90,7 +90,7 @@ Entregada y probada (24 pruebas). **No editarla** una vez aplicada a un proyecto
 2. `terceros.productos_ofrecidos text`.
 3. Tabla `adjuntos(id uuid pk, entidad text, entidad_id uuid, path text, mime text, creado_por, created_at, op_id uuid unique)`.
 4. Tabla `configuracion(clave text pk, valor jsonb)`; clave `negocio` = `{razon_social, nit, direccion, telefono, email, ciudad, leyenda_documento, logo_path}`.
-5. Funciones: `detectar_duplicados_tercero(telefono, numero_documento, nombre)`, `aplicar_ops(jsonb)`, `sync_pull(jsonb)`, `ping()` (pública, devuelve 1), `uso_bd()` (tamaño de la BD para la alerta de cuota).
+5. Funciones: `detectar_duplicados_tercero(telefono, numero_documento, nombre)`, `aplicar_ops(jsonb)`, `sync_pull(desde)`, `ping()` (pública, devuelve 1), `uso_bd()` (tamaño de la BD para la alerta de cuota).
 6. **Endurecimiento:** `set search_path = public` en todas las funciones; `REVOKE EXECUTE ON ALL FUNCTIONS … FROM anon, public` y `GRANT` solo a `authenticated` (excepto `ping`); `REVOKE` de tablas a `anon`.
 7. Bucket de Storage privado `soportes` + políticas "solo miembros".
 8. Publicación Realtime (`supabase_realtime`) para: `pedidos_venta`, `ordenes_compra`, `terceros`, `articulos`, `precios`, `movimientos_inventario`.
@@ -145,23 +145,31 @@ Servidor: OC `borrador` → ítems → `pedida` → (si hay) recepción (los tri
 
 `adjunto.vincular` → `{ id, entidad:'tercero'|'pago'|'orden_compra'|'gasto', entidad_id, path, mime }`
 
-### 4.4 Contrato `sync_pull(p_cursores jsonb, p_limite int default 500, p_stock boolean default true) → jsonb`
+### 4.4 Contrato `sync_pull(desde timestamptz default null) → jsonb` (migración 0005, D-009)
 
-Entrada: cursores **por tabla** (`{"terceros":"2026-11-17T…Z", …}`; ausente = sincronización inicial). El cliente envía `cursor − 2 min` (ventana de solape; los upserts son idempotentes).
+Un solo cursor y un snapshot en una respuesta. Sin cursores por tabla, sin `has_more`, sin parámetros de límite o stock. `SECURITY INVOKER` (la RLS aplica: quien no es miembro recibe todo vacío), `search_path` fijo, solo lectura.
+
+Entrada: `desde` = cursor devuelto en la llamada anterior; `null` = sincronización inicial. El cliente puede restarle un margen (p. ej. 2 min): los upserts son idempotentes.
 
 Salida:
 ```json
 { "server_time":"…",
-  "tablas": { "terceros": { "filas":[…], "next_cursor":"…", "has_more":false },
-              "articulos":{…}, "productos":{…}, "unidades":{…}, "listas_precio":{…}, "precios":{…},
-              "pedidos_venta":{ "filas":[ { …cabecera…, "items":[…] } ], … },
-              "ordenes_compra":{ "filas":[ { …cabecera…, "items":[…], "recepciones":[…] } ], … },
-              "configuracion":{…} },
-  "stock":[ { "articulo_id","fisico","comprometido","en_camino","disponible_para_prometer","faltante","costo_promedio" } ] }
+  "cursor":"2026-11-17T15:04:05.123456Z",
+  "catalogo": { "productos":[…], "articulos":[…], "listas_precio":[…], "precios":[…], "unidades":[…] },
+  "terceros": [ … ],
+  "configuracion": [ { "clave","valor","updated_at" } ],
+  "pedidos_venta":  [ { …cabecera…, "items":[…], "pagos":[…cobros…] } ],
+  "ordenes_compra": [ { …cabecera…, "items":[…], "recepciones":[ { …, "items":[…] } ], "pagos":[…pagos…] } ],
+  "stock": [ { "articulo_id","fisico","comprometido","en_camino","disponible_para_prometer","faltante","costo_promedio" } ] }
 ```
-- Filas con `deleted_at` se propagan (borrado lógico).
-- **Carga inicial** de `pedidos_venta`/`ordenes_compra`: estados abiertos + últimos 90 días; el resto se pide bajo demanda (online).
-- No se replica `movimientos_inventario` (solo `stock`); el kardex se consulta online.
+- **Cursor único:** máximo `updated_at` de lo devuelto; si no hubo cambios, el mismo `desde` recibido. Comparación estricta (`updated_at > desde`), así un cambio aparece una sola vez.
+- **Padre e hijos:** los hijos viajan dentro del padre. Un cambio en un ítem, una recepción o un ítem de recepción mueve el `updated_at` del padre (`touch_padre`, 0002). Los pagos no tocan al padre: `sync_pull` también compara `max(pagos.updated_at)` del pedido o la compra.
+- **Snapshot inicial (`desde = null`):** catálogo, terceros y configuración completos; `pedidos_venta` en estado `recibido` o `confirmado`, o con `finalizado_en` en los últimos 90 días; `ordenes_compra` en `borrador`, `pedida` o `recibida_parcial`, o con `fecha` en los últimos 90 días. El resto se pide bajo demanda (online).
+- **Con cursor:** todo lo que cambió, sin filtro de ventana (si un pedido viejo cambia, llega).
+- **Borrado lógico:** las filas con `deleted_at` viajan marcadas. `precios`, `listas_precio` y `unidades` no tienen `deleted_at`: un borrado físico no se propaga (se corrige con el snapshot inicial).
+- **Stock:** siempre completo (derivado de `v_stock` + `costo_promedio`), sin cursor; no mueve el cursor. No se replica `movimientos_inventario`; el kardex se consulta online.
+- Fuera de esta versión: gastos y adjuntos (los escribe el cliente; se leen online) y Realtime.
+
 
 ### 4.5 Otras RPC
 `emitir_documento`, `anular_documento`, `resumen_periodo`, `precio_para` (ya en 0001). Cambios de estado y edición de maestros: `UPDATE` directo (RLS) **o** RPC; en ambos casos los triggers de 0001 son la autoridad. `ping()` público, devuelve `1`.
