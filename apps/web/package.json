@@ -25,6 +25,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.16",
     "@eslint/js": "10.0.1",
     "@playwright/test": "1.65.1",
     "@tailwindcss/vite": "4.3.5",
@@ -38,6 +39,7 @@
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-react-hooks": "7.1.1",
     "fake-indexeddb": "^6.2.8",
+    "fast-check": "^4.10.3",
     "globals": "17.14.0",
     "jsdom": "26.1.0",
     "prettier": "3.10.1",
