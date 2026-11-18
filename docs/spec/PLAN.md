@@ -137,6 +137,14 @@ Dedupe: teléfono normalizado (solo dígitos, sin `57` inicial), documento exact
 ```
 Servidor: crea PV en `recibido`; fija `tasa_impuesto` desde el artículo (autoridad del servidor); valida `precio_unitario ≈ precio_lista·(1−pct/100)` (tolerancia $0,01); **advertencias** (no error): `PRECIO_CAMBIO` (lista actual ≠ snapshot), `STOCK` (requerido > disponible_para_prometer).
 
+**Implementado en `0010_op_pedido_venta.sql` (T-M1-05, CAM-35).** Solo con conexión (D-009): el servidor no lo distingue, la PWA no lo encola. Todo `id` es opcional (el servidor lo genera). Reglas:
+- `pedido.cliente_id` **o** `cliente_nuevo` (uno solo; ninguno o ambos → `DATOS_INVALIDOS`). `cliente_nuevo` usa `crear_tercero_desde_payload` (0007) forzando `es_cliente`; sin `consentimiento_datos` → `E_CONSENTIMIENTO`; con candidatos y sin `resolucion` la op devuelve `revision` (`resultado.candidatos`) y **no escribe nada**; con `resolucion` (dentro de `cliente_nuevo`) continúa. Cliente inexistente → `E_REF`; un tercero sin rol cliente → `DATOS_INVALIDOS`.
+- `pedido`: `origen` (`web`/`whatsapp`/`manual`, por defecto `manual`), `entrega_tipo` (por defecto `transportadora`) y otros valores → `DATOS_INVALIDOS`. `fecha` hasta mañana (`E_FECHA`; por defecto ahora). `envio_cobrado`, `envio_costo`, `descuento_valor` ≥ 0; el descuento global no puede superar el subtotal. `subtotal`, `impuestos` y `total` que envíe el cliente se ignoran: los calculan los triggers.
+- `items` no vacío; `cantidad > 0`, `descuento_pct` entre 0 y 100, artículo existente (`E_REF`). **Precios del servidor:** `precio_lista = precio_para(artículo, cliente, cantidad)` (lista del cliente con respaldo en la pública; escalón por cantidad, «Llévate 2», D-007); `precio_unitario = round(precio_lista·(1−descuento_pct/100), 2)`; sin precio en ninguna lista → `E_PRECIO`. `tasa_impuesto` sale del artículo (lo del cliente se ignora).
+- **Advertencias** (no error), en `resultado.advertencias`: `{codigo:'PRECIO_CAMBIO', item, articulo_id, campo:'precio_lista'|'precio_unitario', precio_enviado, precio_actual}` cuando el cliente envió un precio distinto (> $0,01) del que calculó el servidor (se guarda el del servidor); `{codigo:'STOCK', item, articulo_id, requerido, disponible}` cuando la suma pedida del artículo supera `v_stock.disponible_para_prometer` ([E5]: el pedido se acepta igual).
+- Atomicidad: cualquier fallo deshace cliente nuevo, pedido e ítems. Idempotencia por `op_id` (`ya_aplicada`, sin duplicar cliente). No reserva ni mueve stock (RF-VEN-08).
+- Salida: `{pedido_id, cliente_id, estado:'recibido', subtotal, impuestos, total, item_ids, advertencias}`. Como en 0008/0009, `pedidos_venta.op_id` queda nulo.
+
 `orden_compra.registrar`
 ```json
 { "orden": { "id","proveedor_id","modalidad","fecha","fecha_esperada","condicion_pago","dias_credito","notas" },
