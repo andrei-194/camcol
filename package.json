@@ -11,7 +11,7 @@
     "test": "docker compose run --rm dev npm --prefix apps/web test",
     "typecheck": "docker compose run --rm dev npm --prefix apps/web run typecheck",
     "lint": "docker compose run --rm dev npm --prefix apps/web run lint",
-    "test:db": "node tests/db/core.test.mjs && node tests/db/sync.test.mjs",
+    "test:db": "node tests/db/core.test.mjs && node tests/db/sync.test.mjs && node tests/db/hardening.test.mjs",
     "db:start": "supabase start",
     "db:reset": "supabase db reset",
     "db:stop": "supabase stop",
