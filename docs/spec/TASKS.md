@@ -34,7 +34,7 @@
 - [ ] **T-M1-06** ([CAM-36](https://linear.app/caminocol/issue/CAM-36)) Op `orden_compra.registrar` (con `proveedor_nuevo`, recepción y pagos atómicos). Cierra: RF-COM-02/03/04/05, [E1] (parte servidor), [E8]. **Pruebas:** compra inmediata completa suma stock y costo; si falla el pago, **no** queda nada a medias.
 - [ ] **T-M1-07** ([CAM-37](https://linear.app/caminocol/issue/CAM-37)) Ops `gasto.registrar` y `adjunto.vincular`. Cierra: RF-PAG-03, RF-SYN-09.
 - [ ] **T-M1-08** ([CAM-38](https://linear.app/caminocol/issue/CAM-38)) `sync_pull` simple: **un solo cursor** (`updated_at`); snapshot de catálogo, terceros, stock, pedidos abiertos y de los últimos 90 días; borrado lógico. Sin cursores por tabla ni `has_more` mientras los datos quepan en una respuesta (D-009). Cierra: RF-SYN-08.
-- [ ] **T-M1-09** ([CAM-39](https://linear.app/caminocol/issue/CAM-39)) Endurecimiento: `search_path`, `REVOKE` a `anon`, Storage `soportes` + políticas, publicación Realtime. Cierra: RNF-SEC-01/03/04.
+- [x] **T-M1-09** ([CAM-39](https://linear.app/caminocol/issue/CAM-39)) Endurecimiento: `search_path`, `REVOKE` a `anon`, Storage `soportes` + políticas, publicación Realtime. Cierra: RNF-SEC-01/03/04.
 - [ ] **T-M1-10** ([CAM-40](https://linear.app/caminocol/issue/CAM-40)) Pruebas de **integración real** (Supabase local): RLS con JWT de miembro vs no miembro vía PostgREST; **concurrencia** con 2 conexiones finalizando la última unidad. Cierra: RNF-SEC-02, [E6], [E12].
 
 **Hecho de M1:** `npm run test:db` y `npm run test:integration` verdes; contratos en `PLAN.md` coinciden con el código.
