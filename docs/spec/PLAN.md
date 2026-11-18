@@ -147,9 +147,13 @@ Servidor: crea PV en `recibido`; fija `tasa_impuesto` desde el artículo (autori
 ```
 Servidor: OC `borrador` → ítems → `pedida` → (si hay) recepción (los triggers suman stock y costo) → pagos (`direccion='pago'`). **Todo atómico.** Compra inmediata = con `recepcion` y `pagos`.
 
-`gasto.registrar` → `{ id, fecha, categoria, concepto, valor, orden_compra_id?, pedido_venta_id?, pagado_por? }`
+`gasto.registrar` → `{ id?, fecha?, categoria, concepto?, valor, orden_compra_id?, pedido_venta_id?, pagado_por? }`
 
-`adjunto.vincular` → `{ id, entidad:'tercero'|'pago'|'orden_compra'|'gasto', entidad_id, path, mime }`
+**Implementado en `0009_op_gasto_adjunto.sql` (T-M1-07, CAM-37).** Ambas ops funcionan offline (D-009). Salida de `gasto.registrar`: el gasto creado `{id, fecha, categoria, concepto, valor, orden_compra_id, pedido_venta_id, pagado_por}`. `id` es opcional (el servidor lo genera). Validaciones: `categoria` no vacía; `valor` numérico, mayor que cero y entero (COP sin decimales) → `DATOS_INVALIDOS`; `fecha` `AAAA-MM-DD` (por defecto hoy en `America/Bogota`; formato inválido → `DATOS_INVALIDOS`; posterior a mañana → `E_FECHA`); `orden_compra_id`, `pedido_venta_id` o `pagado_por` inexistentes (o borrados) → `E_REF`. El gasto entra a `resumen_periodo` por su `fecha`. La idempotencia la da `sync_ops`; el manejador no recibe el `op_id`, así que `gastos.op_id` y `adjuntos.op_id` quedan nulos, y un `id` repetido con otro `op_id` responde `E_DUPLICADO` (PK).
+
+`adjunto.vincular` → `{ id?, entidad:'pago'|'gasto'|'recepcion'|'orden_compra'|'tercero', entidad_id, path, mime? }`
+
+Salida: `{id, entidad, entidad_id, path}`. La entidad debe existir y no estar borrada → `E_REF`; `entidad` desconocida, `entidad_id` o `path` ausentes → `DATOS_INVALIDOS`. El archivo ya está en Storage (`soportes`); la op solo lo vincula, y no valida que el objeto exista en el bucket. Un fallo de subida no invalida el registro principal (RF-SYN-09).
 
 ### 4.4 Contrato `sync_pull(desde timestamptz default null) → jsonb` (migración 0005, D-009)
 

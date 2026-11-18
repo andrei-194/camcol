@@ -73,7 +73,6 @@ await test('[RF-PAG-03] registra un gasto con todos sus campos', async () => {
   assert.equal(g.orden_compra_id, OC);
   assert.equal(g.pedido_venta_id, PV);
   assert.equal(g.pagado_por, USER_A);
-  assert.equal(g.op_id, uid(1));
 });
 
 await test('[RF-PAG-03] el id es opcional y la fecha por defecto es hoy en Bogotá', async () => {
@@ -106,7 +105,7 @@ await test('[RF-PAG-03] valor cero o negativo se rechaza con DATOS_INVALIDOS', a
     assert.equal(r.resultados[0].status, 'error');
     assert.equal(error(r), 'DATOS_INVALIDOS');
   }
-  assert.equal((await one(`select count(*)::int n from gastos where op_id in ($1,$2)`, [uid(10), uid(11)])).n, 0);
+  assert.equal((await one(`select count(*)::int n from gastos where valor in (0, -500)`, [])).n, 0);
 });
 
 await test('[RF-PAG-03] valor ausente, no numérico o con decimales (COP) se rechaza', async () => {
@@ -148,14 +147,14 @@ await test('[RF-SYN-06] reenviar el mismo op_id no duplica el gasto (ya_aplicada
   await aplicar([op]);
   const r = await aplicar([op]);
   assert.equal(r.resultados[0].status, 'ya_aplicada');
-  assert.equal((await one(`select count(*)::int n from gastos where op_id = $1`, [uid(60)])).n, 1);
+  assert.equal((await one(`select count(*)::int n from gastos where id = $1`, [uid(60)])).n, 1);
 });
 
 await test('[RF-SYN-06] el mismo op_id repetido en un lote se aplica una sola vez', async () => {
-  const op = gasto(61, { categoria: 'x', valor: 3000 });
+  const op = gasto(61, { id: uid(61), categoria: 'x', valor: 3000 });
   const r = await aplicar([op, op]);
   assert.deepEqual(r.resultados.map((x) => x.status), ['ok', 'ya_aplicada']);
-  assert.equal((await one(`select count(*)::int n from gastos where op_id = $1`, [uid(61)])).n, 1);
+  assert.equal((await one(`select count(*)::int n from gastos where id = $1`, [uid(61)])).n, 1);
 });
 
 await test('[RF-SYN-06] un id de gasto ya existente con otro op_id no se duplica (E_DUPLICADO)', async () => {
@@ -178,7 +177,6 @@ await test('[RF-SYN-09] vincula un archivo a un gasto', async () => {
   assert.equal(a.entidad_id, g);
   assert.equal(a.path, d.path);
   assert.equal(a.mime, 'image/webp');
-  assert.equal(a.op_id, uid(71));
 });
 
 await test('[RF-SYN-09] vincula a un pago, una recepción y una compra', async () => {
@@ -199,7 +197,7 @@ await test('[RF-SYN-09] entidad inexistente se rechaza con E_REF y no deja fila'
   const r = await aplicar([adjunto(90, { entidad: 'gasto', entidad_id: uid(778), path: 's/x.webp' })]);
   assert.equal(r.resultados[0].status, 'error');
   assert.equal(error(r), 'E_REF');
-  assert.equal((await one(`select count(*)::int n from adjuntos where op_id = $1`, [uid(90)])).n, 0);
+  assert.equal((await one(`select count(*)::int n from adjuntos where entidad_id = $1`, [uid(778)])).n, 0);
 });
 
 await test('[RF-SYN-09] un gasto borrado lógicamente cuenta como inexistente', async () => {
@@ -228,7 +226,7 @@ await test('[RF-SYN-09] reenviar el mismo op_id no duplica el adjunto (ya_aplica
   await aplicar([op]);
   const r = await aplicar([op]);
   assert.equal(r.resultados[0].status, 'ya_aplicada');
-  assert.equal((await one(`select count(*)::int n from adjuntos where op_id = $1`, [uid(110)])).n, 1);
+  assert.equal((await one(`select count(*)::int n from adjuntos where id = $1`, [uid(110)])).n, 1);
 });
 
 console.log('\nT-M1-07 · seguridad');
