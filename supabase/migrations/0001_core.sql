@@ -140,7 +140,7 @@ create table precios (
   articulo_id     uuid not null references articulos(id),
   precio          numeric(14,2) not null check (precio >= 0),
   cantidad_minima numeric(12,3) not null default 1 check (cantidad_minima > 0),  -- precio escalonado
-  vigente_desde   date not null default current_date,
+  vigente_desde   date not null default ((now() at time zone 'America/Bogota')::date),
   unique (lista_id, articulo_id, cantidad_minima)
 );
 
@@ -309,7 +309,7 @@ create table lotes (
   id                uuid primary key default gen_random_uuid(),
   articulo_id       uuid not null references articulos(id),
   codigo            text not null,
-  fecha_ingreso     date not null default current_date,
+  fecha_ingreso     date not null default ((now() at time zone 'America/Bogota')::date),
   fecha_vencimiento date,
   orden_item_id     uuid references ordenes_compra_items(id),
   costo_unitario    numeric(14,4),
@@ -388,7 +388,7 @@ create table pagos (
 
 create table gastos (                                             -- gastos operativos (combustible, empaques...)
   id              uuid primary key default gen_random_uuid(),
-  fecha           date not null default current_date,
+  fecha           date not null default ((now() at time zone 'America/Bogota')::date),
   categoria       text not null,
   concepto        text,
   valor           numeric(14,2) not null check (valor > 0),
