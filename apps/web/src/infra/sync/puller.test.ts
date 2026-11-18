@@ -73,7 +73,7 @@ describe('[RF-SYN-08] puller: carga inicial y cursor', () => {
     const { api, pull } = servidor()
     await ejecutarPull(db, api)
     expect(pull).toHaveBeenCalledTimes(1)
-    expect(pull.mock.calls[0][0]).toBe('2026-11-18T14:57:00.000Z')
+    expect(pull.mock.calls[0]?.[0]).toBe('2026-11-18T14:57:00.000Z')
   })
 
   it('cursor null con base vacía conserva el cursor anterior', async () => {
