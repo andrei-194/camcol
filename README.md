@@ -6,7 +6,7 @@ La vitrina pública (https://caminocol.com, Next.js en Vercel) vive en otro repo
 
 ## Estado
 
-Arranque del proyecto. Existe el esquema de base de datos (`supabase/migrations/0001_core.sql`) con 24 pruebas; la app aún no está construida. Ver el [roadmap](docs/producto/roadmap.md) y [TASKS](docs/spec/TASKS.md).
+**H1 (cimientos) cerrado.** La base de datos está completa y probada: esquema, `aplicar_ops` con sus operaciones (terceros, compras, compra de apertura, pedidos de venta, gastos y adjuntos), `sync_pull`, candados de seguridad y pruebas de integración reales contra Supabase local. La app web es solo el esqueleto: sigue H2 (login, PWA, datos locales y sincronización). Antes quedan tres validaciones y los reembolsos (T-M1-15 a T-M1-17). Ver el [roadmap](docs/producto/roadmap.md) y [TASKS](docs/spec/TASKS.md).
 
 ## Documentación
 

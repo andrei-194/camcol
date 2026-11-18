@@ -12,18 +12,15 @@ El negocio no cambia; cambia la herramienta. Fuente de verdad: `docs/spec/` (`SP
 
 ## Estado actual (2026-11-18)
 
-**H1 Cimientos: en curso, unos 2/3 hechos.** El esquema ya implementa el flujo `recibido → confirmado → finalizado`, hay `aplicar_ops` idempotente, `sync_pull` de un solo cursor, endurecimiento de seguridad y la app web base corriendo en Docker. Van 87 issues en Linear; las pruebas de base de datos son 78 en 5 suites.
+**H1 Cimientos: cerrado (PR #12 a #20).** La base de datos implementa el flujo `recibido → confirmado → finalizado`, `aplicar_ops` idempotente con todas sus operaciones, `sync_pull`, candados de seguridad (pedidos finalizados, escritura directa, funciones sin acceso de `anon`) y pruebas de integración reales contra Supabase local (RLS por JWT, concurrencia). Las decisiones de la auditoría están en D-015.
 
 | Tarea | Estado |
 |---|---|
-| T-M0-01, 02, 03, 05 · app web, pruebas con IDs, Supabase local, runbook | Hecho |
-| T-M0-04 · CI | CI corriendo; falta la protección de rama |
-| T-M1-00 a 03 · flujo `finalizado`, migración 0002, duplicados, `aplicar_ops` | Hecho |
-| T-M1-08, 09 · `sync_pull`, endurecimiento | Hecho |
-| Correcciones CAM-85, 86, 87 | Hecho (ver D-012) |
-| T-M1-04 a 07 · operaciones (`tercero.crear`, `pedido_venta.crear`, `orden_compra.registrar`, `gasto.registrar`, `adjunto.vincular`) | Siguiente |
-| T-M1-10 · integración real con Supabase local | Después de las operaciones |
+| T-M0-01 a 05 · app web, pruebas con IDs, Supabase local, CI, runbook | Hecho (CI corriendo; falta la protección de rama, CAM-10) |
+| T-M1-00 a 14 · esquema, operaciones, `sync_pull`, endurecimiento, compra de apertura, candados, integración real | Hecho |
+| T-M1-15 a 17 · validaciones del servidor, movimientos a mano, spec de reembolsos (D-015) | Pendiente, antes o junto a H3 |
 | T-M2-00 · spike en iPhone real | Pendiente; necesita un iPhone físico |
+| T-M2-01 a 09 · app base offline (H2) | Siguiente |
 
 ## Principios
 
@@ -56,7 +53,7 @@ Hecho antes de los hitos: ADR de arquitectura y entorno local (CAM-6, CAM-7, CAM
 |---|---|---|
 | 1 ✔ | 17 – 23 nov | T-M0-01 a T-M0-05: app web, pruebas de `0001` con IDs, Supabase local, CI y runbook (CAM-26 a 29 y CAM-10) |
 | 2 ✔ | 23 – 30 nov | T-M1-00 a T-M1-03, T-M1-08 y T-M1-09 (adelantadas): esquema al flujo `finalizado`, migración 0002, duplicados y `aplicar_ops` (CAM-30 a 33) |
-| 3 | 30 nov – 8 dic | T-M1-04 a T-M1-10: operaciones, `sync_pull`, endurecimiento e integración real (CAM-34 a 40). **Cierra H1** |
+| 3 ✔ | 30 nov – 8 dic | T-M1-04 a T-M1-14: operaciones, `sync_pull`, endurecimiento, compra de apertura, candados e integración real (CAM-34 a 40, 88 a 92). **H1 cerrado** (adelantado) |
 | 4 | 8 – 15 dic | T-M2-01…05: login, PWA, Dexie, puller, escritor |
 | 5 | 15 – 22 dic | T-M2-06…09: pendientes, Realtime, fotos, E2E base. **Cierra H2** |
 | 6 en adelante | desde 22 dic | H3 → H4 → H5, a ritmo de ~1 semana por bloque de TASKS |
