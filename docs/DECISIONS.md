@@ -210,6 +210,14 @@ Se especificó (solo documentación) lo que el socio aprobó en D-015: el reembo
 - Cierra [E6] (doble venta, también por PostgREST con dos JWT), RNF-SEC-02/[E12] (no miembro = 0 filas en todas las tablas y vistas) y la verificación de H-15 (ver Nota T-M1-14). Sin defectos nuevos en las migraciones 0001-0014 reales.
 - Corrección de documentación: el parámetro de `aplicar_ops` es `ops` (no `p_ops`); PostgREST llama por nombre, así que el cliente debe enviar `{ "ops": [...] }`. Se corrigió `PLAN.md` §4.3.
 
+## Nota T-M2-02 · PWA instalable (CAM-42) — 2026-11-18
+
+- `vite-plugin-pwa` 2.0.0 (compatible con Vite 8) + `workbox-build`/`workbox-window` 7.4. Estrategia `generateSW`, `registerType: 'prompt'`: el SW nuevo queda en espera y solo toma el control al tocar "Actualizar" (mensaje `SKIP_WAITING`). Sin `skipWaiting`/`clientsClaim` automáticos. El aviso no recarga solo; el usuario decide cuándo (RF-OPS-03).
+- El SW solo precachea el shell y hace `navigateFallback` a `index.html`. **No define `runtimeCaching`**: no intercepta Supabase ni guarda datos (más estricto que el "NetworkOnly" de PLAN §6; equivalente en efecto). Sin Background Sync.
+- Íconos: se reutilizan los de la vitrina (`caminocol.com`: montaña y camino en cacao sobre crema, 192, 512 y maskable 512) y `apple-touch-icon` de 180 px derivado del 512. **Pendiente de reemplazo** si los socios quieren íconos específicos del back-office. `theme_color` #5A3A2A, `background_color` #F6EFE2.
+- `navigator.storage.persist()` se pide al arrancar y al evento `appinstalled`. Su estado se muestra en `/ajustes` (pantalla mínima creada aquí; irá creciendo con otras tareas). "Cómo instalar" vive en `/instalar`, enlazada desde Home y Ajustes.
+- Fuera de esta tarea: `_redirects` y `_headers` (CSP) de Cloudflare Pages (PLAN §6, hosting) y el botón nativo `beforeinstallprompt`.
+
 ## Nota auditoría H1 · hallazgos pendientes de decisión — 2026-11-18
 
 Del informe de auditoría, los hallazgos H-01 a H-03 ya tienen tarea (T-M1-12, T-M1-11, T-M1-13). H-04 es el trabajo pendiente de CAM-35/36/37 (aún sin iniciar). Los demás **no tienen tarea ni decisión**; se resuelven cuando el socio decida:
