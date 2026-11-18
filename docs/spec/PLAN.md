@@ -98,16 +98,20 @@ Entregada y probada (24 pruebas). **No editarla** una vez aplicada a un proyecto
 
 ### 4.3 Contrato `aplicar_ops(p_ops jsonb) → jsonb`
 
-**Entrada:** `[{ op_id, device_id, tipo, client_created_at, payload, resolucion? }]` (se procesan **en orden**).
+**Implementado en `0003_aplicar_ops.sql` (T-M1-03, CAM-33).** Esta es la forma vigente del núcleo; los payloads de más abajo los implementan T-M1-04..07.
 
-**Salida:** `[{ op_id, status, ids?, advertencias?, candidatos?, error? }]` con `status ∈ {ok, ya_aplicada, revision, error, bloqueada}`.
+**Entrada:** `[{ op_id, tipo, datos }]` (se procesan **en orden** del arreglo). `datos` es un objeto: el payload del tipo (en las ops que traen `resolucion`, va dentro de `datos`).
+
+**Salida:** `{ detener_cola, resultados: [{ op_id, status, resultado?, error?: {codigo, mensaje} }] }` con `status ∈ {ok, ya_aplicada, revision, error}`. **Sin `bloqueada`** (D-009). `detener_cola` es `true` si alguna op quedó en `revision` o `error`: el cliente deja de enviar su cola hasta que el usuario resuelva. `ya_aplicada` cuenta como éxito.
 
 Reglas del servidor:
-- Cada op corre en un **sub-bloque con `EXCEPTION`** (savepoint): si falla, no afecta a las demás. Éxito → fila en `sync_ops(op_id, resultado)`. Si `op_id` ya existe → `ya_aplicada` con el resultado guardado.
-- `revision` **no** registra la op como aplicada.
-- Si una op queda `revision`/`error`, las siguientes que referencien sus ids → `bloqueada`.
-- `fecha` de negocio del cliente se acepta si ≤ `now() + 1 day`; si no → `error`.
-- Corre como **SECURITY INVOKER** (RLS aplica). Códigos de error estables: `E_VALIDACION`, `E_DUPLICADO`, `E_ESTADO`, `E_STOCK`, `E_REF`, `E_FECHA`.
+- Cada op corre en un **sub-bloque con `EXCEPTION`** (savepoint): si falla, se deshace solo ella y **las demás del lote se aplican**. Éxito → fila en `sync_ops(op_id, tipo, estado='ok', resultado, aplicado_en)`. Si `op_id` ya existe → `ya_aplicada` con el resultado guardado (incluso repetido en el mismo lote).
+- `revision` y `error` **no** registran la op: se puede reenviar.
+- Solo miembros (`es_miembro()`); si no, cada op devuelve `NO_AUTORIZADO`.
+- **Registro de tipos:** tabla `tipos_op(tipo, funcion)`. Cada tarea añade su tipo con un `INSERT` en su migración y una función `f(datos jsonb) returns jsonb` en `public`, sin tocar el núcleo. La función devuelve el resultado (p. ej. ids); devuelve un objeto con `"_revision": true` para pedir revisión (la clave se quita de la salida); rechaza con `RAISE EXCEPTION 'CODIGO: mensaje'` (CODIGO en mayúsculas y guion bajo, se devuelve tal cual).
+- Códigos del núcleo: `TIPO_DESCONOCIDO`, `DATOS_INVALIDOS` (op mal formada, o errores de tipo/not null/check/FK de Postgres, clases 22 y 23), `NO_AUTORIZADO` (también RLS, 42501), `E_DUPLICADO` (unicidad inesperada), `ERROR_INTERNO`. Los manejadores añaden los suyos: `E_ESTADO`, `E_STOCK`, `E_REF`, `E_FECHA`, etc. Una entrada que no sea arreglo lanza `DATOS_INVALIDOS` (error de la llamada completa).
+- `fecha` de negocio del cliente se acepta si ≤ `now() + 1 day`; si no → `E_FECHA` (lo valida cada manejador).
+- Corre como **SECURITY INVOKER** (RLS aplica), `search_path = public`.
 
 **Payloads**
 

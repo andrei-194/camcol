@@ -82,6 +82,18 @@ Detalle completo en [negocio/catalogo.md](negocio/catalogo.md). Cierra P-006 y P
 
 **Documentos actualizados:** SPEC v1.2 (D10, RF-VEN-08, RF-SYN-02/04/07/08/10, RF-INV-05, RF-DSH-05, §10), nota de revisión al inicio de PLAN, TASKS y AGENTS.
 
+## D-010 · Endurecimiento de seguridad (0004_hardening) — 2026-11-17
+
+**Decisión (CAM-39, T-M1-09):** todo el endurecimiento va en `0004_hardening.sql`, sin tocar 0001/0002.
+- `search_path` fijo en todas las funciones de `public` (bucle sobre el catálogo; el test falla si alguna queda sin él).
+- `REVOKE` total a `anon` (tablas, vistas, secuencias, funciones; también `public` en funciones) y privilegios por defecto corregidos para objetos futuros. `authenticated` conserva acceso; la RLS "solo miembros" decide.
+- `pg_trgm` se mueve al esquema `extensions`; `detectar_duplicados_tercero` pasa a `search_path = public, extensions`.
+- Bucket privado `soportes` con política solo miembros sobre `storage.objects` (bloque protegido: se omite si no existe `storage`).
+- Sin Realtime (D-009): la migración saca de `supabase_realtime` cualquier tabla de `public`. Esto reemplaza el punto 8 de PLAN §4.2.
+- **`v_cuentas_por_pagar` se conserva.** Aunque no hay crédito a proveedores (D-005) y ninguna pantalla la usa, está listada en SPEC §4, la cubren pruebas de 0001 y no cuesta nada (es `security_invoker` y ahora inaccesible a `anon`). Eliminarla obligaría a editar 0001 y sus pruebas sin beneficio. Se reevalúa si algún día estorba.
+
+**Sin probar aún (T-M1-10, Supabase local):** las políticas de Storage se probaron contra un stub de `storage.objects`; falta verificar con el Storage real (subida con JWT de miembro, URL firmada, rechazo a no miembro y a `anon`). Tampoco se probó que la API de PostgREST oculte las funciones a `anon` ni la publicación Realtime real.
+
 ## Nota T-M1-08 · `sync_pull` simple (CAM-38) — 2026-11-17
 
 - Contrato en `PLAN.md` §4.4; migración `0005_sync_pull.sql`. Decisiones de detalle: el stock va siempre completo (derivado, sin cursor); con cursor no hay filtro de ventana de 90 días (solo el snapshot inicial); el cursor es estricto (`>`), el solape de seguridad lo pone el cliente; `pagos` se comparan aparte porque no tocan al padre; gastos y adjuntos no se leen en el pull.

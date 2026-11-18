@@ -1,10 +1,11 @@
 // Pruebas del esquema núcleo en Postgres real (PGlite, WASM). Ejecutar: npm run test:db
 import { PGlite } from '@electric-sql/pglite';
+import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 
-const db = new PGlite();
-const MIGRATION = new URL('../../supabase/migrations/0001_core.sql', import.meta.url);
+const db = new PGlite({ extensions: { pg_trgm } });
+const migracion = (f) => readFileSync(new URL(`../../supabase/migrations/${f}`, import.meta.url), 'utf8');
 
 // Stub mínimo de Supabase Auth
 await db.exec(`
@@ -13,7 +14,10 @@ await db.exec(`
   create function auth.uid() returns uuid language sql stable as
     $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 `);
-await db.exec(readFileSync(MIGRATION, 'utf8'));
+// Se cargan todas las migraciones: los flujos de negocio deben funcionar con los triggers de 0002 (CAM-86)
+await db.exec(migracion('0001_core.sql'));
+await db.exec(migracion('0002_sync.sql'));
+await db.exec(migracion('0006_fix_touch_padre.sql'));
 
 const USER_A = '00000000-0000-0000-0000-00000000000a';
 const USER_X = '00000000-0000-0000-0000-0000000000ff';
