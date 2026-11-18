@@ -1,15 +1,18 @@
 # Siguiente ronda (H1, parte 3): operaciones sobre `aplicar_ops`
 
-Estado a 2026-11-18. Lo que ya está en `main`: esquema (0001–0006), `aplicar_ops` (0003), endurecimiento (0004), `sync_pull` (0005) y 78 pruebas de base de datos en 5 suites. Esta ronda añade las operaciones de negocio.
+Estado a 2026-11-18. Ya en `main`: esquema (0001–0006), `aplicar_ops` (0003), endurecimiento (0004), `sync_pull` (0005) y `tercero.crear` (0007, CAM-34, PR #10). 98 pruebas de base de datos en 6 suites. Esta ronda añade el resto de las operaciones de negocio y los candados que salieron de la auditoría (`docs/auditoria-h1-2026-11-18.md`).
 
-## Tareas (una por agente, en paralelo)
+## Tareas (una por agente)
 
 | Issue | Tarea | Migración reservada | Archivo de pruebas |
 |---|---|---|---|
-| CAM-34 | `tercero.crear` con revisión de duplicados | `0007_op_tercero.sql` | `tests/db/op_tercero.test.mjs` |
+| ~~CAM-34~~ | ~~`tercero.crear` con revisión de duplicados~~ **hecha (PR #10)** | `0007_op_tercero.sql` | `tests/db/op_tercero.test.mjs` |
 | CAM-36 | `orden_compra.registrar` | `0008_op_compra.sql` | `tests/db/op_compra.test.mjs` |
 | CAM-37 | `gasto.registrar` y `adjunto.vincular` | `0009_op_gasto_adjunto.sql` | `tests/db/op_gasto_adjunto.test.mjs` |
 | CAM-35 | `pedido_venta.crear` (solo con conexión) | `0010_op_pedido_venta.sql` | `tests/db/op_pedido_venta.test.mjs` |
+| CAM-88 | Candado de pedidos finalizados (H-02) | `0011_candado_finalizados.sql` | `tests/db/candado_finalizados.test.mjs` (rama `CAM-88-candado-pedido-finalizado`, en rojo) |
+| CAM-90 | Compra de apertura para el inventario inicial (H-01, D-014) | `0013_compra_apertura.sql` | `tests/db/compra_apertura.test.mjs` (rama `CAM-90-compra-apertura`, en rojo) |
+| CAM-89 | Cerrar la escritura directa (H-03) | `0012_cerrar_escritura_directa.sql` | `tests/db/escritura_directa.test.mjs` (rama `CAM-89-cerrar-escritura-directa`, en rojo) |
 
 El alcance, las pruebas y el criterio de "hecho" de cada una están en su issue de Linear. Después, en serie: CAM-40 (integración real con Supabase local, T-M1-10), que cierra H1.
 
@@ -25,9 +28,16 @@ El alcance, las pruebas y el criterio de "hecho" de cada una están en su issue 
 8. Commits en español `tipo: resumen (CAM-n)` con el trailer `Co-Authored-By`. Abre un PR por tarea con la plantilla y menciona `CAM-n`. Pasa el issue a *In Review*; al fusionar, a *Done*.
 9. Un hallazgo fuera del alcance (como el de `touch_padre`) se abre como issue propio con prueba en rojo; no se arregla a escondidas dentro de tu PR.
 
-## Orden de fusión sugerido
+## Orden de fusión
 
-CAM-34 primero (CAM-35 y CAM-36 reutilizan la creación de terceros), luego CAM-37, CAM-36 y CAM-35. Si CAM-34 aún no está fusionada, usa un tercero existente en las pruebas y completa el caso de tercero nuevo al rebasar.
+1. ~~CAM-34~~ (hecha).
+2. **CAM-88** y **CAM-37**, en paralelo (independientes entre sí).
+3. **CAM-36** y después **CAM-35** (reutilizan `crear_tercero_desde_payload` de 0007).
+4. **CAM-90**, después de CAM-36 (la op de compra debe aceptar `modalidad: "apertura"`).
+5. **CAM-89**, con todas las operaciones ya fusionadas (los candados se prueban contra los flujos reales).
+6. **CAM-40** (integración real con Supabase), que cierra H1.
+
+Las ramas de CAM-88, 89 y 90 ya existen con su prueba en rojo y `main` fusionado; el agente que tome cada tarea sigue esa rama (rebasando o fusionando `main` de nuevo) y abre el PR. Las migraciones `0011`–`0013` están reservadas. Hallazgos de la auditoría sin tarea: ver la nota «auditoría H1» en `docs/DECISIONS.md`.
 
 ## Fuera de esta ronda
 
