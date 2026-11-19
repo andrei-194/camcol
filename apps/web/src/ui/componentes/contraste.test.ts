@@ -33,6 +33,10 @@ const PARES_TEXTO: Array<[string, string]> = [
   ['fondo', 'cafe'], // texto papel sobre la cabecera de café
   ['trigo', 'cafe'], // detalles de trigo sobre la cabecera
   ['texto-secundario', 'tarjeta'],
+  ['sobre-acento', 'terracota'], // texto de la selección
+  ['peligro', 'superficie'],
+  ['exito', 'superficie'],
+  ['texto-secundario', 'arena'],
   ['acento', 'fondo'], // enlaces
   ['acento', 'superficie'],
   ['acento', 'acento-suave'],

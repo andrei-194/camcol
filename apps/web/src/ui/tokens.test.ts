@@ -21,6 +21,25 @@ describe('[RNF-UX] fuentes de la marca autoalojadas', () => {
     for (const u of urls) expect(existsSync(`src/${u.slice(2)}`)).toBe(true)
   })
 
+  it('cada archivo de fuente es un woff2 real (firma wOF2) y no un puntero vacío', () => {
+    const urls = [...css.matchAll(/url\('(\.\/fonts\/[^']+\.woff2)'\)/g)].map((m) => m[1]!)
+    for (const u of urls) expect(readFileSync(`src/${u.slice(2)}`).subarray(0, 4).toString('latin1')).toBe('wOF2')
+  })
+
+  it('los rangos de peso de cada @font-face coinciden con lo recortado', () => {
+    const peso = (familia: string, estilo: string) => {
+      const b = (css.match(/@font-face\s*{[^}]*}/g) ?? []).find((x) => x.includes(`'${familia}'`) && x.includes(`font-style: ${estilo}`))
+      return /font-weight:\s*([^;]+);/.exec(b ?? '')?.[1]
+    }
+    expect(peso('Fraunces', 'normal')).toBe('500 700')
+    expect(peso('Fraunces', 'italic')).toBe('500')
+    expect(peso('Work Sans', 'normal')).toBe('100 900')
+  })
+
+  it('no fija el eje óptico de Fraunces: el navegador lo ajusta al tamaño (font-optical-sizing: auto)', () => {
+    expect(css).not.toMatch(/font-variation-settings:[^;]*opsz/)
+  })
+
   it('pesa menos de 160 KB en total (presupuesto de precaché)', () => {
     const urls = [...css.matchAll(/url\('(\.\/fonts\/[^']+\.woff2)'\)/g)].map((m) => m[1]!)
     const total = urls.reduce((n, u) => n + readFileSync(`src/${u.slice(2)}`).length, 0)
@@ -46,6 +65,7 @@ describe('[RNF-UX] papel y sombra de la web', () => {
 
   it('define la sombra de papeles apilados y la del elemento flotante', () => {
     expect(css).toMatch(/--shadow-papel:\s*0 1px 0 rgb\(58 36 24 \/ 0\.1\), 0 5px 0 -2px rgb\(58 36 24 \/ 0\.07\)/)
+    expect(css).toMatch(/--shadow-tarjeta:\s*0 1px 0 rgb\(58 36 24 \/ 0\.1\), 0 5px 0 -2px rgb\(58 36 24 \/ 0\.07\)/) // la que usa Tarjeta
     expect(css).toMatch(/--shadow-flotante:/)
   })
 
@@ -56,7 +76,8 @@ describe('[RNF-UX] papel y sombra de la web', () => {
 
   it('el service worker precachea fuentes e imágenes webp', () => {
     const patron = opcionesPwa.workbox?.globPatterns?.join(',') ?? ''
-    expect(patron).toContain('woff2')
-    expect(patron).toContain('webp')
+    const extensiones = [...css.matchAll(/url\('\.\/(?:fonts|assets)\/[^']+\.(\w+)'\)/g)].map((m) => m[1]!)
+    expect(extensiones.length).toBeGreaterThan(0)
+    for (const e of new Set(extensiones)) expect(patron).toContain(e)
   })
 })
