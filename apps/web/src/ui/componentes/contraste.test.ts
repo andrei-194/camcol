@@ -32,6 +32,9 @@ const PARES_TEXTO: Array<[string, string]> = [
   ['texto-secundario', 'superficie'],
   ['fondo', 'cafe'], // texto papel sobre la cabecera de café
   ['trigo', 'cafe'], // detalles de trigo sobre la cabecera
+  ['exito-claro', 'cafe'], // «En línea» sobre la barra de estado de café
+  ['advertencia-claro', 'cafe'], // «Sin conexión» sobre la barra de estado de café
+  ['sobre-peligro', 'peligro'], // contador de atención sobre rojo
   ['texto-secundario', 'tarjeta'],
   ['sobre-acento', 'terracota'], // texto de la selección
   ['peligro', 'superficie'],
