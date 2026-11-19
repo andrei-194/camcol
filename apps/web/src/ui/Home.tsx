@@ -3,6 +3,7 @@ import { Pagina } from './componentes/Pagina'
 import { BannerPendientes } from './pendientes/BannerPendientes'
 
 const ENLACES = [
+  { a: '/catalogo', texto: 'Catálogo' },
   { a: '/pendientes', texto: 'Pendientes' },
   { a: '/instalar', texto: 'Cómo instalar' },
   { a: '/ajustes', texto: 'Ajustes' },

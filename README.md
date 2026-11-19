@@ -63,6 +63,7 @@ La CLI de Supabase viene como devDependency (`npm install`); no hace falta insta
 ```bash
 npm run db:start     # levanta Supabase local (Postgres, Auth, Realtime, Storage, Studio)
 npm run db:reset     # recrea la base desde cero y aplica supabase/migrations/*.sql
+npm run db:catalogo  # carga el catálogo inicial (10 artículos) en la base local; NO en producción hasta la regla 14
 npm run db:status    # URLs y claves locales
 npm run db:stop      # detiene los contenedores (los datos se conservan en un volumen)
 ```

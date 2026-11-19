@@ -3,6 +3,9 @@ import { Ajustes } from './ui/Ajustes'
 import { ComoInstalar } from './ui/ComoInstalar'
 import { Home } from './ui/Home'
 import { LoginPage } from './ui/auth/LoginPage'
+import { Catalogo } from './ui/catalogo/Catalogo'
+import { FormularioArticulo } from './ui/catalogo/FormularioArticulo'
+import { ListasPrecio } from './ui/catalogo/ListasPrecio'
 import { Pendientes } from './ui/pendientes/Pendientes'
 import { RequireAuth } from './ui/auth/RequireAuth'
 
@@ -15,6 +18,10 @@ export function AppRoutes() {
         <Route path="/" element={<Home />} />
         <Route path="/ajustes" element={<Ajustes />} />
         <Route path="/pendientes" element={<Pendientes />} />
+        <Route path="/catalogo" element={<Catalogo />} />
+        <Route path="/catalogo/listas" element={<ListasPrecio />} />
+        <Route path="/catalogo/articulos/nuevo" element={<FormularioArticulo />} />
+        <Route path="/catalogo/articulos/:id" element={<FormularioArticulo />} />
       </Route>
     </Routes>
   )
