@@ -50,6 +50,7 @@ Plugin `egm@egm` (repo `google/elephant-goldfish-model`; instalar con `claude pl
 | Tarea con migración, contrato `aplicar_ops`/`sync_pull` o regla de negocio nueva | `egm-review` además de `egm-lite` | el diseño, antes de escribir la prueba en rojo |
 | Antes de marcar listo el PR de la release | `egm-drift-report docs/spec/` | que spec, plan y código no se contradigan; si lo hacen, gana la spec |
 
+- **Las skills `/egm:*` las lanza el socio** (están reservadas a invocación explícita; un agente no puede ejecutarlas ni sustituirlas). El agente deja la tarea lista y commiteada en su rama, **pide la revisión y espera** antes de integrar en la release (el push a `release/<hito>` es el punto de control).
 - Un hallazgo **Blocker** o **Major** se corrige o se justifica en `docs/DECISIONS.md` antes de integrar; los **Nit** se anotan.
 - El informe se cita en el commit o la nota de la tarea (`CAM-n`). Una tarea sin revisión EGM no se integra ni se marca *In Review*.
 - Si el entorno no puede crear subagentes frescos, EGM se detiene; en ese caso no se integra hasta poder revisar. No se sustituye por una autorrevisión.
