@@ -47,13 +47,14 @@ npm run db:catalogo  # 4. carga los 10 artículos del catálogo
 npm run db:status    # 5. muestra las claves locales: copia la «anon key»
 cp .env.example apps/web/.env.local   # 6. crea la config; abre ese archivo y pega la anon key en VITE_SUPABASE_ANON_KEY
 npm run dev          # 7. levanta la app: http://localhost:5173 (déjala abierta en su terminal)
+# 8. crea tu usuario para poder entrar (sección siguiente)
 ```
 
 Desde el móvil, en el mismo WiFi: `http://<IP de tu PC>:5173`, y pon esa misma IP en `VITE_SUPABASE_URL` de `apps/web/.env.local`. Si no carga, permite el puerto 5173 en el Firewall de Windows.
 
 ### Crear tu usuario (para poder entrar)
 
-El registro público está cerrado: el socio se crea a mano, una vez por base. **`npm run db:reset` borra los usuarios**, así que repite estos pasos después de cada reset.
+El registro público está cerrado: el socio se crea a mano, una vez por base. **`npm run db:reset` borra usuarios y datos** (no hay seed): después de cada reset repite estos pasos y también `npm run db:catalogo`.
 
 1. Abre Studio (http://127.0.0.1:54323) → **Authentication → Users → Add user**, con correo y contraseña (marca «Auto Confirm User»).
 2. Copia el **User UID** de ese usuario.

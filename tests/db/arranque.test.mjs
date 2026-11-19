@@ -71,6 +71,7 @@ test('[RNF-OPS] 42P01 (faltan tablas) en base local manda a `npm run db:reset`',
   assert.equal(r.status, 2);
   assert.match(r.stderr, /npm run db:reset/);
   assert.match(r.stderr, /usuario/i); // db:reset borra auth.users y miembros: hay que crear el usuario de nuevo
+  assert.match(r.stderr, /npm run db:catalogo/); // y también el catálogo (no hay seed)
 });
 
 test('[RNF-OPS] 42P01 en base remota habla de migraciones, no de db:reset', () => {
