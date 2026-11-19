@@ -99,6 +99,19 @@ test('[RNF-OPS] esFalloDeRed reconoce el TypeError de fetch y los errores con ca
   assert.equal(esFalloDeRed(undefined), false);
 });
 
+test('[RNF-OPS] esFalloDeRed: un TypeError de código no es fallo de red; el timeout sí', () => {
+  assert.equal(esFalloDeRed(new TypeError("Cannot read properties of undefined (reading 'x')")), false);
+  assert.equal(esFalloDeRed(new DOMException('The operation was aborted due to timeout', 'TimeoutError')), true);
+});
+
+test('[RNF-OPS] socios.mjs verifica el login antes de inscribir en miembros y acota cada fetch con timeout', () => {
+  const src = readFileSync(new URL('../../scripts/socios.mjs', import.meta.url), 'utf8');
+  const login = src.indexOf('await verificarLogin(');
+  const inscribir = src.indexOf('insert into miembros');
+  assert.ok(login > 0 && inscribir > 0 && login < inscribir, 'el login debe verificarse antes del insert');
+  assert.equal(src.match(/fetch\(/g).length, src.match(/AbortSignal\.timeout\(/g).length, 'cada fetch lleva timeout');
+});
+
 test('[RNF-OPS] explicarFalloLogin: «contraseña distinta» solo con 400/401; otro estado muestra el número', () => {
   for (const estado of [400, 401]) assert.match(explicarFalloLogin(estado, 'Ana'), /contraseña distinta/);
   for (const estado of [429, 500, 503]) {
