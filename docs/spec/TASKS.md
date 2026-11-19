@@ -64,7 +64,7 @@
 
 ## M3 — Terceros y catálogo
 - [x] **T-M3-00** ([CAM-101](https://linear.app/caminocol/issue/CAM-101)) Sistema de diseño (blanco, negro y café de la marca; tokens, componentes base) y reestilo de las pantallas existentes. Ver `docs/producto/diseno.md`.
-- [ ] **T-M3-01** ([CAM-50](https://linear.app/caminocol/issue/CAM-50)) Lista/búsqueda local de terceros y formulario (cliente/proveedor/ambos), GPS con alternativa manual, foto, consentimiento. Cierra: RF-TER-01/02/03/05, RN-DAT-01, RNF-UX-04.
+- [x] **T-M3-01** ([CAM-50](https://linear.app/caminocol/issue/CAM-50)) Lista/búsqueda local de terceros y formulario (cliente/proveedor/ambos), GPS con alternativa manual, foto, consentimiento. Cierra: RF-TER-01/02/03/05, RN-DAT-01, RNF-UX-04.
 - [ ] **T-M3-02** ([CAM-51](https://linear.app/caminocol/issue/CAM-51)) Detección de duplicados al crear (online: aviso; offline: se resuelve al sincronizar). Cierra: RF-TER-04.
 - [ ] **T-M3-03** ([CAM-52](https://linear.app/caminocol/issue/CAM-52)) Edición y borrado lógico (solo online). Cierra: RF-TER-06.
 - [x] **T-M3-04** ([CAM-53](https://linear.app/caminocol/issue/CAM-53)) Catálogo: productos, artículos (presentación, unidades, banderas), listas y precios con escalones, asignar lista a cliente. Carga inicial con los 10 artículos de `docs/negocio/catalogo.md`. Cierra: RF-CAT-01/02/03/04.

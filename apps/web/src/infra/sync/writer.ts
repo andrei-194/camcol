@@ -38,6 +38,8 @@ export interface OpNueva {
   datos: unknown
   /** Filas que la UI muestra con ⏳ mientras la op no se sube. Solo se escriben si la op se encola. */
   filasLocales?: FilaLocal[]
+  /** Fuerza «solo con conexión» aunque el tipo admita offline (p. ej. `tercero.crear` de un cliente, D-009). */
+  soloEnLinea?: boolean
 }
 
 export type ResultadoCommit =
@@ -112,6 +114,7 @@ export function crearEscritor(opciones: OpcionesEscritor) {
         created_at: ahora().toISOString(),
       }
       const filas = nueva.filasLocales ?? []
+      const admiteOffline = def.admiteOffline && !nueva.soloEnLinea
 
       let resp: RespuestaApi
       let sinConexion = false
@@ -130,8 +133,8 @@ export function crearEscritor(opciones: OpcionesEscritor) {
             return { estado: 'aplicada', op_id: op.op_id, ya_aplicada: r.status === 'ya_aplicada', resultado: r.resultado }
           }
           if (r.status === 'revision') {
-            if (def.admiteOffline) await encolar({ ...op, estado: 'revision', resultado: r.resultado }, filas)
-            return { estado: 'revision', op_id: op.op_id, candidatos: candidatosDe(r.resultado), resultado: r.resultado, encolada: def.admiteOffline }
+            if (admiteOffline) await encolar({ ...op, estado: 'revision', resultado: r.resultado }, filas)
+            return { estado: 'revision', op_id: op.op_id, candidatos: candidatosDe(r.resultado), resultado: r.resultado, encolada: admiteOffline }
           }
           throw new ErrorDominio(r.error?.codigo ?? 'ERROR_INTERNO', r.error?.mensaje ?? 'El servidor rechazó la operación')
         }
@@ -139,7 +142,7 @@ export function crearEscritor(opciones: OpcionesEscritor) {
           throw new ErrorDominio(resp.codigo, resp.mensaje)
         case 'red':
         case 'no_aplicado': {
-          if (!def.admiteOffline) throw new RequiereConexionError()
+          if (!admiteOffline) throw new RequiereConexionError()
           await encolar(op, filas)
           if (resp.clase === 'red') {
             return { estado: 'encolada', op_id: op.op_id, motivo: sinConexion ? 'sin_conexion' : 'red' }
