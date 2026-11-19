@@ -14,7 +14,7 @@ import { Terceros } from './Terceros'
 let db: CaminoDB
 let srv: ServidorSimulado
 let enLinea = true
-const guardar = vi.fn(async () => ({ id: 'adj1' }))
+const guardar = vi.fn(async (_p: { opId: string; entidad: string; entidadId: string; archivo: Blob }) => ({ id: 'adj1' }))
 const subirListas = vi.fn(async () => ({ vinculadas: 1, fallidas: 0, esperando: 0 }))
 
 beforeEach(async () => {
