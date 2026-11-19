@@ -405,3 +405,13 @@ Pantallas `/catalogo`, `/catalogo/articulos/nuevo|:id` y `/catalogo/listas`; `Se
 - **Fallo hallado:** `npm run db:catalogo` falló con `Cannot find package 'pg'` en una carpeta ya usada: `pg` se añadió a la raíz (T-M1-10) pero `npm run setup` solo instalaba `apps/web`, y el README no pedía instalar la raíz. Además `.env.example` mandaba a `.env` en la raíz, pero Vite lee `apps/web/.env.local`.
 - **Arreglo:** `setup` instala raíz y contenedor; `scripts/dependencia.mjs` convierte «falta un paquete» y «Supabase apagado» en un mensaje con el comando a correr (código 2); README con «Primer arranque» en orden; `.env.example` y runbook apuntan a `apps/web/.env.local`. Prueba: `tests/db/arranque.test.mjs`.
 - **Regla:** todo script que corra en el PC debe fallar diciendo qué hacer. Quien clone el repo no tiene un agente al lado. Al añadir una dependencia o un paso de arranque se actualiza `setup` y el README en el mismo cambio.
+
+## Nota T-M1 · seed de los socios y `db:reiniciar` (CAM-104) — 2026-11-19
+
+- **Decisión del socio:** los dos socios de desarrollo se crean con un script, no con `seed.sql`. Correos, nombres y la contraseña de desarrollo viven solo en `supabase/socios.local.json` (ignorado por Git, regla 13); en el repo hay `supabase/socios.example.json` con datos ficticios.
+- **Diseño:** `npm run db:socios` (`scripts/socios.mjs`, parte pura en `scripts/socios-lib.mjs`) crea cada usuario con la API de administración de Auth y lo inscribe en `miembros`; es idempotente (busca por `lower(email)`). Al final inicia sesión con cada socio, así que avisa si un usuario existente tiene otra contraseña. `npm run db:reiniciar` encadena reset, socios y catálogo.
+- **Guarda (regla 14):** solo toma `API_URL` y `DB_URL` de `supabase status` y comprueba el host exacto (`new URL(u).hostname`), no con regex. Nunca imprime la contraseña ni las claves.
+- **Espera de Auth:** tras `db reset` el script reintenta hasta 30 s sobre `/auth/v1/health`. Comprobado con `db:reiniciar`.
+- **Descartado:** `seed.sql` con inserts en `auth.users` (acopla el repo al esquema interno de GoTrue y deja credenciales en el repo).
+- **Pendiente aparte:** el regex `esLocal` de `scripts/cargar-catalogo.mjs` es más débil que `esApiLocal`; unificarlo.
+- **Lección del proceso:** un comando de shell con texto de README entre comillas ejecutó los `cp` del ejemplo y pisó `supabase/socios.local.json` y `apps/web/.env.local` (restaurados). El README ahora avisa de que los pasos con `cp` no se repiten, y los textos largos se editan con la herramienta de edición, no por el shell.

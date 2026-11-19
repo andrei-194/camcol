@@ -28,7 +28,10 @@ npm run test:db     # pruebas del esquema en Postgres real (PGlite)
 npm run dev         # app web en http://localhost:5173
 npm test            # pruebas de la app (también typecheck, lint y build)
 npm run db:start    # Supabase local (ver README)
+npm run db:reiniciar  # base local limpia: migraciones + socios (supabase/socios.local.json) + catálogo
 ```
+
+Los socios de desarrollo viven en `supabase/socios.local.json` (ignorado por Git; plantilla `socios.example.json`). Nunca van al repo ni a una base que no sea local.
 
 - Si cambian `apps/web/package.json` o su lockfile, repetir `npm run setup`.
 - El disco virtual de Docker debe estar en D: (Docker Desktop → Settings → Resources → Advanced).

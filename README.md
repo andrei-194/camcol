@@ -42,29 +42,24 @@ Abre Docker Desktop y espera a que diga «running». Después, en la carpeta del
 ```bash
 npm run setup        # 1. instala las dependencias del PC y de la app (una vez; repite si cambia un package.json)
 npm run db:start     # 2. levanta Supabase local (la primera vez baja varias imágenes)
-npm run db:reset     # 3. aplica las migraciones a la base local
-npm run db:catalogo  # 4. carga los 10 artículos del catálogo
+cp supabase/socios.example.json supabase/socios.local.json   # 3. abre ese archivo y pon los correos, nombres y la contraseña de los socios
+npm run db:reiniciar # 4. migraciones + socios + catálogo (10 artículos), todo en uno
 npm run db:status    # 5. muestra las claves locales: copia la «anon key»
 cp .env.example apps/web/.env.local   # 6. crea la config; abre ese archivo y pega la anon key en VITE_SUPABASE_ANON_KEY
 npm run dev          # 7. levanta la app: http://localhost:5173 (déjala abierta en su terminal)
-# 8. crea tu usuario para poder entrar (sección siguiente)
 ```
+
+Los pasos 3 y 6 **crean** archivos: si ya existen, no repitas el `cp`, porque lo sobrescribe y pierdes tu configuración.
 
 Desde el móvil, en el mismo WiFi: `http://<IP de tu PC>:5173`, y pon esa misma IP en `VITE_SUPABASE_URL` de `apps/web/.env.local`. Si no carga, permite el puerto 5173 en el Firewall de Windows.
 
-### Crear tu usuario (para poder entrar)
+### Entrar a la app (los socios)
 
-El registro público está cerrado: el socio se crea a mano, una vez por base. **`npm run db:reset` borra usuarios y datos** (no hay seed): después de cada reset repite estos pasos y también `npm run db:catalogo`.
+Entra con el correo y la contraseña que pusiste en `supabase/socios.local.json`. Ese archivo está en `.gitignore`: **nunca se sube al repositorio** (regla 13), y el script se niega a crear socios en una base que no sea local (regla 14). El registro público está cerrado: los socios solo se crean con `npm run db:socios`.
 
-1. Abre Studio (http://127.0.0.1:54323) → **Authentication → Users → Add user**, con correo y contraseña (marca «Auto Confirm User»).
-2. Copia el **User UID** de ese usuario.
-3. En Studio → **SQL Editor**, corre (cambia el UID y el nombre):
-
-   ```sql
-   insert into miembros (user_id, nombre) values ('<User UID>', 'Tu nombre');
-   ```
-
-Sin la fila en `miembros`, el login funciona pero la app no muestra datos (RLS).
+- `npm run db:reiniciar` **borra todos los datos locales** y los vuelve a crear: migraciones, socios y catálogo.
+- `npm run db:socios` solo crea los socios que falten, sin borrar nada (se puede repetir).
+- Sin la fila en `miembros` el login funciona pero la app no muestra datos (RLS); `db:socios` la crea.
 
 Si un comando falla con «Falta instalar dependencias» o «¿Está levantado Supabase local?», el mensaje dice cuál de los pasos de arriba repetir.
 
@@ -95,7 +90,9 @@ La CLI de Supabase viene como devDependency (`npm run setup`); no hace falta ins
 
 ```bash
 npm run db:start     # levanta Supabase local (Postgres, Auth, Realtime, Storage, Studio)
-npm run db:reset     # recrea la base desde cero y aplica supabase/migrations/*.sql
+npm run db:reset     # recrea la base desde cero y aplica supabase/migrations/*.sql (borra usuarios y datos)
+npm run db:socios    # crea los socios de supabase/socios.local.json en la base local (idempotente)
+npm run db:reiniciar # db:reset + db:socios + db:catalogo en un solo comando
 npm run db:catalogo  # carga el catálogo inicial (10 artículos) en la base local; NO en producción hasta la regla 14
 npm run db:status    # URLs y claves locales
 npm run db:stop      # detiene los contenedores (los datos se conservan en un volumen)

@@ -66,18 +66,17 @@ for (const code of ['57P03', 'ETIMEDOUT', 'ECONNRESET']) {
   });
 }
 
-test('[RNF-OPS] 42P01 (faltan tablas) en base local manda a `npm run db:reset`', () => {
+test('[RNF-OPS] 42P01 (faltan tablas) en base local manda a db:reiniciar y avisa de que borra los datos', () => {
   const r = falla('42P01', { esLocal: true });
   assert.equal(r.status, 2);
-  assert.match(r.stderr, /npm run db:reset/);
-  assert.match(r.stderr, /usuario/i); // db:reset borra auth.users y miembros: hay que crear el usuario de nuevo
-  assert.match(r.stderr, /npm run db:catalogo/); // y también el catálogo (no hay seed)
+  assert.match(r.stderr, /npm run db:reiniciar/);
+  assert.match(r.stderr, /borra/i); // el reset borra usuarios y datos; db:reiniciar los vuelve a crear
 });
 
-test('[RNF-OPS] 42P01 en base remota habla de migraciones, no de db:reset', () => {
+test('[RNF-OPS] 42P01 en base remota habla de migraciones, sin db:reiniciar ni db:reset', () => {
   const r = falla('42P01', { esLocal: false, host: 'db.ejemplo.co' });
   assert.equal(r.status, 2);
-  assert.doesNotMatch(r.stderr, /db:reset/);
+  assert.doesNotMatch(r.stderr, /db:reiniciar|db:reset/);
   assert.match(r.stderr, /migraciones/);
 });
 

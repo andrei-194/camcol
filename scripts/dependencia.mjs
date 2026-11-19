@@ -48,8 +48,8 @@ export function explicarFalloConexion(e, { esLocal = true, host = '' } = {}) {
       return esLocal
         ? salir(
             'La base está viva pero le faltan tablas (¿se omitió el reset?).',
-            'Corre:  npm run db:reset',
-            'Ojo: el reset borra usuarios y datos. Después crea tu usuario de nuevo (README, «Crear tu usuario») y repite:  npm run db:catalogo',
+            'Corre:  npm run db:reiniciar',
+            'Ojo: borra los datos locales y los vuelve a crear: socios (supabase/socios.local.json) y catálogo.',
           )
         : salir(`A la base${donde} le faltan tablas: aplica primero las migraciones de supabase/migrations.`);
     default:

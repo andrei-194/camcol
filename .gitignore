@@ -25,3 +25,6 @@ Thumbs.db
 
 # Espacios de trabajo temporales de los agentes
 .claude/worktrees/
+
+# Socios de desarrollo local (correos y contraseña): nunca se versionan. Plantilla: supabase/socios.example.json
+supabase/socios.local.json
