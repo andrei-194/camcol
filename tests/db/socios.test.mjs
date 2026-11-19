@@ -4,7 +4,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { ErrorSocios, esApiLocal, exigirLocal, leerSocios } from '../../scripts/socios-lib.mjs';
+import {
+  ErrorSocios,
+  esApiLocal,
+  esFalloDeRed,
+  esPlantilla,
+  exigirLocal,
+  explicarFalloLogin,
+  leerSocios,
+} from '../../scripts/socios-lib.mjs';
 
 const leer = (ruta) => readFileSync(new URL(ruta, import.meta.url), 'utf8');
 const valido = (extra = {}) =>
@@ -74,6 +82,43 @@ test('[RNF-OPS] el ejemplo versionado pasa leerSocios y no trae datos reales', (
   const r = leerSocios(leer('../../supabase/socios.example.json'));
   assert.equal(r.socios.length, 2);
   for (const s of r.socios) assert.match(s.email, /@ejemplo\.co$/);
+});
+
+test('[RNF-OPS] leerSocios rechaza un JSON que no es un objeto y socios que no son objetos', () => {
+  rechaza('[]', /objeto/);
+  rechaza('null', /objeto/);
+  rechaza(valido({ socios: [null] }), /nombre/);
+  rechaza(valido({ socios: [42] }), /nombre/);
+});
+
+test('[RNF-OPS] esFalloDeRed reconoce el TypeError de fetch y los errores con cause.code; no otros', () => {
+  assert.equal(esFalloDeRed(new TypeError('fetch failed')), true);
+  assert.equal(esFalloDeRed(Object.assign(new Error('x'), { cause: { code: 'ECONNRESET' } })), true);
+  assert.equal(esFalloDeRed(new Error('otra cosa')), false);
+  assert.equal(esFalloDeRed(new ErrorSocios('config')), false);
+  assert.equal(esFalloDeRed(undefined), false);
+});
+
+test('[RNF-OPS] explicarFalloLogin: «contraseña distinta» solo con 400/401; otro estado muestra el número', () => {
+  for (const estado of [400, 401]) assert.match(explicarFalloLogin(estado, 'Ana'), /contraseña distinta/);
+  for (const estado of [429, 500, 503]) {
+    const m = explicarFalloLogin(estado, 'Ana');
+    assert.match(m, new RegExp(String(estado)));
+    assert.doesNotMatch(m, /contraseña distinta|Bórralo/);
+  }
+});
+
+test('[RNF-OPS] esPlantilla detecta la plantilla sin editar (correos @ejemplo.co) y no a socios reales', () => {
+  assert.equal(esPlantilla(leerSocios(leer('../../supabase/socios.example.json')).socios), true);
+  assert.equal(esPlantilla([{ email: 'real@gmail.com', nombre: 'Real' }]), false);
+  assert.equal(esPlantilla([{ email: 'real@gmail.com', nombre: 'Real' }, { email: 'x@ejemplo.co', nombre: 'X' }]), true);
+});
+
+test('[RNF-OPS] db:reiniciar valida el archivo de socios ANTES de borrar la base', () => {
+  const { scripts } = JSON.parse(leer('../../package.json'));
+  const cadena = scripts['db:reiniciar'];
+  assert.ok(cadena.includes('socios.mjs --validar'), cadena);
+  assert.ok(cadena.indexOf('socios.mjs --validar') < cadena.indexOf('db:reset'), cadena);
 });
 
 test('[RNF-OPS] `.gitignore` protege supabase/socios.local.json (credenciales fuera del repo, regla 13)', () => {
