@@ -50,7 +50,7 @@ Plugin `egm@egm` (repo `google/elephant-goldfish-model`; instalar con `claude pl
 | Tarea con migración, contrato `aplicar_ops`/`sync_pull` o regla de negocio nueva | `egm-review` además de `egm-lite` | el diseño, antes de escribir la prueba en rojo |
 | Antes de marcar listo el PR de la release | `egm-drift-report docs/spec/` | que spec, plan y código no se contradigan; si lo hacen, gana la spec |
 
-- **Las skills `/egm:*` las lanza el socio** (están reservadas a invocación explícita; un agente no puede ejecutarlas ni sustituirlas). El agente deja la tarea lista y commiteada en su rama, **pide la revisión y espera** antes de integrar en la release (el push a `release/<hito>` es el punto de control).
+- **Las skills `/egm:*` las lanza el socio** (están reservadas a invocación explícita; un agente no puede ejecutarlas ni sustituirlas). El agente deja la tarea commiteada en su rama, pide la revisión y la deja **«lista, pendiente de EGM»** (el issue sigue en *In Progress*, sin pasar a *In Review*); espera antes de integrar en la release (el push a `release/<hito>` es el punto de control).
 - Un hallazgo **Blocker** o **Major** se corrige o se justifica en `docs/DECISIONS.md` antes de integrar; los **Nit** se anotan.
 - El informe se cita en el commit o la nota de la tarea (`CAM-n`). Una tarea sin revisión EGM no se integra ni se marca *In Review*.
 - Si el entorno no puede crear subagentes frescos, EGM se detiene; en ese caso no se integra hasta poder revisar. No se sustituye por una autorrevisión.
@@ -59,7 +59,7 @@ Plugin `egm@egm` (repo `google/elephant-goldfish-model`; instalar con `claude pl
 ## Entorno
 
 - Windows. **Todo lo pesado va en el disco D:** el repo, el caché de npm, las imágenes y el disco virtual de Docker, y cualquier emulador. El disco C: está casi lleno.
-- **La app web corre en Docker** (`docker-compose.yml`, imagen `node:22`): `npm run setup`, `dev`, `test`, `typecheck`, `lint`, `build`. No se instala Node 22 en el PC. El Node del PC (20+) solo sirve para `test:db` y la CLI de Supabase (`db:*`).
+- **La app web corre en Docker** (`docker-compose.yml`, imagen `node:22`): `npm run setup`, `dev`, `test`, `typecheck`, `lint`, `build`. No se instala Node 22 en el PC. El Node del PC (20+) sirve para `setup` (instala las dependencias de la raíz), `test:db`, `db:catalogo` y la CLI de Supabase (`db:*`).
 
 ## Cómo empezar una tarea
 
@@ -95,7 +95,7 @@ Plugin `egm@egm` (repo `google/elephant-goldfish-model`; instalar con `claude pl
 10. **Nunca perder datos locales:** la outbox sobrevive a re-login y actualizaciones.
 11. Migraciones **solo hacia adelante**. `0001` solo admite correcciones hasta su primer `db push` a un proyecto real, con nota en `docs/DECISIONS.md`.
 12. Dinero en COP sin decimales en UI; zona horaria `America/Bogota`; libra = 500 g.
-13. Sin secretos en el repo: van en `.env` (ignorado) y se documentan en `.env.example`.
+13. Sin secretos en el repo: van en `apps/web/.env.local` (ignorado) y se documentan en `.env.example`.
 14. La base local es de ensayo: no cargar datos reales hasta tener producción con backups y restauración probada.
 
 ## Definición de hecho

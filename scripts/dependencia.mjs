@@ -15,12 +15,40 @@ export async function requerir(paquete) {
   }
 }
 
-/** Traduce un fallo de conexión a la base local en una instrucción. Otros errores se relanzan. */
-export function explicarFalloConexion(e) {
-  if (e?.code === 'ECONNREFUSED' || e?.code === 'ENOTFOUND') {
-    console.error('No se pudo conectar a la base de datos. ¿Está levantado Supabase local?');
-    console.error('Abre Docker Desktop y corre:  npm run db:start');
-    process.exit(2);
+/** Host de una URL de conexión, sin usuario ni contraseña. Devuelve '' si no se puede leer. */
+export function hostDe(url) {
+  try {
+    return new URL(url).host;
+  } catch {
+    return '';
   }
-  throw e;
+}
+
+/**
+ * Traduce un fallo de la base en una instrucción y sale con código 2. Los errores que no reconoce se relanzan.
+ * `esLocal` evita recomendar `db:start` o `db:reset` cuando la base es remota; `host` dice cuál falló.
+ */
+export function explicarFalloConexion(e, { esLocal = true, host = '' } = {}) {
+  const donde = host ? ` (${host})` : '';
+  const salir = (...lineas) => {
+    for (const l of lineas) console.error(l);
+    process.exit(2);
+  };
+  switch (e?.code) {
+    case 'ECONNREFUSED':
+    case 'ENOTFOUND':
+      return esLocal
+        ? salir('No se pudo conectar a la base de datos. ¿Está levantado Supabase local?', 'Abre Docker Desktop y corre:  npm run db:start')
+        : salir(`No se pudo conectar a la base${donde}. Revisa DATABASE_URL (host y puerto) y tu red.`);
+    case '57P03':
+    case 'ETIMEDOUT':
+    case 'ECONNRESET':
+      return salir(`La base${donde} no respondió o todavía está arrancando.`, 'Espera unos segundos y repite el comando.');
+    case '42P01':
+      return esLocal
+        ? salir('La base está viva pero le faltan tablas (¿se omitió el reset?).', 'Corre:  npm run db:reset')
+        : salir(`A la base${donde} le faltan tablas: aplica primero las migraciones de supabase/migrations.`);
+    default:
+      throw e;
+  }
 }

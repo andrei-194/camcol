@@ -2,7 +2,7 @@
 // Por defecto: Supabase local. Otra base: DATABASE_URL=... y --confirmo-regla-14 (solo si ya hay backups y
 // una restauración probada; AGENTS.md regla 14). Sin secretos en el repo: la URL viene del entorno.
 import { readFileSync } from 'node:fs';
-import { requerir, explicarFalloConexion } from './dependencia.mjs';
+import { requerir, explicarFalloConexion, hostDe } from './dependencia.mjs';
 
 const pg = (await requerir('pg')).default;
 
@@ -22,7 +22,7 @@ try {
   const { rows } = await cliente.query('select (select count(*) from articulos) a, (select count(*) from precios) p');
   console.log(`Catálogo cargado: ${rows[0].a} artículos, ${rows[0].p} precios.`);
 } catch (e) {
-  explicarFalloConexion(e);
+  explicarFalloConexion(e, { esLocal, host: hostDe(url) });
 } finally {
   await cliente.end().catch(() => {});
 }

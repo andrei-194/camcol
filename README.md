@@ -33,7 +33,7 @@ apps/web/    la PWA (Vite + React + TypeScript + Tailwind)
 ## Requisitos
 
 - **Docker Desktop.** La app web corre dentro de un contenedor con Node 22, así que no hace falta instalar Node 22 en el PC.
-- Node.js 20 o superior en el PC, solo para las pruebas de base de datos y la CLI de Supabase (se instala con `npm install`).
+- Node.js 20 o superior en el PC, para `setup`, las pruebas de base de datos, la carga del catálogo y la CLI de Supabase (todo se instala con `npm run setup`).
 
 ## Primer arranque (en este orden)
 
@@ -44,11 +44,26 @@ npm run setup        # 1. instala las dependencias del PC y de la app (una vez; 
 npm run db:start     # 2. levanta Supabase local (la primera vez baja varias imágenes)
 npm run db:reset     # 3. aplica las migraciones a la base local
 npm run db:catalogo  # 4. carga los 10 artículos del catálogo
-cp .env.example apps/web/.env.local   # 5. copia la config (PowerShell: Copy-Item) y pega la anon key de npm run db:status
-npm run dev          # 6. levanta la app: http://localhost:5173 (déjala abierta en su terminal)
+npm run db:status    # 5. muestra las claves locales: copia la «anon key»
+cp .env.example apps/web/.env.local   # 6. crea la config; abre ese archivo y pega la anon key en VITE_SUPABASE_ANON_KEY
+npm run dev          # 7. levanta la app: http://localhost:5173 (déjala abierta en su terminal)
 ```
 
-Desde el móvil, en el mismo WiFi: `http://<IP de tu PC>:5173`, y pon esa misma IP en `VITE_SUPABASE_URL` de `apps/web/.env.local` (ver `.env.example`; el archivo es `apps/web/.env.local`). Si no carga, permite el puerto 5173 en el Firewall de Windows. Para entrar hace falta un usuario de Auth que también esté en la tabla `miembros`.
+Desde el móvil, en el mismo WiFi: `http://<IP de tu PC>:5173`, y pon esa misma IP en `VITE_SUPABASE_URL` de `apps/web/.env.local`. Si no carga, permite el puerto 5173 en el Firewall de Windows.
+
+### Crear tu usuario (para poder entrar)
+
+El registro público está cerrado: el socio se crea a mano, una sola vez por base.
+
+1. Abre Studio (http://127.0.0.1:54323) → **Authentication → Users → Add user**, con correo y contraseña (marca «Auto Confirm User»).
+2. Copia el **User UID** de ese usuario.
+3. En Studio → **SQL Editor**, corre (cambia el UID y el nombre):
+
+   ```sql
+   insert into miembros (user_id, nombre) values ('<User UID>', 'Tu nombre');
+   ```
+
+Sin la fila en `miembros`, el login funciona pero la app no muestra datos (RLS).
 
 Si un comando falla con «Falta instalar dependencias» o «¿Está levantado Supabase local?», el mensaje dice cuál de los pasos de arriba repetir.
 
@@ -63,7 +78,7 @@ npm run test:integration   # integración REAL contra Supabase local (requiere d
 ### App web (en Docker)
 
 ```bash
-npm run setup        # instala las dependencias de apps/web dentro del contenedor (una vez)
+npm run setup        # instala las dependencias del PC y, dentro del contenedor, las de apps/web (una vez)
 npm run dev          # servidor de desarrollo: http://localhost:5173
 npm test             # pruebas de la app
 npm run typecheck    # tipos (TypeScript estricto)
@@ -75,7 +90,7 @@ Los `node_modules` viven en un volumen de Docker (en D:), no en la carpeta del p
 
 ### Base de datos local (Supabase en Docker)
 
-La CLI de Supabase viene como devDependency (`npm install`); no hace falta instalarla aparte. Requiere Docker Desktop en ejecución. La primera vez descarga varias imágenes (unos GB).
+La CLI de Supabase viene como devDependency (`npm run setup`); no hace falta instalarla aparte. Requiere Docker Desktop en ejecución. La primera vez descarga varias imágenes (unos GB).
 
 ```bash
 npm run db:start     # levanta Supabase local (Postgres, Auth, Realtime, Storage, Studio)

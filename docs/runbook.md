@@ -20,12 +20,11 @@ Reglas:
 
 ## 2. Cómo correr en local
 
-Requisitos: Docker Desktop (la app web corre en un contenedor con Node 22; no se instala Node 22 en el PC) y Node 20 o superior en el PC para `test:db` y la CLI de Supabase.
+Requisitos: Docker Desktop (la app web corre en un contenedor con Node 22; no se instala Node 22 en el PC) y Node 20 o superior en el PC para `setup`, `test:db`, `db:catalogo` y la CLI de Supabase.
 
 ```bash
-npm install
+npm run setup      # una vez: dependencias del PC y de apps/web (dentro del contenedor)
 npm run test:db     # pruebas del esquema en Postgres real (PGlite)
-npm run setup       # una vez: dependencias de apps/web dentro del contenedor
 npm run dev         # app web en http://localhost:5173
 npm test            # pruebas de la app (también typecheck, lint y build)
 npm run db:start    # Supabase local (ver README)
