@@ -1,8 +1,12 @@
 // Componentes base del rediseño (T-D2, CAM-107, docs/producto/diseno.md): logo de marca, botón en pastilla,
 // superficies de papel, selector de periodo, cifras de dinero y filas con filete punteado.
+import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { join } from 'node:path'
 import { fireEvent, render, screen, within } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
-import { Boton } from './Boton'
+import { CampoSelect } from '../catalogo/campos'
+import { Boton, BotonEnlace } from './Boton'
 import { CampoTexto } from './CampoTexto'
 import { Dinero } from './Dinero'
 import { FilaLista } from './FilaLista'
@@ -121,5 +125,71 @@ describe('FilaLista', () => {
     expect(fila).toHaveTextContent('Catálogo')
     expect(fila.className).toContain('min-h-12')
     expect(fila.className).toContain('border-dotted')
+  })
+})
+
+describe('revisión de T-D2: coherencia y casos límite', () => {
+  it('Boton secundario es contorno cacao sobre fondo transparente', () => {
+    render(<Boton variante="secundario">Ver</Boton>)
+    const clases = screen.getByRole('button', { name: 'Ver' }).className
+    for (const c of ['border-acento', 'text-acento', 'bg-transparent']) expect(clases).toContain(c)
+  })
+
+  it('BotonEnlace es un enlace en pastilla con la variante marcada', () => {
+    render(
+      <MemoryRouter>
+        <BotonEnlace to="/x" variante="peligro">
+          Ir
+        </BotonEnlace>
+      </MemoryRouter>,
+    )
+    const a = screen.getByRole('link', { name: 'Ir' })
+    expect(a).toHaveAttribute('data-variante', 'peligro')
+    expect(a.className).toContain('rounded-full')
+  })
+
+  it('el select comparte el fondo blanco del campo de texto', () => {
+    render(
+      <CampoSelect etiqueta="Tipo">
+        <option>CC</option>
+      </CampoSelect>,
+    )
+    expect(screen.getByLabelText('Tipo').className).toContain('bg-tarjeta')
+  })
+
+  it('ningún campo con borde fuerte (campo o select) queda sobre el papel: todos usan bg-tarjeta', () => {
+    const recorre = (dir: string): string[] =>
+      readdirSync(dir).flatMap((n) => {
+        const ruta = join(dir, n)
+        return statSync(ruta).isDirectory() ? recorre(ruta) : /\.tsx$/.test(n) && !/\.test\.tsx$/.test(n) ? [ruta] : []
+      })
+    const culpables = recorre('src/ui').filter((f) =>
+      readFileSync(f, 'utf8')
+        .split(/\r?\n/)
+        .some((l) => l.includes('border-borde-fuerte') && l.includes('bg-fondo')),
+    )
+    expect(culpables).toEqual([])
+  })
+
+  it('Dinero con un valor no finito muestra un guion largo y no pinta NaN', () => {
+    for (const v of [Number.NaN, Number.POSITIVE_INFINITY]) {
+      const { container, unmount } = render(<Dinero valor={v} />)
+      expect(container.textContent).toBe('—')
+      expect(container.textContent).not.toMatch(/NaN|∞/)
+      expect(container.querySelector('data')).toBeNull()
+      unmount()
+    }
+  })
+
+  it('Dinero redondea al entero: lo legible y el valor de máquina coinciden', () => {
+    render(<Dinero valor={0.4} />)
+    expect(document.querySelector('data')).toHaveAttribute('value', '0')
+  })
+
+  it('Segmentos con un valor fuera de las opciones no marca ninguna; con lista vacía no hay botones', () => {
+    const { rerender } = render(<Segmentos etiqueta="Vista" opciones={[{ valor: 'a', texto: 'Uno' }]} valor={'z' as 'a'} alCambiar={() => {}} />)
+    expect(screen.getByRole('button', { name: 'Uno' })).toHaveAttribute('aria-pressed', 'false')
+    rerender(<Segmentos etiqueta="Vista" opciones={[]} valor={'a'} alCambiar={() => {}} />)
+    expect(within(screen.getByRole('group', { name: 'Vista' })).queryAllByRole('button')).toHaveLength(0)
   })
 })
