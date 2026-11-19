@@ -53,7 +53,7 @@ Desde el móvil, en el mismo WiFi: `http://<IP de tu PC>:5173`, y pon esa misma 
 
 ### Crear tu usuario (para poder entrar)
 
-El registro público está cerrado: el socio se crea a mano, una sola vez por base.
+El registro público está cerrado: el socio se crea a mano, una vez por base. **`npm run db:reset` borra los usuarios**, así que repite estos pasos después de cada reset.
 
 1. Abre Studio (http://127.0.0.1:54323) → **Authentication → Users → Add user**, con correo y contraseña (marca «Auto Confirm User»).
 2. Copia el **User UID** de ese usuario.

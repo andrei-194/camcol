@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const helper = pathToFileURL(new URL('../../scripts/dependencia.mjs', import.meta.url).pathname.replace(/^\/(\w:)/, '$1')).href;
+const helper = new URL('../../scripts/dependencia.mjs', import.meta.url).href;
 const correr = (codigo) => spawnSync(process.execPath, ['--input-type=module', '-e', codigo], { encoding: 'utf8' });
 const importar = (nombres) => `import { ${nombres} } from ${JSON.stringify(helper)};`;
 
@@ -70,6 +70,7 @@ test('[RNF-OPS] 42P01 (faltan tablas) en base local manda a `npm run db:reset`',
   const r = falla('42P01', { esLocal: true });
   assert.equal(r.status, 2);
   assert.match(r.stderr, /npm run db:reset/);
+  assert.match(r.stderr, /usuario/i); // db:reset borra auth.users y miembros: hay que crear el usuario de nuevo
 });
 
 test('[RNF-OPS] 42P01 en base remota habla de migraciones, no de db:reset', () => {
