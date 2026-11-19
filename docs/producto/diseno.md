@@ -8,6 +8,29 @@ La app es la oficina de Camino Col y habla el mismo idioma visual que la web: pa
 
 Tres rasgos de marca: la cabecera de café con el logo grande recortado, el **disco central** de Inicio con su anillo incompleto, y los números de dinero y stock en Fraunces.
 
+## Estado de implementación
+
+| Hecho en T-D1 (CAM-106) | Objetivo de T-D2 a T-D6 (aún no está en el código) |
+|---|---|
+| Paleta, tipografía autoalojada, grano de papel, sombra `shadow-papel`, foco y selección en terracota, escala | Botones en pastilla y deshabilitado en arena (T-D2); logo, cabecera de café, barra inferior con el disco central y menú flotante (T-D2/T-D3); tablero con gráficos (T-D4); pantallas actuales con los rasgos nuevos y filetes punteados (T-D5); color de la barra del teléfono (T-D6) |
+
+Lo descrito más abajo como «navegación», «superficies» de componentes y reglas 4 y 7 es el **objetivo**; cada tarea lo cumple al integrarse.
+
+## Componentes actuales (`apps/web/src/ui/componentes/`)
+
+Hoy siguen como estaban y solo cambian de color por los tokens; T-D2 los rediseña.
+
+| Componente | Qué es |
+|---|---|
+| `Pagina` | Barra superior y columna de contenido de 448 px. |
+| `BarraSuperior` | Cabecera con el único `h1` de la pantalla (hoy café con filo de acento). |
+| `Boton`, `BotonEnlace` | `primario` (cacao), `secundario` (contorno), `peligro`. 48 px de alto. |
+| `CampoTexto` | Etiqueta visible, ayuda y error vinculados con `aria-describedby`. |
+| `Tarjeta` | Superficie con borde fino y `shadow-tarjeta`. |
+| `EtiquetaEstado`, `Aviso` | Pastilla de estado y mensaje en línea. |
+
+`IndicadoresEstado` y `AvisoActualizacion` usan los mismos tokens; los enlaces dentro de un texto usan `CLASES_ENLACE` (cacao subrayado).
+
 ## Paleta
 
 Son los colores de la web (`camino/app/globals.css`), con nombres funcionales para la app. Los nombres de token anteriores se conservaron para no romper pantallas; solo cambió su valor.
@@ -21,7 +44,7 @@ Son los colores de la web (`camino/app/globals.css`), con nombres funcionales pa
 | `borde` / `trigo` | `#d9c7a0` | divisores, detalles sobre el café |
 | `texto` / `cafe` | `#3a2418` | texto y cabecera |
 | `texto-secundario` | `#6b5647` | tinta: ayudas y datos de apoyo |
-| `borde-fuerte` | `#857260` | borde de campos (3:1 contra la tarjeta) |
+| `borde-fuerte` | `#857260` | borde de campos (4,6 contra la tarjeta; mínimo 3) |
 | `acento` | `#5a3a2a` | cacao: botón primario, enlaces, estado activo |
 | `acento-hover` | `#3a2418` | pulsado |
 | `acento-suave` | `#f1e9e4` | fondo de etiquetas de acento |
@@ -49,14 +72,19 @@ Se calcula y verifica en `apps/web/src/ui/componentes/contraste.test.ts` (lee lo
 | `exito` sobre `fondo` | 5,9 |
 | `advertencia` sobre `fondo` / `advertencia-suave` | 7,0 / 6,7 |
 | `terracota` sobre `fondo` (foco) | 4,6 (mínimo 3) |
+| `sobre-acento` sobre `terracota` (texto seleccionado) | 4,6 |
+| `peligro` / `exito` sobre `superficie` | 5,7 / 5,5 |
+| `texto-secundario` sobre `arena` | 5,2 |
+
+Cada fila de esta tabla tiene su prueba en `contraste.test.ts`.
 
 El color nunca es el único portador del significado: cada estado lleva texto («Faltante», «Sin conexión», «Sin subir»).
 
 ## Tipografía
 
-Las de la web, **autoalojadas** para funcionar sin red (`apps/web/src/fonts/`, recortadas a español con `scripts/subconjunto-fuentes.py`; 125 KB en total, precacheadas por el service worker, `font-display: swap`):
+Las de la web, **autoalojadas** para funcionar sin red (`apps/web/src/fonts/`; Fraunces recortada a español con `scripts/subconjunto-fuentes.py` y Work Sans tal como la sirve Google, ya en su subconjunto latino; 125 KB en total, precacheadas por el service worker, `font-display: swap`):
 
-- **Titulares y cifras** (`font-titulo`): Fraunces, pesos 500 a 700, eje óptico 24 a 144 según el tamaño. Precios, totales, stock y KPI van aquí, con `tabular-nums`.
+- **Titulares y cifras** (`font-titulo`): Fraunces, pesos 500 a 700. El eje óptico (24 a 144) lo ajusta solo el navegador según el tamaño; no se fija en el CSS. Precios, totales, stock y KPI van aquí, con `tabular-nums`.
 - **Nombres de personas** (`.nombre`): Fraunces cursiva, como en la web.
 - **Cuerpo** (`font-cuerpo`): Work Sans, pila de respaldo del sistema.
 

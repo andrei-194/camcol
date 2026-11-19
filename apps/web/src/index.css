@@ -114,14 +114,7 @@ body {
   line-height: 1.5;
 }
 
-/* Titulares y cifras en Fraunces: el eje óptico se ajusta al tamaño, como en la web. */
-.font-titulo {
-  font-variation-settings: 'opsz' 72;
-}
-.font-titulo.text-marca,
-.font-titulo.text-cifra {
-  font-variation-settings: 'opsz' 144;
-}
+/* Fraunces: no se fija el eje óptico; el navegador lo ajusta al tamaño (font-optical-sizing: auto, rango 24 a 144). */
 
 /* Nombres de personas en cursiva, como en la web. */
 .nombre {
