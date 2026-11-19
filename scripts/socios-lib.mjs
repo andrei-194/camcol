@@ -46,6 +46,27 @@ export function leerSocios(texto) {
   return { password, socios: limpios };
 }
 
+/** La plantilla `socios.example.json` usa correos `@ejemplo.co`: si siguen ahí, el archivo local no se ha editado. */
+export function esPlantilla(socios) {
+  return socios.some((s) => s.email.endsWith('@ejemplo.co'));
+}
+
+/** ¿Es un fallo de red (Auth caído o arrancando)? `fetch` lanza un `TypeError`, a veces con el código en `cause`. */
+export function esFalloDeRed(e) {
+  return e instanceof TypeError || Boolean(e?.cause?.code);
+}
+
+/** Mensaje para un inicio de sesión rechazado. Solo 400/401 son «contraseña distinta»; el resto no justifica borrar nada. */
+export function explicarFalloLogin(estado, nombre) {
+  if (estado === 400 || estado === 401) {
+    return (
+      `${nombre} ya existía con una contraseña distinta a la de supabase/socios.local.json. ` +
+      'Bórralo en Studio (Authentication > Users) y vuelve a correr:  npm run db:socios'
+    );
+  }
+  return `No se pudo iniciar sesión con ${nombre} (estado ${estado}). Espera unos segundos y repite:  npm run db:socios`;
+}
+
 const LOCALES = new Set(['127.0.0.1', 'localhost', '[::1]']);
 
 /** ¿La URL apunta a esta máquina? Compara el host exacto: `localhost.evil.com` o `127.0.0.1@evil.com` no pasan. */

@@ -20,7 +20,7 @@
     "db:status": "supabase status",
     "db:catalogo": "node scripts/cargar-catalogo.mjs",
     "db:socios": "node scripts/socios.mjs",
-    "db:reiniciar": "npm run db:reset && npm run db:socios && npm run db:catalogo"
+    "db:reiniciar": "node scripts/socios.mjs --validar && npm run db:reset && npm run db:socios && npm run db:catalogo"
   },
   "license": "UNLICENSED",
   "dependencies": {

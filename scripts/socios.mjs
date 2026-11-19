@@ -1,11 +1,12 @@
 // Crea los socios de desarrollo en la base LOCAL y los inscribe en `miembros`. `npm run db:socios` (CAM-104).
 // Idempotente: si un socio ya existe lo reutiliza. Los datos vienen de supabase/socios.local.json (ignorado por Git;
-// plantilla en supabase/socios.example.json). Nunca imprime la contraseña, las claves ni el cuerpo de una respuesta.
-// Solo actúa sobre la base local (regla 14): API_URL y DB_URL salen de `supabase status`, sin variable que los sustituya.
+// plantilla en supabase/socios.example.json). Nunca imprime la contraseña ni las claves; de una respuesta de Auth solo
+// muestra el mensaje de error, truncado a 200 caracteres. Sin red, `--validar` solo comprueba el archivo (lo usa `db:reiniciar`
+// antes de borrar la base). Solo actúa sobre la base local (regla 14): API_URL y DB_URL salen de `supabase status`.
 import { existsSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { requerir, explicarFalloConexion } from './dependencia.mjs';
-import { ErrorSocios, exigirLocal, leerSocios } from './socios-lib.mjs';
+import { ErrorSocios, esFalloDeRed, esPlantilla, exigirLocal, explicarFalloLogin, leerSocios } from './socios-lib.mjs';
 
 const pg = (await requerir('pg')).default;
 const ARCHIVO = new URL('../supabase/socios.local.json', import.meta.url);
@@ -18,7 +19,11 @@ function leerStatus() {
   if (r.status !== 0 || i < 0) {
     throw new ErrorSocios('No se pudo leer `supabase status`. ¿Está levantado Supabase local? Abre Docker Desktop y corre:  npm run db:start');
   }
-  return JSON.parse(r.stdout.slice(i));
+  try {
+    return JSON.parse(r.stdout.slice(i));
+  } catch {
+    throw new ErrorSocios('No se pudo interpretar `supabase status`. ¿Está arrancando Supabase local? Espera unos segundos y repite:  npm run db:socios');
+  }
 }
 
 // Tras `db reset` Auth tarda unos segundos en volver: se reintenta hasta ESPERA_AUTH_MS.
@@ -52,7 +57,11 @@ async function crearUsuario(api, service, { email, nombre }, password) {
     body: JSON.stringify({ email, password, email_confirm: true }),
   });
   if (!r.ok) throw new ErrorSocios(`No se pudo crear a ${nombre} (estado ${r.status}): ${await mensajeDe(r)}`);
-  return (await r.json()).id;
+  try {
+    return (await r.json()).id;
+  } catch {
+    throw new ErrorSocios(`Auth respondió algo ilegible al crear a ${nombre}. Repite:  npm run db:socios`);
+  }
 }
 
 async function verificarLogin(api, anon, { email, nombre }, password) {
@@ -61,12 +70,7 @@ async function verificarLogin(api, anon, { email, nombre }, password) {
     headers: { apikey: anon, 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
   });
-  if (!r.ok) {
-    throw new ErrorSocios(
-      `${nombre} ya existía con una contraseña distinta a la de supabase/socios.local.json. ` +
-        'Bórralo en Studio (Authentication > Users) y vuelve a correr:  npm run db:socios',
-    );
-  }
+  if (!r.ok) throw new ErrorSocios(explicarFalloLogin(r.status, nombre));
 }
 
 async function main() {
@@ -74,6 +78,13 @@ async function main() {
     throw new ErrorSocios('Falta supabase/socios.local.json. Copia supabase/socios.example.json con ese nombre y pon tus datos.');
   }
   const { password, socios } = leerSocios(readFileSync(ARCHIVO, 'utf8'));
+  if (esPlantilla(socios)) {
+    throw new ErrorSocios('supabase/socios.local.json todavía tiene los datos de la plantilla (@ejemplo.co). Pon los correos y nombres reales de los socios.');
+  }
+  if (process.argv.includes('--validar')) {
+    console.log('supabase/socios.local.json es válido.');
+    return;
+  }
   const st = leerStatus();
   exigirLocal(st.API_URL, st.DB_URL);
   await esperarAuth(st.API_URL, st.ANON_KEY);
@@ -101,7 +112,15 @@ try {
   if (e instanceof ErrorSocios) {
     console.error(e.message);
     process.exitCode = 2;
+  } else if (esFalloDeRed(e)) {
+    console.error('Auth no respondió (¿sigue arrancando Supabase?). Espera unos segundos y repite:  npm run db:socios');
+    process.exitCode = 2;
   } else {
-    explicarFalloConexion(e, { esLocal: true });
+    try {
+      explicarFalloConexion(e, { esLocal: true });
+    } catch (inesperado) {
+      console.error(`Error inesperado: ${inesperado?.message ?? inesperado}`); // sin traza: puede traer rutas y datos
+      process.exitCode = 1;
+    }
   }
 }
