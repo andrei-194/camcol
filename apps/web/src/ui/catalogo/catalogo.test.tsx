@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { IDBFactory, IDBKeyRange } from 'fake-indexeddb'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import { AuthProvider } from '../../application/auth/AuthProvider'
 import { CatalogoProvider } from '../../application/catalogo/contexto'
 import type { CatalogoApi } from '../../application/catalogo/catalogoApi'
@@ -15,7 +15,7 @@ import { SelectorListaPrecio } from './SelectorListaPrecio'
 
 let db: CaminoDB
 let api: { [K in keyof CatalogoApi]: ReturnType<typeof vi.fn> }
-let refrescar: ReturnType<typeof vi.fn>
+let refrescar: Mock<() => Promise<void>>
 const OK = { ok: true as const }
 
 beforeEach(async () => {
@@ -139,7 +139,7 @@ describe('[RF-CAT-01] artículos', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Guardar artículo' }))
     await waitFor(() => expect(api.guardarArticulo).toHaveBeenCalled())
     expect(api.crearProducto).toHaveBeenCalledWith('Panela')
-    expect(api.guardarArticulo.mock.calls[0][1].producto_id).toBe('p-nuevo')
+    expect(api.guardarArticulo.mock.calls[0]![1].producto_id).toBe('p-nuevo')
   })
 
   it('valida nombre y cantidad antes de enviar', async () => {
@@ -177,8 +177,8 @@ describe('[RF-CAT-01] artículos', () => {
     fireEvent.click(screen.getByLabelText('Activo'))
     fireEvent.click(screen.getByRole('button', { name: 'Guardar artículo' }))
     await waitFor(() => expect(api.guardarArticulo).toHaveBeenCalled())
-    expect(api.guardarArticulo.mock.calls[0][0]).toBe('a2')
-    expect(api.guardarArticulo.mock.calls[0][1]).toMatchObject({ activo: true, presentacion_cantidad: 5, presentacion_unidad: 'lb' })
+    expect(api.guardarArticulo.mock.calls[0]![0]).toBe('a2')
+    expect(api.guardarArticulo.mock.calls[0]![1]).toMatchObject({ activo: true, presentacion_cantidad: 5, presentacion_unidad: 'lb' })
   })
 })
 
@@ -273,6 +273,7 @@ describe('[RF-CAT-03] lista de precios de un cliente', () => {
     await screen.findByText('Mayorista')
     escribir('Cliente', 't1')
     const sel = await screen.findByLabelText('Lista de precios')
+    await within(sel).findByRole('option', { name: 'Mayorista' })
     fireEvent.change(sel, { target: { value: 'l-may' } })
     await waitFor(() => expect(api.asignarListaCliente).toHaveBeenCalledWith('t1', 'l-may'))
   })

@@ -1,5 +1,5 @@
 import { liveQuery } from 'dexie'
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { db as dbGlobal, type CaminoDB, type Fila } from '../../infra/db/db'
 import { obtenerClienteSupabase } from '../../infra/supabase/client'
 import { useIndicadores } from '../sync/useIndicadores'
@@ -14,6 +14,7 @@ interface ContextoCatalogo {
 }
 
 const Contexto = createContext<ContextoCatalogo | null>(null)
+let apiReal: CatalogoApi | undefined // cliente real, creado al primer uso
 
 /** Entrega base, API y refresco a las pantallas del catálogo (en pruebas, con falsos). Opcional en la app real. */
 export function CatalogoProvider({ children, ...valor }: ContextoCatalogo & { children: ReactNode }) {
@@ -24,13 +25,12 @@ export function CatalogoProvider({ children, ...valor }: ContextoCatalogo & { ch
 export function useCatalogoCtx(): ContextoCatalogo {
   const ctx = useContext(Contexto)
   const sync = useSync()
-  const apiPerezosa = useRef<CatalogoApi | null>(null)
   return useMemo(() => {
     if (ctx) return ctx
     const api: CatalogoApi = new Proxy({} as CatalogoApi, {
       get: (_, metodo: keyof CatalogoApi) => {
-        apiPerezosa.current ??= crearCatalogoApi(obtenerClienteSupabase())
-        return apiPerezosa.current[metodo]
+        apiReal ??= crearCatalogoApi(obtenerClienteSupabase())
+        return apiReal[metodo]
       },
     })
     return { db: dbGlobal, api, refrescar: async () => void (await sync?.actualizar()) }

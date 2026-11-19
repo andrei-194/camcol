@@ -55,7 +55,7 @@ function Contenido({ datos }: { datos: DatosCatalogo }) {
                 <span className="font-semibold">{texto(l, 'nombre')}</span>
                 <span className="text-pequeno text-texto-secundario">{cuantos(l.id)} precios</span>
               </span>
-              {l.es_publica && <EtiquetaEstado tono="acento">Pública</EtiquetaEstado>}
+              {l.es_publica === true && <EtiquetaEstado tono="acento">Pública</EtiquetaEstado>}
             </Tarjeta>
           </li>
         ))}
