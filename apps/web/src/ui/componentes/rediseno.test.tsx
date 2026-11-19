@@ -11,7 +11,7 @@ import { Segmentos } from './Segmentos'
 import { SelectorPeriodo } from './SelectorPeriodo'
 import { Tarjeta } from './Tarjeta'
 
-const sinEspacios = (s: string | null) => (s ?? '').replace(/[\s  ]/g, '')
+const sinEspacios = (s: string | null) => (s ?? '').replace(new RegExp('[\\s\\u00a0\\u202f]', 'g'), '')
 
 describe('Logo', () => {
   it('dibuja la montaña con camino aprobada de la web, con el color del texto', () => {

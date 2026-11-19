@@ -12,13 +12,13 @@ Tres rasgos de marca: la cabecera de café con el logo grande recortado, el **di
 
 | Hecho en T-D1 (CAM-106) | Objetivo de T-D2 a T-D6 (aún no está en el código) |
 |---|---|
-| Paleta, tipografía autoalojada, grano de papel, sombra `shadow-papel`, foco y selección en terracota, escala | Botones en pastilla y deshabilitado en arena (T-D2); logo, cabecera de café, barra inferior con el disco central y menú flotante (T-D2/T-D3); tablero con gráficos (T-D4); pantallas actuales con los rasgos nuevos y filetes punteados (T-D5); color de la barra del teléfono (T-D6) |
+| Paleta, tipografía autoalojada, grano de papel, sombra `shadow-papel`, foco y selección en terracota, escala. **T-D2:** botones en pastilla y deshabilitado en arena, tarjetas y campos sobre el papel, `Logo`, `Dinero`, `Segmentos`, `FilaLista` | Cabecera de café con logo, barra inferior con el disco central y menú flotante (T-D3); tablero con gráficos (T-D4); pantallas actuales con los rasgos nuevos y filetes punteados (T-D5); color de la barra del teléfono (T-D6) |
 
 Lo descrito más abajo como «navegación», «superficies» de componentes y reglas 4 y 7 es el **objetivo**; cada tarea lo cumple al integrarse.
 
 ## Componentes actuales (`apps/web/src/ui/componentes/`)
 
-Hoy siguen como estaban y solo cambian de color por los tokens; T-D2 los rediseña.
+T-D2 (CAM-107) los rediseña: `Boton` en pastilla con deshabilitado en arena y tinta (sin `opacity-50`), `Tarjeta` y `CampoTexto` en blanco sobre el papel con `shadow-papel`. `BarraSuperior` y `Pagina` los rehace T-D3.
 
 | Componente | Qué es |
 |---|---|
@@ -28,6 +28,10 @@ Hoy siguen como estaban y solo cambian de color por los tokens; T-D2 los redise�
 | `CampoTexto` | Etiqueta visible, ayuda y error vinculados con `aria-describedby`. |
 | `Tarjeta` | Superficie con borde fino y `shadow-tarjeta`. |
 | `EtiquetaEstado`, `Aviso` | Pastilla de estado y mensaje en línea. |
+| `Logo` | Montaña con camino aprobada de la web (`marcaCamino.ts`), con `currentColor`; con `titulo` es imagen accesible. |
+| `Dinero` | Pesos sin decimales en Fraunces con cifras tabulares; el «$» va menor y en tinta. |
+| `Segmentos`, `SelectorPeriodo` | Pastillas de una opción (`aria-pressed`, 48 px); el selector ofrece hoy, semana y mes. |
+| `FilaLista` | Fila de lista de 48 px con filete punteado. |
 
 `IndicadoresEstado` y `AvisoActualizacion` usan los mismos tokens; los enlaces dentro de un texto usan `CLASES_ENLACE` (cacao subrayado).
 
