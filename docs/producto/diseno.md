@@ -18,7 +18,7 @@ Lo descrito más abajo como «navegación», «superficies» de componentes y re
 
 ## Componentes actuales (`apps/web/src/ui/componentes/`)
 
-T-D2 (CAM-107) los rediseña: `Boton` en pastilla con deshabilitado en arena y tinta (sin `opacity-50`), `Tarjeta` y `CampoTexto` en blanco sobre el papel con `shadow-papel`. `BarraSuperior` y `Pagina` los rehace T-D3.
+T-D2 (CAM-107) los rediseña: `Boton` en pastilla con deshabilitado en arena y tinta (sin `opacity-50`), `Tarjeta` en blanco sobre el papel con `shadow-papel`; `CampoTexto` y los selects, también en blanco (`bg-tarjeta`), sin sombra. `BarraSuperior` y `Pagina` los rehace T-D3.
 
 | Componente | Qué es |
 |---|---|
@@ -26,7 +26,7 @@ T-D2 (CAM-107) los rediseña: `Boton` en pastilla con deshabilitado en arena y t
 | `BarraSuperior` | Cabecera con el único `h1` de la pantalla (hoy café con filo de acento). |
 | `Boton`, `BotonEnlace` | `primario` (cacao), `secundario` (contorno), `peligro`. 48 px de alto. |
 | `CampoTexto` | Etiqueta visible, ayuda y error vinculados con `aria-describedby`. |
-| `Tarjeta` | Superficie con borde fino y `shadow-tarjeta`. |
+| `Tarjeta` | Superficie blanca (`bg-tarjeta`) sobre el papel, con borde fino y `shadow-papel`. |
 | `EtiquetaEstado`, `Aviso` | Pastilla de estado y mensaje en línea. |
 | `Logo` | Montaña con camino aprobada de la web (`marcaCamino.ts`), con `currentColor`; con `titulo` es imagen accesible. |
 | `Dinero` | Pesos sin decimales en Fraunces con cifras tabulares; el «$» va menor y en tinta. |

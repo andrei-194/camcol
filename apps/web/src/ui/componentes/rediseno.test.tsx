@@ -169,7 +169,7 @@ describe('revisión de T-D2: coherencia y casos límite', () => {
         .some((l) => l.includes('border-borde-fuerte') && l.includes('bg-fondo')),
     )
     expect(culpables).toEqual([])
-  })
+  }, 20_000) // recorre todos los .tsx; con la suite completa en paralelo pasa de los 5 s por defecto
 
   it('Dinero con un valor no finito muestra un guion largo y no pinta NaN', () => {
     for (const v of [Number.NaN, Number.POSITIVE_INFINITY]) {
