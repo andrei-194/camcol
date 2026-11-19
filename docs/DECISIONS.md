@@ -415,3 +415,12 @@ Pantallas `/catalogo`, `/catalogo/articulos/nuevo|:id` y `/catalogo/listas`; `Se
 - **Descartado:** `seed.sql` con inserts en `auth.users` (acopla el repo al esquema interno de GoTrue y deja credenciales en el repo).
 - **Pendiente aparte:** el regex `esLocal` de `scripts/cargar-catalogo.mjs` es más débil que `esApiLocal`; unificarlo.
 - **Lección del proceso:** un comando de shell con texto de README entre comillas ejecutó los `cp` del ejemplo y pisó `supabase/socios.local.json` y `apps/web/.env.local` (restaurados). El README ahora avisa de que los pasos con `cp` no se repiten, y los textos largos se editan con la herramienta de edición, no por el shell.
+
+## Nota T-D · rediseño premium de la app (CAM-105) — 2026-11-19
+
+- **Decisión del socio:** el blanco, el negro y el café se conservan como idea, pero cambian de intensidad y distribución. El café profundo (`#3a2418`) reemplaza al negro y el papel (`#fbf7ee`) al blanco puro. Maqueta aprobada: https://claude.ai/artifact/Y7jXmELTfp6Baw3wLGBv5X (mezcla de las direcciones A y B, con Inicio como disco central y menú flotante).
+- **Marca:** se toman de la web (repo `camino`) la paleta, la tipografía (Fraunces y Work Sans), la sombra de «papeles apilados», el grano de papel, el logo `camino-mark.svg` y el vocabulario. Se mantiene lo aprobado: cacao como color de acción (la web usa terracota), cabecera de café y tarjetas de 8 px (la web usa 4 px). La terracota queda para foco, selección y camino punteado.
+- **Fuentes autoalojadas** (`apps/web/src/fonts/`, 125 KB, precacheadas): Fraunces con el eje «SOFT» fijo y peso 500 a 700; Work Sans tal cual. Un hallazgo: la maqueta anunciaba 100 a 130 KB; las fuentes completas pesaban 320 KB y se recortaron con `scripts/subconjunto-fuentes.py` (fontTools falla con el glifo `space.tf` de Work Sans, por eso se usa sin recortar).
+- **Sin gráfico de velas:** el negocio no tiene serie de apertura y cierre. Ventas contra costo va en área y lo demás en barras (RF-DSH-02/03). El tablero muestra estados vacíos hasta que existan ventas (T-M7 conecta los datos).
+- **Los íconos de la app (192, 512, maskable) ya eran idénticos a los de la web;** lo que no era el logo de marca era el dibujo de la maqueta. El `theme_color` pasa a café en T-D6.
+- **Orden:** release `release/diseno` con T-D1 a T-D6 (CAM-106 a CAM-111).

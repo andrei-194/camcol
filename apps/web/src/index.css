@@ -1,46 +1,77 @@
 ﻿@import 'tailwindcss';
 
 /*
- * Sistema de diseño de Camino Col (T-M3-00, docs/producto/diseno.md).
- * Paleta de tres colores, en proporción 60 / 30 / 10:
- *   blanco (fondos, tarjetas, listas) · negro (texto, barras, bordes) · café de la marca (acento).
- * El rojo existe solo para errores y acciones destructivas. Sin fuentes ni recursos externos.
+ * Sistema de diseño de Camino Col (T-M3-00 y rediseño T-D1, docs/producto/diseno.md).
+ * Paleta de la marca (la misma de la web): papel y crema de fondo, café de la cabecera y del texto, cacao como color de
+ * acción, trigo en los detalles. La terracota de la web solo en el foco, la selección y el camino punteado.
+ * El rojo existe solo para errores y acciones destructivas. Sin fuentes ni recursos externos: todo se sirve desde el
+ * paquete y el service worker lo precachea.
  * Los pares de color se verifican en src/ui/componentes/contraste.test.ts (lee este archivo).
  */
+
+/* Fuentes de la marca, recortadas a español (scripts/subconjunto-fuentes.py). */
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 500 700;
+  font-display: swap;
+  src: url('./fonts/fraunces-latin.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: italic;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./fonts/fraunces-italic-latin.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Work Sans';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('./fonts/work-sans-latin.woff2') format('woff2');
+}
+
 @theme {
   /* Se quita la paleta por defecto de Tailwind: solo existen los colores de abajo. */
   --color-*: initial;
 
-  /* Blanco: ~60 % */
-  --color-fondo: #ffffff;
-  --color-superficie: #f7f5f3;
-  --color-borde: #ddd8d3;
+  /* Papel y crema: fondos */
+  --color-fondo: #fbf7ee; /* papel */
+  --color-superficie: #f6efe2; /* crema */
+  --color-tarjeta: #ffffff; /* tarjetas y campos sobre el papel */
+  --color-arena: #eadfc8;
+  --color-borde: #d9c7a0; /* trigo: divisores */
+  --color-trigo: #d9c7a0;
 
-  /* Negro: ~30 % */
-  --color-texto: #111111;
-  --color-texto-secundario: #4d4d4d;
-  --color-borde-fuerte: #7d7570; /* bordes de campos: 3:1 contra el blanco */
+  /* Café: texto y cabecera */
+  --color-texto: #3a2418;
+  --color-cafe: #3a2418;
+  --color-texto-secundario: #6b5647; /* tinta */
+  --color-borde-fuerte: #857260; /* bordes de campos: 3:1 contra tarjeta */
 
-  /* Café de la marca: ~10 % (cacao de la vitrina y su café oscuro) */
+  /* Cacao: color de acción */
   --color-acento: #5a3a2a;
   --color-acento-hover: #3a2418;
   --color-acento-suave: #f1e9e4;
-  --color-sobre-acento: #ffffff;
+  --color-sobre-acento: #fbf7ee;
 
-  /* Rojo de sistema: solo errores y acciones destructivas */
+  /* Terracota de la web: solo foco, selección y camino punteado */
+  --color-terracota: #b5532f;
+
+  /* Rojo de sistema: solo errores, faltantes y acciones destructivas */
   --color-peligro: #b3261e;
   --color-peligro-suave: #fcecea;
-  --color-sobre-peligro: #ffffff;
+  --color-sobre-peligro: #fbf7ee;
 
   /* Estados mínimos */
   --color-exito: #1b6e3c;
   --color-advertencia: #7a4a00;
   --color-advertencia-suave: #fbf1de;
 
-  /* Tipografía: la de la vitrina (Fraunces / Work Sans) no se puede servir sin red; se usan pilas del sistema.
-     Titulares con serifa de papel (Iowan en iOS, Palatino/Georgia en el resto); cuerpo con la fuente del teléfono. */
-  --font-titulo: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, 'Noto Serif', serif;
-  --font-cuerpo: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  /* Tipografía: Fraunces para titulares y cifras, Work Sans para el cuerpo (las de la web). */
+  --font-titulo: 'Fraunces', 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  --font-cuerpo: 'Work Sans', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 
   /* Escala (mínimo 16 px en cuerpo: iOS no hace zoom al enfocar campos) */
   --text-pequeno: 0.875rem;
@@ -50,17 +81,20 @@
   --text-seccion: 1.25rem;
   --text-seccion--line-height: 1.3;
   --text-titulo: 1.75rem;
-  --text-titulo--line-height: 1.15;
-  --text-marca: 2.25rem;
+  --text-titulo--line-height: 1.1;
+  --text-marca: 2.125rem;
   --text-marca--line-height: 1.05;
+  --text-cifra: 2.5rem;
+  --text-cifra--line-height: 1.05;
 
-  /* Radios: esquinas suaves en controles, algo más en tarjetas */
+  /* Radios: tarjetas y controles de 8 px; solo los botones son pastilla */
   --radius-control: 0.5rem;
-  --radius-tarjeta: 0.75rem;
+  --radius-tarjeta: 0.5rem;
 
-  /* Sombras sobrias: una sola de reposo y una para lo que flota */
-  --shadow-tarjeta: 0 1px 2px rgb(17 17 17 / 0.08);
-  --shadow-flotante: 0 6px 20px rgb(17 17 17 / 0.2);
+  /* Sombras: la de «papeles apilados» de la web, plana y corta, y una profunda solo para lo que flota */
+  --shadow-papel: 0 1px 0 rgb(58 36 24 / 0.1), 0 5px 0 -2px rgb(58 36 24 / 0.07);
+  --shadow-tarjeta: 0 1px 0 rgb(58 36 24 / 0.1), 0 5px 0 -2px rgb(58 36 24 / 0.07);
+  --shadow-flotante: 0 8px 18px rgb(58 36 24 / 0.35);
 }
 
 html {
@@ -71,10 +105,29 @@ html {
 body {
   margin: 0;
   background-color: var(--color-fondo);
+  /* Grano de papel de la web (12 KB): se precachea, funciona sin señal. */
+  background-image: url('./assets/grano-papel.webp');
+  background-size: 180px 180px;
   color: var(--color-texto);
   font-family: var(--font-cuerpo);
   font-size: var(--text-cuerpo);
   line-height: 1.5;
+}
+
+/* Titulares y cifras en Fraunces: el eje óptico se ajusta al tamaño, como en la web. */
+.font-titulo {
+  font-variation-settings: 'opsz' 72;
+}
+.font-titulo.text-marca,
+.font-titulo.text-cifra {
+  font-variation-settings: 'opsz' 144;
+}
+
+/* Nombres de personas en cursiva, como en la web. */
+.nombre {
+  font-family: var(--font-titulo);
+  font-style: italic;
+  font-weight: 500;
 }
 
 input[type='checkbox'],
@@ -83,17 +136,26 @@ input[type='radio'] {
 }
 
 ::selection {
-  background: var(--color-acento);
+  background: var(--color-terracota);
   color: var(--color-sobre-acento);
 }
 
-/* Foco visible en todo lo interactivo; sobre fondo negro se invierte. */
+/* Foco visible en todo lo interactivo; sobre la cabecera de café se aclara. */
 :focus-visible {
-  outline: 3px solid var(--color-acento);
+  outline: 3px solid var(--color-terracota);
   outline-offset: 2px;
 }
 .sobre-oscuro :focus-visible {
-  outline-color: var(--color-fondo);
+  outline-color: var(--color-trigo);
+}
+
+/* Camino punteado: separador de la web. */
+.camino-punteado {
+  height: 6px;
+  background-image: radial-gradient(circle, var(--color-terracota) 1.6px, transparent 2px);
+  background-size: 18px 6px;
+  background-repeat: repeat-x;
+  opacity: 0.75;
 }
 
 @media (prefers-reduced-motion: reduce) {

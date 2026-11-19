@@ -37,7 +37,7 @@ export const opcionesPwa: Partial<VitePWAOptions> = {
     ],
   },
   workbox: {
-    globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
+    globPatterns: ['**/*.{js,css,html,svg,png,webp,woff2,webmanifest}'],
     navigateFallback: 'index.html',
     cleanupOutdatedCaches: true,
   },
