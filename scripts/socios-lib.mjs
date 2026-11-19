@@ -51,9 +51,12 @@ export function esPlantilla(socios) {
   return socios.some((s) => s.email.endsWith('@ejemplo.co'));
 }
 
-/** ¿Es un fallo de red (Auth caído o arrancando)? `fetch` lanza un `TypeError`, a veces con el código en `cause`. */
+/**
+ * ¿Es un fallo de red (Auth caído, arrancando o sin responder)? `fetch` lanza `TypeError('fetch failed')` con el código en
+ * `cause`, o un `TimeoutError` si vence `AbortSignal.timeout`. Otros `TypeError` son bugs y no deben disfrazarse de red.
+ */
 export function esFalloDeRed(e) {
-  return e instanceof TypeError || Boolean(e?.cause?.code);
+  return (e instanceof TypeError && e.message === 'fetch failed') || e?.name === 'TimeoutError' || Boolean(e?.cause?.code);
 }
 
 /** Mensaje para un inicio de sesión rechazado. Solo 400/401 son «contraseña distinta»; el resto no justifica borrar nada. */

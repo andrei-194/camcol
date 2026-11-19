@@ -11,6 +11,7 @@ import { ErrorSocios, esFalloDeRed, esPlantilla, exigirLocal, explicarFalloLogin
 const pg = (await requerir('pg')).default;
 const ARCHIVO = new URL('../supabase/socios.local.json', import.meta.url);
 const ESPERA_AUTH_MS = 30_000;
+const TIMEOUT_FETCH_MS = 5_000; // sin esto, una conexión aceptada pero muda cuelga el script minutos
 
 // Mismo bloque que tests/integration/entorno.mjs: `supabase status -o json` (el `indexOf` salta el ruido anterior).
 function leerStatus() {
@@ -31,7 +32,7 @@ async function esperarAuth(api, anon) {
   const limite = Date.now() + ESPERA_AUTH_MS;
   while (Date.now() < limite) {
     try {
-      const r = await fetch(`${api}/auth/v1/health`, { headers: { apikey: anon } });
+      const r = await fetch(`${api}/auth/v1/health`, { headers: { apikey: anon }, signal: AbortSignal.timeout(TIMEOUT_FETCH_MS) });
       if (r.ok) return;
     } catch {
       /* Auth todavía arrancando */
@@ -55,6 +56,7 @@ async function crearUsuario(api, service, { email, nombre }, password) {
     method: 'POST',
     headers: { apikey: service, Authorization: `Bearer ${service}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password, email_confirm: true }),
+    signal: AbortSignal.timeout(TIMEOUT_FETCH_MS),
   });
   if (!r.ok) throw new ErrorSocios(`No se pudo crear a ${nombre} (estado ${r.status}): ${await mensajeDe(r)}`);
   try {
@@ -69,6 +71,7 @@ async function verificarLogin(api, anon, { email, nombre }, password) {
     method: 'POST',
     headers: { apikey: anon, 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
+    signal: AbortSignal.timeout(TIMEOUT_FETCH_MS),
   });
   if (!r.ok) throw new ErrorSocios(explicarFalloLogin(r.status, nombre));
 }
@@ -95,8 +98,9 @@ async function main() {
     for (const socio of socios) {
       const previo = await cliente.query('select id from auth.users where lower(email) = $1', [socio.email]);
       const id = previo.rows[0]?.id ?? (await crearUsuario(st.API_URL, st.SERVICE_ROLE_KEY, socio, password));
-      await cliente.query('insert into miembros (user_id, nombre) values ($1, $2) on conflict (user_id) do nothing', [id, socio.nombre]);
+      // Primero el login: un usuario previo con otra contraseña no debe quedar inscrito en `miembros`.
       await verificarLogin(st.API_URL, st.ANON_KEY, socio, password);
+      await cliente.query('insert into miembros (user_id, nombre) values ($1, $2) on conflict (user_id) do nothing', [id, socio.nombre]);
       const fila = await cliente.query('select 1 from miembros where user_id = $1', [id]);
       if (fila.rowCount !== 1) throw new ErrorSocios(`${socio.nombre} no quedó en la tabla miembros.`);
     }
