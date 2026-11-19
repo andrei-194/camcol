@@ -39,6 +39,22 @@ apps/web/        la PWA (se crea en T-M0-01)
 6. Cambios pequeños y revisables; no mezclar refactors con funcionalidad.
 7. Para APIs de librerías (Dexie, Supabase JS, vite-plugin-pwa, Workbox, Playwright…) consultar la documentación vigente; no confiar en memoria.
 
+## Revisión EGM (Elephant-Goldfish Model), obligatoria y sin excepción
+
+Plugin `egm@egm` (repo `google/elephant-goldfish-model`; instalar con `claude plugin marketplace add google/elephant-goldfish-model` y `claude plugin install egm@egm`). Revisores «goldfish» con contexto limpio, que no ven la conversación. Prefijo `/egm:`. Los informes van en `docs/revisiones/<spec|plan|tareas|drift>/` y los hallazgos se cierran con `/egm:egm-resolve`.
+
+| Cuándo | Skill | Qué se revisa |
+| --- | --- | --- |
+| Cambia `SPEC.md` o `PLAN.md` (antes de implementar) | `egm-review` | el documento contra el código real |
+| **Toda tarea**, antes de integrarla en la release | `egm-lite` | el diff de la tarea; incluye RLS, `security_invoker`, `service_role`, secretos y datos locales (reglas 1-14) |
+| Tarea con migración, contrato `aplicar_ops`/`sync_pull` o regla de negocio nueva | `egm-review` además de `egm-lite` | el diseño, antes de escribir la prueba en rojo |
+| Antes de marcar listo el PR de la release | `egm-drift-report docs/spec/` | que spec, plan y código no se contradigan; si lo hacen, gana la spec |
+
+- Un hallazgo **Blocker** o **Major** se corrige o se justifica en `docs/DECISIONS.md` antes de integrar; los **Nit** se anotan.
+- El informe se cita en el commit o la nota de la tarea (`CAM-n`). Una tarea sin revisión EGM no se integra ni se marca *In Review*.
+- Si el entorno no puede crear subagentes frescos, EGM se detiene; en ese caso no se integra hasta poder revisar. No se sustituye por una autorrevisión.
+- La revisión EGM **no reemplaza** pruebas, tipos ni lint.
+
 ## Entorno
 
 - Windows. **Todo lo pesado va en el disco D:** el repo, el caché de npm, las imágenes y el disco virtual de Docker, y cualquier emulador. El disco C: está casi lleno.
@@ -83,7 +99,7 @@ apps/web/        la PWA (se crea en T-M0-01)
 
 ## Definición de hecho
 
-Pruebas verdes (incluidas las previas) · tipos y lint limpios · IDs citados en pruebas · viewport 360 px · sin secretos · contrato documentado si cambió · `TASKS.md` actualizado.
+Revisión EGM hecha y hallazgos Blocker/Major resueltos · Pruebas verdes (incluidas las previas) · tipos y lint limpios · IDs citados en pruebas · viewport 360 px · sin secretos · contrato documentado si cambió · `TASKS.md` actualizado.
 
 ## Qué NO construir (MVP)
 

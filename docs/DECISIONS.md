@@ -393,3 +393,9 @@ Pantallas `/catalogo`, `/catalogo/articulos/nuevo|:id` y `/catalogo/listas`; `Se
 - **Foto opcional:** reutiliza `adjuntosService.guardar` (entidad `tercero`); `PendientesProvider` ahora expone `adjuntos`. Con la op aplicada en línea se intenta subir al guardar (acción explícita del usuario); si quedó encolada se sube con «Subir seleccionados».
 - **Duplicados (RF-TER-04, CAM-51):** aquí solo se muestra «Posible duplicado» con los candidatos y el enlace a Pendientes (si quedó encolada) o «No se guardó» (cliente, no se encola). Sin UI nueva de decisión.
 - Productos ofrecidos y notas son campos de una línea (`CampoTexto`); el sistema de diseño no tiene área de texto.
+
+## Nota flujo · revisión EGM obligatoria — 2026-11-19
+
+- **Decisión del socio:** el plugin Elephant-Goldfish Model (`google/elephant-goldfish-model`, `egm@egm`) entra en el flujo **sin excepción**. Tabla de skills y momentos en `AGENTS.md` («Revisión EGM»).
+- Mínimo por tarea: `egm-lite` sobre el diff antes de integrar en la release. Spec/plan: `egm-review`. Cierre de release: `egm-drift-report docs/spec/`.
+- **Pendiente (retroactivo):** T-M3-00, 01, 04 y 05 se integraron en `release/h3` antes de esta regla. Se les pasa `egm-lite`, junto con la revisión de seguridad manual del 2026-11-19, antes de marcar listo el PR de H3.
