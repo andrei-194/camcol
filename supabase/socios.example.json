@@ -1,0 +1,7 @@
+{
+  "password": "cambia-esta-clave",
+  "socios": [
+    { "email": "socio1@ejemplo.co", "nombre": "Nombre del socio 1" },
+    { "email": "socio2@ejemplo.co", "nombre": "Nombre del socio 2" }
+  ]
+}

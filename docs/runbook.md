@@ -20,7 +20,7 @@ Reglas:
 
 ## 2. Cómo correr en local
 
-Requisitos: Docker Desktop (la app web corre en un contenedor con Node 22; no se instala Node 22 en el PC) y Node 20 o superior en el PC para `setup`, `test:db`, `db:catalogo` y la CLI de Supabase.
+Requisitos: Docker Desktop (la app web corre en un contenedor con Node 22; no se instala Node 22 en el PC) y Node 20 o superior en el PC para `setup`, `test:db`, `db:catalogo`, `db:socios` y la CLI de Supabase.
 
 ```bash
 npm run setup      # una vez: dependencias del PC y de apps/web (dentro del contenedor)
@@ -28,7 +28,12 @@ npm run test:db     # pruebas del esquema en Postgres real (PGlite)
 npm run dev         # app web en http://localhost:5173
 npm test            # pruebas de la app (también typecheck, lint y build)
 npm run db:start    # Supabase local (ver README)
+cp supabase/socios.example.json supabase/socios.local.json   # una vez; edítalo con los socios reales (no repitas el cp: lo sobrescribe)
+npm run db:reiniciar  # BORRA TODO lo local y lo recrea: migraciones + socios + catálogo (valida el archivo antes de borrar)
+npm run db:socios     # solo crea los socios que falten; no borra nada
 ```
+
+Los socios de desarrollo viven en `supabase/socios.local.json` (ignorado por Git; plantilla `socios.example.json`). Nunca van al repo ni a una base que no sea local.
 
 - Si cambian `apps/web/package.json` o su lockfile, repetir `npm run setup`.
 - El disco virtual de Docker debe estar en D: (Docker Desktop → Settings → Resources → Advanced).
