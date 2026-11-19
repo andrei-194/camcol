@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../../application/auth/AuthProvider'
+import { Aviso } from '../componentes/Aviso'
+import { Boton } from '../componentes/Boton'
 import { usePendientesOpcional } from './contexto'
 import { exportarPendientes } from './exportarJson'
 
@@ -30,31 +32,25 @@ export function BotonCerrarSesion() {
 
   return (
     <section aria-labelledby="sesion" className="flex flex-col items-start gap-2">
-      <h2 id="sesion" className="text-lg font-semibold text-stone-900">
+      <h2 id="sesion" className="font-titulo text-seccion font-semibold">
         Sesión
       </h2>
-      <button
-        type="button"
-        onClick={() => void pedir()}
-        className="min-h-11 rounded-lg border border-stone-400 px-4 py-2 text-base font-medium text-stone-900"
-      >
+      <Boton variante="secundario" onClick={() => void pedir()}>
         Cerrar sesión
-      </button>
+      </Boton>
       {pendientes !== null && (
-        <div role="alertdialog" aria-labelledby="aviso-salida" className="flex w-full flex-col gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4">
-          <p id="aviso-salida" className="text-base text-amber-900">
+        <div role="alertdialog" aria-labelledby="aviso-salida" className="flex w-full flex-col gap-3 rounded-tarjeta border-2 border-advertencia bg-advertencia-suave p-4">
+          <p id="aviso-salida" className="text-advertencia">
             {`Tienes ${pendientes} ${pendientes === 1 ? 'registro' : 'registros'} sin subir. Siguen guardados en este teléfono, pero aún no están en el servidor: si se borran los datos del navegador se perderían. Exporta una copia antes de salir.`}
           </p>
-          <button type="button" onClick={() => void exportar()} className="min-h-11 rounded-lg bg-emerald-800 px-4 text-base font-medium text-white">
-            Exportar JSON
-          </button>
-          <button type="button" onClick={() => void cerrarSesion()} className="min-h-11 rounded-lg border border-red-700 px-4 text-base font-medium text-red-800">
+          <Boton onClick={() => void exportar()}>Exportar JSON</Boton>
+          <Boton variante="peligro" onClick={() => void cerrarSesion()}>
             Cerrar sesión de todos modos
-          </button>
-          <button type="button" onClick={() => setPendientes(null)} className="min-h-11 rounded-lg border border-stone-400 px-4 text-base text-stone-900">
+          </Boton>
+          <Boton variante="secundario" onClick={() => setPendientes(null)}>
             Cancelar
-          </button>
-          {error && <p role="alert" className="text-base text-red-800">{error}</p>}
+          </Boton>
+          {error && <Aviso tono="error">{error}</Aviso>}
         </div>
       )}
     </section>

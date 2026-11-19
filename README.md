@@ -33,12 +33,45 @@ apps/web/    la PWA (Vite + React + TypeScript + Tailwind)
 ## Requisitos
 
 - **Docker Desktop.** La app web corre dentro de un contenedor con Node 22, así que no hace falta instalar Node 22 en el PC.
-- Node.js 20 o superior en el PC, solo para las pruebas de base de datos y la CLI de Supabase (se instala con `npm install`).
+- Node.js 20 o superior en el PC, para `setup`, las pruebas de base de datos, la carga del catálogo y la CLI de Supabase (todo se instala con `npm run setup`).
+
+## Primer arranque (en este orden)
+
+Abre Docker Desktop y espera a que diga «running». Después, en la carpeta del proyecto:
+
+```bash
+npm run setup        # 1. instala las dependencias del PC y de la app (una vez; repite si cambia un package.json)
+npm run db:start     # 2. levanta Supabase local (la primera vez baja varias imágenes)
+npm run db:reset     # 3. aplica las migraciones a la base local
+npm run db:catalogo  # 4. carga los 10 artículos del catálogo
+npm run db:status    # 5. muestra las claves locales: copia la «anon key»
+cp .env.example apps/web/.env.local   # 6. crea la config; abre ese archivo y pega la anon key en VITE_SUPABASE_ANON_KEY
+npm run dev          # 7. levanta la app: http://localhost:5173 (déjala abierta en su terminal)
+# 8. crea tu usuario para poder entrar (sección siguiente)
+```
+
+Desde el móvil, en el mismo WiFi: `http://<IP de tu PC>:5173`, y pon esa misma IP en `VITE_SUPABASE_URL` de `apps/web/.env.local`. Si no carga, permite el puerto 5173 en el Firewall de Windows.
+
+### Crear tu usuario (para poder entrar)
+
+El registro público está cerrado: el socio se crea a mano, una vez por base. **`npm run db:reset` borra usuarios y datos** (no hay seed): después de cada reset repite estos pasos y también `npm run db:catalogo`.
+
+1. Abre Studio (http://127.0.0.1:54323) → **Authentication → Users → Add user**, con correo y contraseña (marca «Auto Confirm User»).
+2. Copia el **User UID** de ese usuario.
+3. En Studio → **SQL Editor**, corre (cambia el UID y el nombre):
+
+   ```sql
+   insert into miembros (user_id, nombre) values ('<User UID>', 'Tu nombre');
+   ```
+
+Sin la fila en `miembros`, el login funciona pero la app no muestra datos (RLS).
+
+Si un comando falla con «Falta instalar dependencias» o «¿Está levantado Supabase local?», el mensaje dice cuál de los pasos de arriba repetir.
 
 ## Comandos
 
 ```bash
-npm install          # herramientas del PC (PGlite y CLI de Supabase)
+npm run setup        # instala todo (PC y contenedor)
 npm run test:db      # pruebas del esquema, en memoria con PGlite
 npm run test:integration   # integración REAL contra Supabase local (requiere db:start y db:reset)
 ```
@@ -46,7 +79,7 @@ npm run test:integration   # integración REAL contra Supabase local (requiere d
 ### App web (en Docker)
 
 ```bash
-npm run setup        # instala las dependencias de apps/web dentro del contenedor (una vez)
+npm run setup        # instala las dependencias del PC y, dentro del contenedor, las de apps/web (una vez)
 npm run dev          # servidor de desarrollo: http://localhost:5173
 npm test             # pruebas de la app
 npm run typecheck    # tipos (TypeScript estricto)
@@ -58,18 +91,19 @@ Los `node_modules` viven en un volumen de Docker (en D:), no en la carpeta del p
 
 ### Base de datos local (Supabase en Docker)
 
-La CLI de Supabase viene como devDependency (`npm install`); no hace falta instalarla aparte. Requiere Docker Desktop en ejecución. La primera vez descarga varias imágenes (unos GB).
+La CLI de Supabase viene como devDependency (`npm run setup`); no hace falta instalarla aparte. Requiere Docker Desktop en ejecución. La primera vez descarga varias imágenes (unos GB).
 
 ```bash
 npm run db:start     # levanta Supabase local (Postgres, Auth, Realtime, Storage, Studio)
 npm run db:reset     # recrea la base desde cero y aplica supabase/migrations/*.sql
+npm run db:catalogo  # carga el catálogo inicial (10 artículos) en la base local; NO en producción hasta la regla 14
 npm run db:status    # URLs y claves locales
 npm run db:stop      # detiene los contenedores (los datos se conservan en un volumen)
 ```
 
 - `db:reset` es el comando que recrea la base local con todas las migraciones aplicadas.
 - Estudio (UI): http://127.0.0.1:54323 · API: http://127.0.0.1:54321 · Postgres: `postgresql://postgres:postgres@127.0.0.1:54322/postgres`.
-- Las claves locales (`anon`, `service_role`) las imprime `npm run db:status`; son solo de desarrollo y no se copian a archivos versionados. Pon la `anon key` en `.env` como `VITE_SUPABASE_ANON_KEY`.
+- Las claves locales (`anon`, `service_role`) las imprime `npm run db:status`; son solo de desarrollo y no se copian a archivos versionados. Pon la `anon key` en `apps/web/.env.local` como `VITE_SUPABASE_ANON_KEY`.
 - El registro público de Auth está deshabilitado (`enable_signup = false`): crea los usuarios de los socios desde Estudio (Authentication > Users) o con la API de administración.
 - Verificar el esquema: `docker exec supabase_db_camino psql -U postgres -c "\dt"` (también `\dv`, `\df emitir_documento`).
 
@@ -95,7 +129,7 @@ Corre dentro de la imagen oficial de Playwright (servicio `e2e` de `docker-compo
 ## Configuración
 
 ```bash
-cp .env.example .env
+cp .env.example apps/web/.env.local   # la app (Vite) lee apps/web/.env.local; pega ahí la anon key de npm run db:status
 ```
 
 Nunca se suben secretos al repositorio.

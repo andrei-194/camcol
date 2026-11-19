@@ -17,10 +17,8 @@ export function ServiciosApp({ db, api, almacen, children }: { db: CaminoDB; api
   useEffect(() => {
     actualizar.current = sync?.actualizar
   })
-  const servicio = useMemo(
-    () => crearPendientesService({ db, api, adjuntos: crearAdjuntosService({ db, api, almacen }) }),
-    [db, api, almacen],
-  )
+  const adjuntos = useMemo(() => crearAdjuntosService({ db, api, almacen }), [db, api, almacen])
+  const servicio = useMemo(() => crearPendientesService({ db, api, adjuntos }), [db, api, adjuntos])
   const escritor = useMemo(() => {
     const base = crearEscritor({ db, api })
     return {
@@ -32,7 +30,7 @@ export function ServiciosApp({ db, api, almacen, children }: { db: CaminoDB; api
     }
   }, [db, api])
   return (
-    <PendientesProvider db={db} servicio={servicio} escritor={escritor}>
+    <PendientesProvider db={db} servicio={servicio} escritor={escritor} adjuntos={adjuntos}>
       {children}
     </PendientesProvider>
   )

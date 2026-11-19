@@ -395,7 +395,7 @@ No se construye (D-006). El mensaje que arma la web es texto libre de un solo pr
 | Nivel | Herramienta | Qué cubre |
 |---|---|---|
 | Dominio | Vitest + fast-check | precios, escalones, totales, estados |
-| **Paridad cliente↔servidor** | Vitest + PGlite | Propiedad: para pedidos aleatorios, `domain/totals` = totales de Postgres (±0,01) |
+| **Paridad cliente↔servidor** | Vitest + PGlite | Propiedad: para pedidos aleatorios, `domain/totals` = totales de Postgres (±0: mismo redondeo; `apps/web/src/domain/paridad.test.ts`) |
 | Base de datos | PGlite (`tests/db/`, una suite por área) | Reglas, triggers, `aplicar_ops`, `sync_pull`, RLS con roles simulados; cada suite carga las migraciones que necesita |
 | Integración real | Supabase CLI local + `pg` (`npm run test:integration`) | **Concurrencia** (2 conexiones finalizando pedidos sobre el último stock), RLS por JWT real, PostgREST |
 | Repos locales | Vitest + `fake-indexeddb` | outbox, escritor (red OK/caída/timeout/rechazo), puller, `_pendiente` |

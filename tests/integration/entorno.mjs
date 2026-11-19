@@ -4,7 +4,9 @@
 import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import assert from 'node:assert/strict';
-import pg from 'pg';
+import { requerir } from '../../scripts/dependencia.mjs';
+
+const pg = (await requerir('pg')).default;
 
 export const uuid = randomUUID;
 

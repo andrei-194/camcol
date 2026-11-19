@@ -63,14 +63,15 @@
 - [x] **T-M2-09** ([CAM-49](https://linear.app/caminocol/issue/CAM-49)) E2E Playwright base: abrir app con red cortada, crear algo, ver ⏳, restablecer red, ver banner, subir. Cierra: parte de [E1].
 
 ## M3 — Terceros y catálogo
-- [ ] **T-M3-01** ([CAM-50](https://linear.app/caminocol/issue/CAM-50)) Lista/búsqueda local de terceros y formulario (cliente/proveedor/ambos), GPS con alternativa manual, foto, consentimiento. Cierra: RF-TER-01/02/03/05, RN-DAT-01, RNF-UX-04.
+- [x] **T-M3-00** ([CAM-101](https://linear.app/caminocol/issue/CAM-101)) Sistema de diseño (blanco, negro y café de la marca; tokens, componentes base) y reestilo de las pantallas existentes. Ver `docs/producto/diseno.md`.
+- [x] **T-M3-01** ([CAM-50](https://linear.app/caminocol/issue/CAM-50)) Lista/búsqueda local de terceros y formulario (cliente/proveedor/ambos), GPS con alternativa manual, foto, consentimiento. Cierra: RF-TER-01/02/03/05, RN-DAT-01, RNF-UX-04.
 - [ ] **T-M3-02** ([CAM-51](https://linear.app/caminocol/issue/CAM-51)) Detección de duplicados al crear (online: aviso; offline: se resuelve al sincronizar). Cierra: RF-TER-04.
 - [ ] **T-M3-03** ([CAM-52](https://linear.app/caminocol/issue/CAM-52)) Edición y borrado lógico (solo online). Cierra: RF-TER-06.
-- [ ] **T-M3-04** ([CAM-53](https://linear.app/caminocol/issue/CAM-53)) Catálogo: productos, artículos (presentación, unidades, banderas), listas y precios con escalones, asignar lista a cliente. Carga inicial con los 10 artículos de `docs/negocio/catalogo.md`. Cierra: RF-CAT-01/02/03/04.
-- [ ] **T-M3-05** ([CAM-54](https://linear.app/caminocol/issue/CAM-54)) `domain/pricing` + pruebas de propiedad; **paridad** con `precio_para` de Postgres. Cierra: RN-PRE-01.
+- [x] **T-M3-04** ([CAM-53](https://linear.app/caminocol/issue/CAM-53)) Catálogo: productos, artículos (presentación, unidades, banderas), listas y precios con escalones, asignar lista a cliente. Carga inicial con los 10 artículos de `docs/negocio/catalogo.md`. Cierra: RF-CAT-01/02/03/04.
+- [x] **T-M3-05** ([CAM-54](https://linear.app/caminocol/issue/CAM-54)) `domain/pricing` + pruebas de propiedad; **paridad** con `precio_para` de Postgres. Cierra: RN-PRE-01.
 
 ## M4 — Pedidos de venta
-- [ ] **T-M4-01** ([CAM-55](https://linear.app/caminocol/issue/CAM-55)) `domain/totals` y `domain/pedidoEstados` + **prueba de paridad** con triggers/totales de SQL (fast-check + PGlite). Cierra: RF-VEN-03, RN-COS-03.
+- [x] **T-M4-01** ([CAM-55](https://linear.app/caminocol/issue/CAM-55)) `domain/totals` y `domain/pedidoEstados` + **prueba de paridad** con triggers/totales de SQL (fast-check + PGlite). Cierra: RF-VEN-03, RN-COS-03.
 - [ ] **T-M4-02** ([CAM-56](https://linear.app/caminocol/issue/CAM-56)) Formulario "Nuevo pedido": cliente (buscar/crear), ítems con precio automático y descuento, envío, entrega, notas; solo con conexión (D-009). Cierra: RF-VEN-01/02/08/10, RNF-UX-05, [E10].
 - [x] ~~**T-M4-03**~~ *Eliminada (D-006): no hay parser de WhatsApp.*
 - [ ] **T-M4-04** ([CAM-57](https://linear.app/caminocol/issue/CAM-57)) Lista de PV (filtros) + vistas "Por confirmar" y "Esperando pago". Cierra: RF-VEN-06.

@@ -1,6 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../application/auth/AuthProvider'
+import { Aviso } from '../componentes/Aviso'
+import { Boton } from '../componentes/Boton'
+import { CampoTexto } from '../componentes/CampoTexto'
 import { PantallaCentrada } from './PantallaCentrada'
 
 const mensajes = {
@@ -35,52 +38,34 @@ export function LoginPage() {
     }
   }
 
-  const campo = 'min-h-12 w-full rounded-lg border border-stone-400 bg-white px-3 text-base'
-
   return (
     <PantallaCentrada titulo="Camino Col">
       <form onSubmit={(e) => void alEnviar(e)} className="flex flex-col gap-4" noValidate>
-        <h2 className="text-xl font-semibold text-stone-800">Iniciar sesión</h2>
+        <h2 className="font-titulo text-seccion font-semibold text-texto">Iniciar sesión</h2>
         {estado.fase === 'anonimo' && estado.caducada && (
-          <p role="status" className="rounded-lg bg-amber-100 p-3 text-stone-800">
-            Tu sesión expiró. Vuelve a entrar; tus pendientes en este dispositivo se conservan.
-          </p>
+          <Aviso tono="advertencia">Tu sesión expiró. Vuelve a entrar; tus pendientes en este dispositivo se conservan.</Aviso>
         )}
-        <label className="flex flex-col gap-1 text-stone-700">
-          Correo
-          <input
-            type="email"
-            autoComplete="username"
-            inputMode="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className={campo}
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-stone-700">
-          Contraseña
-          <input
-            type="password"
-            autoComplete="current-password"
-            required
-            value={contrasena}
-            onChange={(e) => setContrasena(e.target.value)}
-            className={campo}
-          />
-        </label>
-        {error && (
-          <p role="alert" className="text-red-700">
-            {mensajes[error]}
-          </p>
-        )}
-        <button
-          type="submit"
-          disabled={enviando || !email || !contrasena}
-          className="min-h-12 rounded-lg bg-emerald-800 px-4 text-base font-semibold text-white disabled:opacity-60"
-        >
+        <CampoTexto
+          etiqueta="Correo"
+          type="email"
+          autoComplete="username"
+          inputMode="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <CampoTexto
+          etiqueta="Contraseña"
+          type="password"
+          autoComplete="current-password"
+          required
+          value={contrasena}
+          onChange={(e) => setContrasena(e.target.value)}
+        />
+        {error && <Aviso tono="error">{mensajes[error]}</Aviso>}
+        <Boton type="submit" disabled={enviando || !email || !contrasena}>
           {enviando ? 'Entrando…' : 'Entrar'}
-        </button>
+        </Boton>
       </form>
     </PantallaCentrada>
   )
