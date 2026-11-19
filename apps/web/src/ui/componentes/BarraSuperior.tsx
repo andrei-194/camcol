@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { Logo } from './Logo'
 
 type Props = {
   titulo: string
@@ -12,8 +13,9 @@ type Props = {
 /** Encabezado negro con filo café. Lleva el único h1 de la pantalla. */
 export function BarraSuperior({ titulo, volverA, subtitulo, marca = false }: Props) {
   return (
-    <header className="sobre-oscuro border-b-4 border-acento bg-texto text-fondo">
-      <div className="mx-auto flex w-full max-w-md flex-col px-4 pb-4 pt-1">
+    <header className="sobre-oscuro relative overflow-hidden border-b-2 border-trigo bg-cafe text-fondo">
+      <Logo className="pointer-events-none absolute -right-6 -top-3 h-24 w-auto text-trigo opacity-45" />
+      <div className="relative mx-auto flex w-full max-w-md flex-col px-4 pb-4 pt-1">
         {volverA && (
           <Link to={volverA} className="-ml-2 inline-flex min-h-12 w-fit items-center gap-1 px-2 text-fondo underline underline-offset-2">
             <span aria-hidden="true">‹</span>

@@ -66,8 +66,10 @@
 
   /* Estados mínimos */
   --color-exito: #1b6e3c;
+  --color-exito-claro: #8fd4a6; /* sobre la cabecera de café */
   --color-advertencia: #7a4a00;
   --color-advertencia-suave: #fbf1de;
+  --color-advertencia-claro: #f0c27a; /* sobre la cabecera de café */
 
   /* Tipografía: Fraunces para titulares y cifras, Work Sans para el cuerpo (las de la web). */
   --font-titulo: 'Fraunces', 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;

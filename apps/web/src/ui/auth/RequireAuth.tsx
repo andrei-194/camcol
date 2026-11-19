@@ -1,6 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../../application/auth/AuthProvider'
-import { IndicadoresEstado } from '../IndicadoresEstado'
+import { MarcoApp } from '../marco/MarcoApp'
 import { SinAcceso } from './SinAcceso'
 import { SinVerificar } from './SinVerificar'
 
@@ -26,10 +26,9 @@ export function RequireAuth() {
       return <SinVerificar usuario={estado.usuario} />
     case 'activo':
       return (
-        <>
-          <IndicadoresEstado />
+        <MarcoApp>
           <Outlet />
-        </>
+        </MarcoApp>
       )
   }
 }

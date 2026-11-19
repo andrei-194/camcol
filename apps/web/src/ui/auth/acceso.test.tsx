@@ -45,7 +45,7 @@ describe('[RF-AUTH-01] guardia de rutas y login', () => {
     await usuario.type(await screen.findByLabelText('Correo'), 'socio@camino.co')
     await usuario.type(screen.getByLabelText('Contraseña'), 'secreto')
     await usuario.click(screen.getByRole('button', { name: 'Entrar' }))
-    expect(await screen.findByText(/Vitrina y gestión/)).toBeInTheDocument()
+    expect(await screen.findByText(/Del campo colombiano a tu mesa/)).toBeInTheDocument()
     expect(servicio.iniciarSesion).toHaveBeenCalledWith('socio@camino.co', 'secreto')
   })
 

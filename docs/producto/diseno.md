@@ -12,7 +12,7 @@ Tres rasgos de marca: la cabecera de café con el logo grande recortado, el **di
 
 | Hecho en T-D1 (CAM-106) | Objetivo de T-D2 a T-D6 (aún no está en el código) |
 |---|---|
-| Paleta, tipografía autoalojada, grano de papel, sombra `shadow-papel`, foco y selección en terracota, escala. **T-D2:** botones en pastilla y deshabilitado en arena, tarjetas y campos sobre el papel, `Logo`, `Dinero`, `Segmentos`, `FilaLista` | Cabecera de café con logo, barra inferior con el disco central y menú flotante (T-D3); tablero con gráficos (T-D4); pantallas actuales con los rasgos nuevos y filetes punteados (T-D5); color de la barra del teléfono (T-D6) |
+| **T-D3:** cabecera de café con logo y filo de trigo, barra de estado de café, barra inferior de cinco destinos con el disco central, menú flotante «+», rutas de Ventas, Compras, Inventario y Más (las tres primeras y las acciones rápidas muestran «llega pronto»). Paleta, tipografía autoalojada, grano de papel, sombra `shadow-papel`, foco y selección en terracota, escala. **T-D2:** botones en pastilla y deshabilitado en arena, tarjetas y campos sobre el papel, `Logo`, `Dinero`, `Segmentos`, `FilaLista` | Tablero de Inicio con gráficos (T-D4); tablero con gráficos (T-D4); pantallas actuales con los rasgos nuevos y filetes punteados (T-D5); color de la barra del teléfono (T-D6) |
 
 Lo descrito más abajo como «navegación», «superficies» de componentes y reglas 4 y 7 es el **objetivo**; cada tarea lo cumple al integrarse.
 
@@ -23,7 +23,7 @@ T-D2 (CAM-107) los rediseña: `Boton` en pastilla con deshabilitado en arena y t
 | Componente | Qué es |
 |---|---|
 | `Pagina` | Barra superior y columna de contenido de 448 px. |
-| `BarraSuperior` | Cabecera con el único `h1` de la pantalla (hoy café con filo de acento). |
+| `BarraSuperior` | Cabecera de café con el único `h1`, el logo en trigo recortado a la derecha y el filo de trigo. |
 | `Boton`, `BotonEnlace` | `primario` (cacao), `secundario` (contorno), `peligro`. 48 px de alto. |
 | `CampoTexto` | Etiqueta visible, ayuda y error vinculados con `aria-describedby`. |
 | `Tarjeta` | Superficie blanca (`bg-tarjeta`) sobre el papel, con borde fino y `shadow-papel`. |
@@ -32,6 +32,7 @@ T-D2 (CAM-107) los rediseña: `Boton` en pastilla con deshabilitado en arena y t
 | `Dinero` | Pesos sin decimales en Fraunces con cifras tabulares; el «$» va menor y en tinta. |
 | `Segmentos`, `SelectorPeriodo` | Pastillas de una opción (`aria-pressed`, 48 px); el selector ofrece hoy, semana y mes. |
 | `FilaLista` | Fila de lista de 48 px con filete punteado. |
+| `BarraInferior`, `MenuAcciones`, `MarcoApp` (`ui/marco/`) | Navegación principal con el disco central, botón «+» con las tres acciones rápidas, y el marco que los pone en toda pantalla con sesión. |
 
 `IndicadoresEstado` y `AvisoActualizacion` usan los mismos tokens; los enlaces dentro de un texto usan `CLASES_ENLACE` (cacao subrayado).
 
@@ -55,8 +56,8 @@ Son los colores de la web (`camino/app/globals.css`), con nombres funcionales pa
 | `sobre-acento` | `#fbf7ee` | texto sobre el cacao |
 | `terracota` | `#b5532f` | **solo** foco del teclado, selección y camino punteado |
 | `peligro` / `peligro-suave` | `#b3261e` / `#fcecea` | errores, faltantes, «Descartar» |
-| `exito` | `#1b6e3c` | «En línea», cifras que suben |
-| `advertencia` / `advertencia-suave` | `#7a4a00` / `#fbf1de` | sin conexión, pendientes, lo que pide atención |
+| `exito` / `exito-claro` | `#1b6e3c` / `#8fd4a6` | «En línea», cifras que suben / sobre la barra de estado de café |
+| `advertencia` / `advertencia-suave` / `advertencia-claro` | `#7a4a00` / `#fbf1de` / `#f0c27a` | sin conexión, pendientes, lo que pide atención / sobre la barra de estado de café |
 
 `index.css` hace `--color-*: initial`: solo existen los tokens de arriba. Regla de proporción: papel y crema dominan; el café es estructura y texto; el cacao aparece en **un solo botón primario por pantalla**; el ámbar marca lo que pide atención.
 
@@ -74,6 +75,7 @@ Se calcula y verifica en `apps/web/src/ui/componentes/contraste.test.ts` (lee lo
 | `sobre-acento` sobre `acento` | 9,5 |
 | `peligro` sobre `fondo` / `superficie` | 6,1 / 5,7 |
 | `exito` sobre `fondo` | 5,9 |
+| `exito-claro` / `advertencia-claro` sobre `cafe` | 8,4 / 8,8 |
 | `advertencia` sobre `fondo` / `advertencia-suave` | 7,0 / 6,7 |
 | `terracota` sobre `fondo` (foco) | 4,6 (mínimo 3) |
 | `sobre-acento` sobre `terracota` (texto seleccionado) | 4,6 |

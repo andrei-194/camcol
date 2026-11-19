@@ -121,7 +121,7 @@ describe('MenuAcciones', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Acciones rápidas' }))
     const menu = screen.getByRole('menu', { name: 'Acciones rápidas' })
     const items = within(menu).getAllByRole('menuitem')
-    expect(items.map((i) => i.textContent)).toEqual(['Nuevo pedido', 'Nueva compra', 'Gasto'])
+    ;['Nuevo pedido', 'Nueva compra', 'Gasto'].forEach((nombre, i) => expect(items[i]).toHaveAccessibleName(nombre))
     expect(items.map((i) => i.getAttribute('href'))).toEqual(['/ventas/nuevo', '/compras/nueva', '/gastos/nuevo'])
     expect(items[0]).toHaveFocus()
     expect(screen.getByRole('button', { name: 'Cerrar acciones rápidas' })).toHaveAttribute('aria-expanded', 'true')
