@@ -5,7 +5,7 @@
   "description": "Plataforma operativa de Camino Col (PWA + Supabase)",
   "type": "module",
   "scripts": {
-    "setup": "docker compose run --rm dev npm --prefix apps/web ci",
+    "setup": "npm ci && docker compose run --rm dev npm --prefix apps/web ci",
     "dev": "docker compose up dev",
     "build": "docker compose run --rm dev npm --prefix apps/web run build",
     "test": "docker compose run --rm dev npm --prefix apps/web test",

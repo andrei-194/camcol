@@ -399,3 +399,9 @@ Pantallas `/catalogo`, `/catalogo/articulos/nuevo|:id` y `/catalogo/listas`; `Se
 - **Decisión del socio:** el plugin Elephant-Goldfish Model (`google/elephant-goldfish-model`, `egm@egm`) entra en el flujo **sin excepción**. Tabla de skills y momentos en `AGENTS.md` («Revisión EGM»).
 - Mínimo por tarea: `egm-lite` sobre el diff antes de integrar en la release. Spec/plan: `egm-review`. Cierre de release: `egm-drift-report docs/spec/`.
 - **Pendiente (retroactivo):** T-M3-00, 01, 04 y 05 se integraron en `release/h3` antes de esta regla. Se les pasa `egm-lite`, junto con la revisión de seguridad manual del 2026-11-19, antes de marcar listo el PR de H3.
+
+## Nota arranque desde cero — 2026-11-19
+
+- **Fallo hallado:** `npm run db:catalogo` falló con `Cannot find package 'pg'` en una carpeta ya usada: `pg` se añadió a la raíz (T-M1-10) pero `npm run setup` solo instalaba `apps/web`, y el README no pedía instalar la raíz. Además `.env.example` mandaba a `.env` en la raíz, pero Vite lee `apps/web/.env.local`.
+- **Arreglo:** `setup` instala raíz y contenedor; `scripts/dependencia.mjs` convierte «falta un paquete» y «Supabase apagado» en un mensaje con el comando a correr (código 2); README con «Primer arranque» en orden; `.env.example` y runbook apuntan a `apps/web/.env.local`. Prueba: `tests/db/arranque.test.mjs`.
+- **Regla:** todo script que corra en el PC debe fallar diciendo qué hacer. Quien clone el repo no tiene un agente al lado. Al añadir una dependencia o un paso de arranque se actualiza `setup` y el README en el mismo cambio.

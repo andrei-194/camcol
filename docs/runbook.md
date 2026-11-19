@@ -4,7 +4,7 @@ Guía operativa mínima para quien mantiene el proyecto. Es un esqueleto: se com
 
 ## 1. Variables de entorno
 
-Se definen en `.env` (ignorado por Git) a partir de `.env.example`.
+La app web las lee de `apps/web/.env.local` (ignorado por Git) a partir de `.env.example`.
 
 | Variable | Qué es | ¿Pública? |
 |---|---|---|
