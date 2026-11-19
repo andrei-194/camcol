@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { CaminoDB, OpOutbox } from '../../infra/db/db'
+import type { AdjuntosService } from '../../infra/sync/adjuntosService'
 import type { PendientesService } from '../../infra/sync/pendientesService'
 import type { Escritor } from '../../infra/sync/writer'
 
@@ -8,6 +9,8 @@ interface ContextoPendientes {
   servicio: PendientesService
   /** Escritor único de la app (las pantallas de captura lo usan desde H3). Opcional en pruebas. */
   escritor?: Escritor
+  /** Fotos locales (CAM-48); las pantallas con foto opcional lo usan. Opcional en pruebas. */
+  adjuntos?: Pick<AdjuntosService, 'guardar' | 'subirListas'>
   /** Sube cada vez que cambia la outbox por una acción de la UI; los consumidores recargan. */
   version: number
   avisarCambio(): void
@@ -20,16 +23,21 @@ export function PendientesProvider({
   db,
   servicio,
   escritor,
+  adjuntos,
   children,
 }: {
   db: CaminoDB
   servicio: PendientesService
   escritor?: Escritor
+  adjuntos?: Pick<AdjuntosService, 'guardar' | 'subirListas'>
   children: ReactNode
 }) {
   const [version, setVersion] = useState(0)
   const avisarCambio = useCallback(() => setVersion((v) => v + 1), [])
-  const valor = useMemo(() => ({ db, servicio, escritor, version, avisarCambio }), [db, servicio, escritor, version, avisarCambio])
+  const valor = useMemo(
+    () => ({ db, servicio, escritor, adjuntos, version, avisarCambio }),
+    [db, servicio, escritor, adjuntos, version, avisarCambio],
+  )
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>
 }
 

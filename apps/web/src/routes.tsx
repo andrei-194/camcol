@@ -4,6 +4,9 @@ import { ComoInstalar } from './ui/ComoInstalar'
 import { Home } from './ui/Home'
 import { LoginPage } from './ui/auth/LoginPage'
 import { Pendientes } from './ui/pendientes/Pendientes'
+import { TerceroDetalle } from './ui/terceros/TerceroDetalle'
+import { TerceroNuevo } from './ui/terceros/TerceroNuevo'
+import { Terceros } from './ui/terceros/Terceros'
 import { RequireAuth } from './ui/auth/RequireAuth'
 
 export function AppRoutes() {
@@ -15,6 +18,9 @@ export function AppRoutes() {
         <Route path="/" element={<Home />} />
         <Route path="/ajustes" element={<Ajustes />} />
         <Route path="/pendientes" element={<Pendientes />} />
+        <Route path="/terceros" element={<Terceros />} />
+        <Route path="/terceros/nuevo" element={<TerceroNuevo />} />
+        <Route path="/terceros/:id" element={<TerceroDetalle />} />
       </Route>
     </Routes>
   )
