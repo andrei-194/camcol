@@ -245,3 +245,189 @@ describe('rutas de gastos', () => {
     expect(screen.getByRole('button', { name: 'Guardar gasto' })).toBeInTheDocument()
   })
 })
+
+describe('revisión de T-M5-05: gasto con conexión, foco, límites y estados', () => {
+  const mananaDe = (hoy: string) => {
+    const d = new Date(`${hoy}T12:00:00Z`)
+    d.setUTCDate(d.getUTCDate() + 1)
+    return d.toISOString().slice(0, 10)
+  }
+  const mesAnteriorDe = (hoy: string) => {
+    const d = new Date(`${hoy.slice(0, 7)}-01T12:00:00Z`)
+    d.setUTCMonth(d.getUTCMonth() - 1)
+    return `${d.toISOString().slice(0, 7)}-15`
+  }
+
+  it('[P1] con conexión el gasto también queda en el teléfono (sync_pull no trae gastos): aparece en la lista y suma en el total', async () => {
+    montar('/gastos/nuevo')
+    elegir('Combustible')
+    escribir(/Valor/, '45.000')
+    guardarGasto()
+    await screen.findByText(/gasto guardado/i)
+    const filas = await db.gastos.toArray()
+    expect(filas).toHaveLength(1)
+    expect(filas[0]).toMatchObject({ categoria: 'Combustible', valor: 45000, fecha: hoyBogota() })
+    expect(filas[0]!._pendiente).toBeUndefined() // ya está en el servidor
+    fireEvent.click(screen.getByRole('link', { name: 'Ver gastos' }))
+    // «Ver gastos» abre la lista de este mismo árbol
+    const total = await screen.findByLabelText('Total de gastos del mes')
+    expect(total.querySelector('data[value="45000"]')).not.toBeNull()
+  })
+
+  it('con conexión y con la fila ya existente, no se duplica al volver a guardar el mismo id', async () => {
+    montar('/gastos/nuevo')
+    elegir('Otros')
+    escribir(/Valor/, '1000')
+    guardarGasto()
+    await screen.findByText(/gasto guardado/i)
+    const [fila] = await db.gastos.toArray()
+    await db.gastos.put({ ...fila! })
+    expect(await db.gastos.count()).toBe(1)
+  })
+
+  it('el total y la lista dicen que son de este teléfono', async () => {
+    await db.gastos.put({ id: 'a', fecha: hoyBogota(), categoria: 'Otros', valor: 1000 })
+    montar('/gastos')
+    const total = await screen.findByLabelText('Total de gastos del mes')
+    expect(total).toHaveTextContent(/en este teléfono/i)
+  })
+
+  it('un valor por encima del tope se frena en el formulario, con su mensaje, sin llamar al servidor', async () => {
+    montar('/gastos/nuevo')
+    elegir('Otros')
+    escribir(/Valor/, '9'.repeat(20))
+    guardarGasto()
+    expect(await screen.findByText('El valor es demasiado grande.')).toBeInTheDocument()
+    expect(srv.llamadas).toHaveLength(0)
+  })
+
+  it('la fecha futura y la fecha vacía se frenan en pantalla', async () => {
+    montar('/gastos/nuevo')
+    elegir('Otros')
+    escribir(/Valor/, '1000')
+    escribir('Fecha', mananaDe(hoyBogota()))
+    guardarGasto()
+    expect(await screen.findByText('La fecha no puede ser futura.')).toBeInTheDocument()
+    escribir('Fecha', '')
+    guardarGasto()
+    expect(await screen.findByText('Elige la fecha del gasto.')).toBeInTheDocument()
+    expect(srv.llamadas).toHaveLength(0)
+  })
+
+  it('tras un envío inválido el foco va al primer campo con error', async () => {
+    montar('/gastos/nuevo')
+    guardarGasto() // sin categoría ni valor
+    await screen.findByText('Elige una categoría.')
+    await waitFor(() => expect(screen.getByRole('radio', { name: 'Combustible' })).toHaveFocus())
+    elegir('Otros')
+    guardarGasto() // solo falta el valor
+    await screen.findByText('Escribe el valor del gasto.')
+    await waitFor(() => expect(screen.getByLabelText(/Valor/)).toHaveFocus())
+  })
+
+  it('con la sesión vencida (401) lo deja guardado en el teléfono y lo dice', async () => {
+    srv.forzar.push({ clase: 'no_aplicado', http: 401, mensaje: 'JWT expired' })
+    montar('/gastos/nuevo')
+    elegir('Otros')
+    escribir(/Valor/, '1000')
+    guardarGasto()
+    expect(await screen.findByText(/tu sesión venció/i)).toBeInTheDocument()
+    expect(await db.outbox.count()).toBe(1)
+  })
+
+  it('si la aplicación aún no tiene escritor, avisa y no pierde lo escrito', async () => {
+    const servicio = crearPendientesService({ db, api: srv })
+    render(
+      <PendientesProvider db={db} servicio={servicio}>
+        <MemoryRouter initialEntries={['/gastos/nuevo']}>
+          <Routes>
+            <Route path="/gastos/nuevo" element={<GastoNuevo />} />
+          </Routes>
+        </MemoryRouter>
+      </PendientesProvider>,
+    )
+    elegir('Otros')
+    escribir(/Valor/, '1000')
+    guardarGasto()
+    expect(await screen.findByRole('alert')).toHaveTextContent(/aún no está lista/i)
+    expect(screen.getByLabelText(/Valor/)).toHaveValue('1000')
+  })
+
+  it('con conexión y foto, sube las fotos listas después de guardarla', async () => {
+    montar('/gastos/nuevo')
+    elegir('Transporte')
+    escribir(/Valor/, '20000')
+    fireEvent.change(screen.getByLabelText(/Foto del soporte/), { target: { files: [new File(['x'], 'r.jpg', { type: 'image/jpeg' })] } })
+    guardarGasto()
+    await screen.findByText(/gasto guardado/i)
+    expect(guardar).toHaveBeenCalledTimes(1)
+    expect(subirListas).toHaveBeenCalledTimes(1)
+  })
+
+  it('con conexión, si la foto falla, el gasto queda guardado y lo avisa', async () => {
+    guardar.mockRejectedValueOnce(new Error('sin espacio'))
+    montar('/gastos/nuevo')
+    elegir('Otros')
+    escribir(/Valor/, '1000')
+    fireEvent.change(screen.getByLabelText(/Foto del soporte/), { target: { files: [new File(['x'], 'r.jpg', { type: 'image/jpeg' })] } })
+    guardarGasto()
+    expect(await screen.findByText(/gasto guardado\. la foto no se pudo guardar/i)).toBeInTheDocument()
+  })
+
+  it('Enter en un campo con el botón deshabilitado no envía dos veces', async () => {
+    let soltar: () => void = () => {}
+    const original = srv.aplicar.bind(srv)
+    srv.aplicar = (ops, signal) => new Promise((ok) => (soltar = () => ok(original(ops, signal))))
+    montar('/gastos/nuevo')
+    elegir('Otros')
+    escribir(/Valor/, '1000')
+    fireEvent.submit(screen.getByLabelText(/Valor/).closest('form')!)
+    await waitFor(() => expect(screen.getByRole('button', { name: /Guardando/ })).toBeDisabled())
+    fireEvent.click(screen.getByRole('button', { name: /Guardando/ }))
+    soltar()
+    await screen.findByText(/gasto guardado/i)
+    expect(srv.llamadas).toHaveLength(1)
+  })
+
+  it('la lista muestra «Cargando…» al abrir y un error claro si no se puede leer', async () => {
+    const { unmount } = montar('/gastos')
+    expect(screen.getByRole('status')).toHaveTextContent('Cargando…')
+    unmount()
+    vi.spyOn(db.gastos, 'toArray').mockRejectedValue(new Error('IndexedDB no disponible'))
+    montar('/gastos')
+    expect(await screen.findByRole('alert')).toHaveTextContent(/no se pudieron leer los gastos/i)
+    vi.restoreAllMocks()
+  })
+
+  it('la lista dibuja como máximo 50 gastos, los más recientes', async () => {
+    const hoy = hoyBogota()
+    await db.gastos.bulkPut(Array.from({ length: 55 }, (_, i) => ({ id: `g-${String(i).padStart(3, '0')}`, fecha: hoy, categoria: 'Otros', valor: 1000 + i })))
+    montar('/gastos')
+    const lista = await screen.findByRole('list', { name: 'Gastos recientes' })
+    expect(within(lista).getAllByRole('listitem')).toHaveLength(50)
+    expect(lista.querySelector('data[value="1054"]')).not.toBeNull() // el último creado va primero
+    expect(lista.querySelector('data[value="1000"]')).toBeNull() // los más viejos quedan fuera
+  })
+
+  it('una fila con fecha vacía o inválida no tira abajo la lista: muestra «Sin fecha»', async () => {
+    await db.gastos.bulkPut([
+      { id: 'a', fecha: '', categoria: 'Combustible', valor: 1000 },
+      { id: 'b', fecha: 'no-es-fecha', categoria: 'Empaques', valor: 2000 },
+    ])
+    montar('/gastos')
+    const lista = await screen.findByRole('list', { name: 'Gastos recientes' })
+    expect(within(lista).getAllByText('Sin fecha')).toHaveLength(2)
+  })
+
+  it('el total del mes no cuenta el mes anterior, también en enero (el mes anterior es diciembre del año anterior)', async () => {
+    const hoy = hoyBogota()
+    await db.gastos.bulkPut([
+      { id: 'a', fecha: hoy, categoria: 'Otros', valor: 5000 },
+      { id: 'b', fecha: mesAnteriorDe(hoy), categoria: 'Otros', valor: 99999 },
+      { id: 'c', fecha: mesAnteriorDe(`${Number(hoy.slice(0, 4)) + 1}-01-20`), categoria: 'Otros', valor: 77777 },
+    ])
+    montar('/gastos')
+    const total = await screen.findByLabelText('Total de gastos del mes')
+    expect(total.querySelector('data[value="5000"]')).not.toBeNull()
+  })
+})

@@ -226,8 +226,13 @@ describe('Chips (opciones de una sola elección)', () => {
     const tres = screen.getByRole('radio', { name: 'Tres' })
     fireEvent.keyDown(tres, { key: 'ArrowRight' })
     expect(alCambiar).toHaveBeenLastCalledWith('Uno')
+    expect(screen.getByRole('radio', { name: 'Uno' })).toHaveFocus() // el foco acompaña a la elección
     fireEvent.keyDown(tres, { key: 'ArrowLeft' })
     expect(alCambiar).toHaveBeenLastCalledWith('Dos')
+    expect(screen.getByRole('radio', { name: 'Dos' })).toHaveFocus()
+    fireEvent.keyDown(screen.getByRole('radio', { name: 'Uno' }), { key: 'ArrowLeft' }) // desde el primero salta al último
+    expect(alCambiar).toHaveBeenLastCalledWith('Tres')
+    expect(screen.getByRole('radio', { name: 'Tres' })).toHaveFocus()
     fireEvent.keyDown(tres, { key: 'ArrowDown' })
     expect(alCambiar).toHaveBeenLastCalledWith('Uno')
     fireEvent.keyDown(tres, { key: 'ArrowUp' })

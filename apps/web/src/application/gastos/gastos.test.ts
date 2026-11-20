@@ -11,6 +11,7 @@ import {
   parseValor,
   totalDelMes,
   validarForm,
+  VALOR_MAXIMO,
 } from './gastos'
 
 const HOY = '2026-11-20'
@@ -108,5 +109,25 @@ describe('[RF-PAG-03] gastosRecientes y totalDelMes', () => {
   it('sin gastos el total es cero y valores no numéricos no contaminan la suma', () => {
     expect(totalDelMes([], HOY)).toBe(0)
     expect(totalDelMes([g('a', '2026-11-02', Number.NaN)], HOY)).toBe(0)
+  })
+})
+
+describe('[RF-PAG-03] tope del valor', () => {
+  const ok = { categoria: 'Otros', concepto: '', valor: '', fecha: HOY }
+
+  it('el tope es de 999.999.999 pesos (cabe de sobra en numeric(14,2) y en un entero seguro)', () => {
+    expect(VALOR_MAXIMO).toBe(999_999_999)
+    expect(validarForm({ ...ok, valor: '999.999.999' }, HOY)).toEqual({})
+    expect(validarForm({ ...ok, valor: '1.000.000.000' }, HOY).valor).toBe('El valor es demasiado grande.')
+  })
+
+  it('números enormes se frenan con ese mismo mensaje, sin pasar por Zod', () => {
+    expect(validarForm({ ...ok, valor: '9'.repeat(20) }, HOY).valor).toBe('El valor es demasiado grande.')
+    expect(validarForm({ ...ok, valor: String(Number.MAX_SAFE_INTEGER) }, HOY).valor).toBe('El valor es demasiado grande.')
+  })
+
+  it('los ceros a la izquierda no cambian el valor', () => {
+    expect(parseValor('007')).toBe(7)
+    expect(validarForm({ ...ok, valor: '007' }, HOY)).toEqual({})
   })
 })
