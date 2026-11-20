@@ -153,7 +153,7 @@ export function Pendientes() {
   }
 
   return (
-    <Pagina titulo="Pendientes" volverA="/">
+    <Pagina titulo="Pendientes" volverA="/mas">
       <BannerPendientes />
 
       {carga.fase === 'cargando' && (
