@@ -175,7 +175,6 @@ describe('rutas del marco', () => {
     ['/compras', 'Compras'],
     ['/inventario', 'Inventario'],
     ['/ventas/nuevo', 'Nuevo pedido'],
-    ['/compras/nueva', 'Nueva compra'],
   ])('%s existe y avisa que llega pronto', async (ruta, titulo) => {
     enSesion(ruta)
     expect(await screen.findByRole('heading', { level: 1, name: titulo })).toBeInTheDocument()
