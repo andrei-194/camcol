@@ -12,7 +12,7 @@ Tres rasgos de marca: la cabecera de café con el logo grande recortado, el **di
 
 | Hecho | Pendiente (aún no está en el código) |
 |---|---|
-| **T-D1:** paleta, tipografía autoalojada, grano de papel, sombra `shadow-papel`, foco y selección en terracota, escala. **T-D2:** botones en pastilla y deshabilitado en arena, tarjetas y campos sobre el papel, `Logo`, `Dinero`, `Segmentos`, `FilaLista`. **T-D3:** cabecera de café con logo y filo de trigo, barra de estado de café, barra inferior de cinco destinos con el disco central, menú flotante «+», rutas de Ventas, Compras, Inventario y Más (Ventas, Compras, Inventario y las acciones rápidas muestran «llega pronto») | Tablero de Inicio con gráficos (T-D4); pantallas actuales con los rasgos nuevos y filetes punteados (T-D5); color de la barra del teléfono (T-D6) |
+| **T-D1:** paleta, tipografía autoalojada, grano de papel, sombra `shadow-papel`, foco y selección en terracota, escala. **T-D2:** botones en pastilla y deshabilitado en arena, tarjetas y campos sobre el papel, `Logo`, `Dinero`, `Segmentos`, `FilaLista`. **T-D3:** cabecera de café con logo y filo de trigo, barra de estado de café, barra inferior de cinco destinos con el disco central, menú flotante «+», rutas de Ventas, Compras, Inventario y Más (Ventas, Compras, Inventario y las acciones rápidas muestran «llega pronto»). **T-D4:** tablero de Inicio con gráficos en SVG (arco, área, barras), frases de decisión y estado vacío; los datos reales llegan con T-M7 | Conectar el tablero a los datos del servidor (T-M7); pantallas actuales con los rasgos nuevos y filetes punteados (T-D5); color de la barra del teléfono (T-D6) |
 
 Lo que sigue pendiente (tablero, filetes punteados y regla 7 en las pantallas actuales) es el **objetivo**; cada tarea lo cumple al integrarse.
 
@@ -32,6 +32,7 @@ T-D2 (CAM-107) los rediseña: `Boton` en pastilla con deshabilitado en arena y t
 | `Dinero` | Pesos sin decimales en Fraunces con cifras tabulares; el «$» va menor y en tinta. |
 | `Segmentos`, `SelectorPeriodo` | Pastillas de una opción (`aria-pressed`, 48 px); el selector ofrece hoy, semana y mes. |
 | `FilaLista` | Fila de lista de 48 px con filete punteado. |
+| `Tablero` y gráficos (`ui/tablero/`) | `Arco` (margen), `AreaVentasCosto`, `BarrasPeriodo`, `BarrasHorizontales`: SVG propio, sin librerías, con escalas puras (`escalas.ts`) y texto alternativo; `frasesDeDecision` dice qué atender. `Tablero` recibe `DatosTablero` o `null` (estado vacío «Aún no hay ventas»). |
 | `BarraInferior`, `MenuAcciones`, `MarcoApp` (`ui/marco/`) | Navegación principal con el disco central, botón «+» con las tres acciones rápidas, y el marco que los pone en toda pantalla con sesión. |
 
 `IndicadoresEstado` es la barra de estado de café (indicadores con `exito-claro` y `advertencia-claro`) y `AvisoActualizacion` usa los mismos tokens; los enlaces dentro de un texto usan `CLASES_ENLACE` (cacao subrayado).
@@ -116,6 +117,10 @@ Barra inferior de cinco destinos, con Inicio en el centro como disco de café co
 | Más | pendientes (con contador), catálogo, clientes y proveedores, gastos, ajustes, cómo instalar | según la función |
 
 Un botón «+» flotante abre Nuevo pedido (primario), Nueva compra y Gasto. No hay gráfico de velas: el negocio no tiene serie de apertura y cierre; ventas contra costo va en área y lo demás en barras.
+
+## Tablero de Inicio
+
+De arriba abajo: selector de periodo (hoy, semana, mes), lo que pide atención (por confirmar, esperando pago, faltantes), arco del margen con las ventas y la ganancia en Fraunces, pedidos y ticket promedio, ventas contra costo (área y línea punteada), unidades por semana, lo más vendido y «qué hacer». Sin gráfico de velas. Cada gráfico es una imagen con texto alternativo que dice el último valor; lo más vendido es una lista. Los colores salen de los tokens (cacao para lo actual, trigo para el resto, nunca solo color: cada barra lleva su cifra o su texto). Mientras no existan ventas, Inicio muestra «Aún no hay ventas» y un botón para registrar el primer pedido.
 
 ## Capas y menú flotante
 

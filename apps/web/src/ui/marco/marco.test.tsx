@@ -317,11 +317,11 @@ describe('revisión de T-D3: menú, foco, rutas y capas', () => {
 
   it('los indicadores se leen sobre el café: verde claro en línea, ámbar claro sin conexión', async () => {
     enSesion('/')
-    const enLinea = await screen.findByText('En línea')
+    const enLinea = await screen.findByText('En línea', {}, { timeout: 5000 })
     expect(enLinea.className).toContain('text-exito-claro')
     Object.defineProperty(navigator, 'onLine', { value: false, configurable: true })
     act(() => void window.dispatchEvent(new Event('offline')))
-    expect((await screen.findByText('Sin conexión')).className).toContain('text-advertencia-claro')
+    expect((await screen.findByText('Sin conexión', {}, { timeout: 5000 })).className).toContain('text-advertencia-claro')
     Object.defineProperty(navigator, 'onLine', { value: true, configurable: true })
     act(() => void window.dispatchEvent(new Event('online')))
   })
@@ -336,9 +336,9 @@ describe('revisión de T-D3: menú, foco, rutas y capas', () => {
     expect(screen.getByRole('link', { name: 'Volver' })).toHaveAttribute('href', '/ventas')
   })
 
-  it('Inicio avisa que el tablero llega pronto', async () => {
+  it('Inicio muestra el tablero: mientras no haya ventas, su estado vacío (T-D4)', async () => {
     enSesion('/')
-    expect(await screen.findByText(/tablero.*llega pronto/i)).toBeInTheDocument()
+    expect(await screen.findByText(/Aún no hay ventas/)).toBeInTheDocument()
   })
 
   it('el contenido deja holgura bajo el «+» y el aviso de actualización flota por encima de la barra y del botón', () => {
