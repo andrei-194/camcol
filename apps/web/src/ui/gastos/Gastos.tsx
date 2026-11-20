@@ -23,6 +23,15 @@ export function Gastos() {
   )
 }
 
+/** `17/11/2026`, o «Sin fecha» si la fila no trae una fecha válida (nunca debe tirar abajo la lista). */
+function fechaLegible(valor: unknown): string {
+  try {
+    return formatFecha(String(valor ?? ''))
+  } catch {
+    return 'Sin fecha'
+  }
+}
+
 function Contenido({ gastos }: { gastos: ReturnType<typeof gastosRecientes> }) {
   const recientes = gastosRecientes(gastos)
   if (recientes.length === 0) return <Aviso>Aún no hay gastos. Registra el primero con «Nuevo gasto».</Aviso>
@@ -30,7 +39,7 @@ function Contenido({ gastos }: { gastos: ReturnType<typeof gastosRecientes> }) {
     <>
       <Tarjeta>
         <section aria-label="Total de gastos del mes" className="flex flex-col">
-          <span className="text-pequeno text-texto-secundario">Gastos de este mes</span>
+          <span className="text-pequeno text-texto-secundario">Gastos de este mes en este teléfono</span>
           <Dinero valor={totalDelMes(gastos, hoyBogota())} className="text-cifra" />
         </section>
       </Tarjeta>
@@ -41,7 +50,7 @@ function Contenido({ gastos }: { gastos: ReturnType<typeof gastosRecientes> }) {
               <span className="font-semibold">{String(g['categoria'] ?? '')}</span>
               {Boolean(g['concepto']) && <span className="truncate text-pequeno text-texto-secundario">{String(g['concepto'])}</span>}
               <span className="flex flex-wrap items-center gap-2 text-pequeno text-texto-secundario">
-                {formatFecha(String(g['fecha'] ?? ''))}
+                {fechaLegible(g['fecha'])}
                 {g._pendiente && <EtiquetaEstado tono="advertencia">⏳ Sin subir</EtiquetaEstado>}
               </span>
             </span>

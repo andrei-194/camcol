@@ -5,6 +5,9 @@ import { liveQuery } from 'dexie'
 import { useEffect, useState } from 'react'
 import type { CaminoDB, Fila } from '../../infra/db/db'
 
+/** Tope por gasto: bastante por debajo de `numeric(14,2)` del servidor y de un entero seguro de JavaScript. */
+export const VALOR_MAXIMO = 999_999_999
+
 export const CATEGORIAS_GASTO = ['Combustible', 'Empaques', 'Transporte', 'Alimentación', 'Otros'] as const
 
 export interface FormGasto {
@@ -45,6 +48,7 @@ export function validarForm(form: FormGasto, hoy: string): ErroresGasto {
     const v = parseValor(form.valor)
     if (v === null) errores.valor = 'El valor debe ser un número entero en pesos, sin decimales.'
     else if (v <= 0) errores.valor = 'El valor debe ser mayor que cero.'
+    else if (v > VALOR_MAXIMO) errores.valor = 'El valor es demasiado grande.'
   }
   if (!form.fecha) errores.fecha = 'Elige la fecha del gasto.'
   else if (form.fecha > hoy) errores.fecha = 'La fecha no puede ser futura.'

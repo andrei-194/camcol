@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { CATEGORIAS_GASTO, armarDatos, filaLocal, formVacio, validarForm, type ErroresGasto, type FormGasto } from '../../application/gastos/gastos'
 import { hoyBogota } from '../../lib/formato'
@@ -16,14 +16,23 @@ type Resultado = { tipo: 'aplicado'; fotoFallo: boolean } | { tipo: 'encolado'; 
 
 /** Registro de un gasto operativo (RF-PAG-03). Funciona sin conexión (D-009): sin señal queda en Pendientes. */
 export function GastoNuevo() {
-  const { escritor, adjuntos } = usePendientesCtx()
+  const { db, escritor, adjuntos } = usePendientesCtx()
   const [form, setForm] = useState<FormGasto>(() => formVacio(hoyBogota()))
   const [errores, setErrores] = useState<ErroresGasto>({})
   const [archivo, setArchivo] = useState<File | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
   const [resultado, setResultado] = useState<Resultado | null>(null)
+  const [intentos, setIntentos] = useState(0) // sube con cada envío inválido: lleva el foco al primer error
+  const formulario = useRef<HTMLFormElement>(null)
   const [version, setVersion] = useState(0) // cambia al «Registrar otro gasto»: limpia también el campo de archivo
+
+  useEffect(() => {
+    if (intentos === 0) return
+    const invalido = formulario.current?.querySelector('[aria-invalid="true"]')
+    const destino = invalido?.getAttribute('role') === 'radiogroup' ? invalido.querySelector('[role="radio"][tabindex="0"]') : invalido
+    ;(destino as HTMLElement | null)?.focus()
+  }, [intentos])
 
   const poner = <K extends keyof FormGasto>(k: K, v: FormGasto[K]) => setForm((f) => ({ ...f, [k]: v }))
 
@@ -33,7 +42,10 @@ export function GastoNuevo() {
     const hoy = hoyBogota()
     const errs = validarForm(form, hoy)
     setErrores(errs)
-    if (Object.keys(errs).length > 0) return
+    if (Object.keys(errs).length > 0) {
+      setIntentos((n) => n + 1)
+      return
+    }
     if (!escritor) {
       setAviso('La aplicación aún no está lista. Intenta de nuevo.')
       return
@@ -46,6 +58,9 @@ export function GastoNuevo() {
         datos,
         filasLocales: [{ tabla: 'gastos', fila: filaLocal(datos) }],
       })
+      // `sync_pull` no trae gastos (PLAN §5.1): con conexión el escritor no deja fila local, así que se guarda aquí
+      // (mismo `id`, sin marca de pendiente) para que la lista y el total del mes la vean.
+      if (r.estado === 'aplicada') await db.gastos.put(filaLocal(datos)).catch(() => undefined)
       let fotoFallo = false
       if (archivo && adjuntos) {
         try {
@@ -101,7 +116,7 @@ export function GastoNuevo() {
     <Pagina titulo="Nuevo gasto" volverA="/gastos">
       <Aviso tono="info">Funciona sin conexión: si no hay señal, se guarda en este teléfono y lo subes después.</Aviso>
       <Tarjeta>
-        <form key={version} onSubmit={(e) => void guardar(e)} noValidate className="flex flex-col gap-4">
+        <form ref={formulario} key={version} onSubmit={(e) => void guardar(e)} noValidate className="flex flex-col gap-4">
           <Chips etiqueta="Categoría" opciones={CATEGORIAS_GASTO} valor={form.categoria} alCambiar={(c) => poner('categoria', c)} error={errores.categoria} />
           <CampoTexto
             etiqueta="Valor en pesos"
