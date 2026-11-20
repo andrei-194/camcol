@@ -82,6 +82,12 @@ describe('[RF-TER-01][RF-TER-02] lista y búsqueda local', () => {
     expect(srv.llamadas).toHaveLength(0)
   })
 
+  it('«Volver» abre Más cuando se llega directo', async () => {
+    await sembrar()
+    montar('/terceros')
+    expect(await screen.findByRole('link', { name: 'Volver' })).toHaveAttribute('href', '/mas')
+  })
+
   it('sin coincidencias muestra un mensaje', async () => {
     await sembrar()
     montar('/terceros')

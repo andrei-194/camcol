@@ -93,6 +93,11 @@ describe('[RF-CAT-04] catálogo local', () => {
     expect(Object.values(api).every((f) => f.mock.calls.length === 0)).toBe(true)
   })
 
+  it('«Volver» abre Más cuando se llega directo', async () => {
+    montar('/catalogo')
+    expect(await screen.findByRole('link', { name: 'Volver' })).toHaveAttribute('href', '/mas')
+  })
+
   it('con el catálogo vacío muestra un estado vacío', async () => {
     await db.articulos.clear()
     await db.productos.clear()
