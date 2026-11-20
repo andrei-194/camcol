@@ -86,6 +86,7 @@ describe('[RF-COM-01] formulario', () => {
     const tipo = screen.getByRole('group', { name: 'Tipo de compra' })
     expect(within(tipo).getByRole('button', { name: 'Inmediata' })).toHaveAttribute('aria-pressed', 'true')
     const prov = await screen.findByLabelText('Proveedor')
+    await screen.findByRole('option', { name: 'Finca La Tulia' }) // los proveedores llegan de Dexie, en vivo
     expect(within(prov).getAllByRole('option').map((o) => o.textContent)).toEqual(['Elige…', 'Cacao de Bolívar', 'Finca La Tulia', 'Nuevo proveedor'])
     const art = screen.getByLabelText('Artículo 1')
     expect(within(art).getAllByRole('option').map((o) => o.textContent)).toEqual(['Elige…', 'Café pergamino 5 lb', 'Crema de cacao, naranja'])
@@ -207,7 +208,7 @@ describe('[RF-COM-02][RF-COM-05] guardar', () => {
 
   it('con el medio de pago elegido y lote y vencimiento en el artículo que lo pide', async () => {
     montar()
-    await screen.findByLabelText('Proveedor')
+    await screen.findByRole('option', { name: 'Cacao de Bolívar' })
     proveedor('p2')
     escribir('Artículo 1', 'a2')
     escribir('Cantidad 1', '4')
