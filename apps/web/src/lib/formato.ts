@@ -49,6 +49,14 @@ export function formatCantidad(valor: number): string {
   return fmtCantidad.format(r === 0 ? 0 : r)
 }
 
+const fmtPorcentaje = new Intl.NumberFormat(LOCALE, { minimumFractionDigits: 0, maximumFractionDigits: 1, useGrouping: 'always' })
+
+/** Porcentajes con coma y hasta un decimal: `31,5`. No agrega el signo «%». */
+export function formatPorcentaje(valor: number): string {
+  const r = Math.round(valor * 10) / 10
+  return fmtPorcentaje.format(r === 0 ? 0 : r)
+}
+
 function aDate(valor: Date | string): Date {
   const d = valor instanceof Date ? valor : new Date(valor)
   if (Number.isNaN(d.getTime())) throw new Error(`Fecha inválida: ${String(valor)}`)

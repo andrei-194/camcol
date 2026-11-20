@@ -120,7 +120,9 @@ Un botón «+» flotante abre Nuevo pedido (primario), Nueva compra y Gasto. No 
 
 ## Tablero de Inicio
 
-De arriba abajo: selector de periodo (hoy, semana, mes), lo que pide atención (por confirmar, esperando pago, faltantes), arco del margen con las ventas y la ganancia en Fraunces, pedidos y ticket promedio, ventas contra costo (área y línea punteada), unidades por semana, lo más vendido y «qué hacer». Sin gráfico de velas. Cada gráfico es una imagen con texto alternativo que dice el último valor; lo más vendido es una lista. Los colores salen de los tokens (cacao para lo actual, trigo para el resto, nunca solo color: cada barra lleva su cifra o su texto). Mientras no existan ventas, Inicio muestra «Aún no hay ventas» y un botón para registrar el primer pedido.
+De arriba abajo: selector de periodo (hoy, semana, mes), lo que pide atención (por confirmar, esperando pago, faltantes), arco del margen con las ventas y la ganancia en Fraunces, seis indicadores (costo, utilidad neta, gastos, ticket promedio, pedidos y unidades vendidas), ventas y costo por día (área y línea punteada), unidades por semana (las últimas 12 como máximo, cada barra con su cifra), lo más vendido y «qué hacer». Sin gráfico de velas. Cada gráfico es una imagen con texto alternativo que dice el último valor; lo más vendido es una lista. Lo que comunica un dato va en marrón con al menos 3:1 sobre la tarjeta (`borde-fuerte` y cacao); el trigo claro queda solo para lo decorativo. El color nunca va solo: cada barra lleva su cifra y la variación lleva ▲/▼ y texto. Cifras en es-CO (coma decimal, separador de miles).
+
+**Alcance de T-D4 (solo la capa visual).** Cubre RF-DSH-01 (selector), RF-DSH-02 (los nueve indicadores) y parte de RF-DSH-03 y RF-DSH-04. Faltan, y los construye T-M7: la tabla por artículo y el total del mes frente al mes anterior (CAM-71), el capital en inventario y los artículos con stock en cero (CAM-72) y la caché «datos al…» (CAM-73). Mientras no existan ventas, Inicio muestra «Aún no hay ventas» y un botón para registrar el primer pedido.
 
 ## Capas y menú flotante
 

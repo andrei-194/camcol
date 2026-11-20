@@ -1,3 +1,4 @@
+import { formatCantidad, formatPorcentaje } from '../../lib/formato'
 import { BotonEnlace } from '../componentes/Boton'
 import { Dinero } from '../componentes/Dinero'
 import { SelectorPeriodo, type Periodo } from '../componentes/SelectorPeriodo'
@@ -27,6 +28,25 @@ function Titulo({ children, detalle }: { children: string; detalle?: string }) {
   )
 }
 
+function Indicador({ etiqueta, children }: { etiqueta: string; children: React.ReactNode }) {
+  return (
+    <Tarjeta className="p-3">
+      <span className="text-pequeno text-texto-secundario">{etiqueta}</span>
+      <span className="block text-seccion">{children}</span>
+    </Tarjeta>
+  )
+}
+
+function Variacion({ pct }: { pct: number | null }) {
+  if (pct === null) return null
+  if (pct === 0) return <span className="text-pequeno font-semibold text-texto-secundario">Sin cambio frente al periodo anterior</span>
+  return (
+    <span className={`text-pequeno font-semibold ${pct > 0 ? 'text-exito' : 'text-peligro'}`}>
+      {`${pct > 0 ? '▲' : '▼'} ${formatPorcentaje(Math.abs(pct))} % frente al periodo anterior`}
+    </span>
+  )
+}
+
 /** Tablero de Inicio (RF-DSH): lo urgente arriba, las ventas en grande, gráficos que ayudan a decidir y qué hacer hoy. */
 export function Tablero({ datos, periodo, alCambiarPeriodo }: { datos: DatosTablero | null; periodo: Periodo; alCambiarPeriodo: (p: Periodo) => void }) {
   if (!datos) {
@@ -38,7 +58,8 @@ export function Tablero({ datos, periodo, alCambiarPeriodo }: { datos: DatosTabl
       </Tarjeta>
     )
   }
-  const variacion = datos.variacionPct
+  // Un margen de más de 50 % sube la escala del arco para no recortarlo sin aviso.
+  const escalaArco = datos.margenPct > 50 ? 100 : 50
   return (
     <div className="flex flex-col gap-4">
       <SelectorPeriodo valor={periodo} alCambiar={alCambiarPeriodo} />
@@ -52,16 +73,12 @@ export function Tablero({ datos, periodo, alCambiarPeriodo }: { datos: DatosTabl
       </Tarjeta>
 
       <Tarjeta className="grid grid-cols-[minmax(0,10.6rem)_1fr] items-center gap-3">
-        <Arco valor={datos.margenPct} max={50} etiqueta="margen" texto={`${datos.margenPct} %`} />
+        <Arco valor={datos.margenPct} max={escalaArco} etiqueta="margen" texto={`${formatPorcentaje(datos.margenPct)} %`} />
         <div className="flex flex-col gap-2">
           <div>
             <span className="text-pequeno text-texto-secundario">{TITULO_VENTAS[periodo]}</span>
             <Dinero valor={datos.ventas} className="block text-seccion" />
-            {variacion !== null && (
-              <span className={`text-pequeno font-semibold ${variacion >= 0 ? 'text-exito' : 'text-peligro'}`}>
-                {`${variacion >= 0 ? '▲' : '▼'} ${Math.abs(variacion)} % frente al periodo anterior`}
-              </span>
-            )}
+            <Variacion pct={datos.variacionPct} />
           </div>
           <div>
             <span className="text-pequeno text-texto-secundario">Ganancia</span>
@@ -71,23 +88,33 @@ export function Tablero({ datos, periodo, alCambiarPeriodo }: { datos: DatosTabl
       </Tarjeta>
 
       <div className="grid grid-cols-2 gap-3">
-        <Tarjeta className="p-3">
-          <span className="text-pequeno text-texto-secundario">Pedidos</span>
-          <b className="block font-titulo text-seccion font-semibold tabular-nums">{datos.pedidos}</b>
-        </Tarjeta>
-        <Tarjeta className="p-3">
-          <span className="text-pequeno text-texto-secundario">Ticket promedio</span>
-          <Dinero valor={datos.ticket} className="block text-seccion" />
-        </Tarjeta>
+        <Indicador etiqueta="Costo">
+          <Dinero valor={datos.costo} />
+        </Indicador>
+        <Indicador etiqueta="Utilidad neta">
+          <Dinero valor={datos.utilidadNeta} />
+        </Indicador>
+        <Indicador etiqueta="Gastos">
+          <Dinero valor={datos.gastos} />
+        </Indicador>
+        <Indicador etiqueta="Ticket promedio">
+          <Dinero valor={datos.ticket} />
+        </Indicador>
+        <Indicador etiqueta="Pedidos">
+          <b className="font-titulo font-semibold tabular-nums">{formatCantidad(datos.pedidos)}</b>
+        </Indicador>
+        <Indicador etiqueta="Unidades vendidas">
+          <b className="font-titulo font-semibold tabular-nums">{formatCantidad(datos.unidadesVendidas)}</b>
+        </Indicador>
       </div>
 
       <Tarjeta className="p-3">
-        <Titulo detalle="ventas y costo">Esta semana</Titulo>
+        <Titulo detalle={`${datos.serieDiaria.length} ${datos.serieDiaria.length === 1 ? 'día' : 'días'}`}>Ventas y costo por día</Titulo>
         <AreaVentasCosto datos={datos.serieDiaria} />
       </Tarjeta>
 
       <Tarjeta className="p-3">
-        <Titulo detalle="últimas 8">Unidades por semana</Titulo>
+        <Titulo detalle={`${Math.min(datos.unidadesSemanales.length, 12)} semanas`}>Unidades por semana</Titulo>
         <BarrasPeriodo titulo="Unidades por semana" datos={datos.unidadesSemanales} />
       </Tarjeta>
 
