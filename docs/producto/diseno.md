@@ -10,15 +10,15 @@ Tres rasgos de marca: la cabecera de café con el logo grande recortado, el **di
 
 ## Estado de implementación
 
-| Hecho en T-D1 (CAM-106) | Objetivo de T-D2 a T-D6 (aún no está en el código) |
+| Hecho | Pendiente (aún no está en el código) |
 |---|---|
-| **T-D3:** cabecera de café con logo y filo de trigo, barra de estado de café, barra inferior de cinco destinos con el disco central, menú flotante «+», rutas de Ventas, Compras, Inventario y Más (las tres primeras y las acciones rápidas muestran «llega pronto»). Paleta, tipografía autoalojada, grano de papel, sombra `shadow-papel`, foco y selección en terracota, escala. **T-D2:** botones en pastilla y deshabilitado en arena, tarjetas y campos sobre el papel, `Logo`, `Dinero`, `Segmentos`, `FilaLista` | Tablero de Inicio con gráficos (T-D4); tablero con gráficos (T-D4); pantallas actuales con los rasgos nuevos y filetes punteados (T-D5); color de la barra del teléfono (T-D6) |
+| **T-D1:** paleta, tipografía autoalojada, grano de papel, sombra `shadow-papel`, foco y selección en terracota, escala. **T-D2:** botones en pastilla y deshabilitado en arena, tarjetas y campos sobre el papel, `Logo`, `Dinero`, `Segmentos`, `FilaLista`. **T-D3:** cabecera de café con logo y filo de trigo, barra de estado de café, barra inferior de cinco destinos con el disco central, menú flotante «+», rutas de Ventas, Compras, Inventario y Más (Ventas, Compras, Inventario y las acciones rápidas muestran «llega pronto») | Tablero de Inicio con gráficos (T-D4); pantallas actuales con los rasgos nuevos y filetes punteados (T-D5); color de la barra del teléfono (T-D6) |
 
-Lo descrito más abajo como «navegación», «superficies» de componentes y reglas 4 y 7 es el **objetivo**; cada tarea lo cumple al integrarse.
+Lo que sigue pendiente (tablero, filetes punteados y regla 7 en las pantallas actuales) es el **objetivo**; cada tarea lo cumple al integrarse.
 
 ## Componentes actuales (`apps/web/src/ui/componentes/`)
 
-T-D2 (CAM-107) los rediseña: `Boton` en pastilla con deshabilitado en arena y tinta (sin `opacity-50`), `Tarjeta` en blanco sobre el papel con `shadow-papel`; `CampoTexto` y los selects, también en blanco (`bg-tarjeta`), sin sombra. `BarraSuperior` y `Pagina` los rehace T-D3.
+T-D2 (CAM-107) los rediseña: `Boton` en pastilla con deshabilitado en arena y tinta (sin `opacity-50`), `Tarjeta` en blanco sobre el papel con `shadow-papel`; `CampoTexto` y los selects, también en blanco (`bg-tarjeta`), sin sombra. `BarraSuperior` pasó a café con logo en T-D3; `Pagina` no cambió.
 
 | Componente | Qué es |
 |---|---|
@@ -34,7 +34,7 @@ T-D2 (CAM-107) los rediseña: `Boton` en pastilla con deshabilitado en arena y t
 | `FilaLista` | Fila de lista de 48 px con filete punteado. |
 | `BarraInferior`, `MenuAcciones`, `MarcoApp` (`ui/marco/`) | Navegación principal con el disco central, botón «+» con las tres acciones rápidas, y el marco que los pone en toda pantalla con sesión. |
 
-`IndicadoresEstado` y `AvisoActualizacion` usan los mismos tokens; los enlaces dentro de un texto usan `CLASES_ENLACE` (cacao subrayado).
+`IndicadoresEstado` es la barra de estado de café (indicadores con `exito-claro` y `advertencia-claro`) y `AvisoActualizacion` usa los mismos tokens; los enlaces dentro de un texto usan `CLASES_ENLACE` (cacao subrayado).
 
 ## Paleta
 
@@ -116,6 +116,12 @@ Barra inferior de cinco destinos, con Inicio en el centro como disco de café co
 | Más | pendientes (con contador), catálogo, clientes y proveedores, gastos, ajustes, cómo instalar | según la función |
 
 Un botón «+» flotante abre Nuevo pedido (primario), Nueva compra y Gasto. No hay gráfico de velas: el negocio no tiene serie de apertura y cierre; ventas contra costo va en área y lo demás en barras.
+
+## Capas y menú flotante
+
+Orden de capas (`z-index`): barra de estado sticky `z-10`, barra inferior `z-20`, fondo oscuro del menú `z-30`, botón «+» y menú `z-40`, aviso de actualización `z-50`. El aviso flota por encima del «+» y de la barra (`bottom: 9rem`); el contenido deja `8,5 rem` de holgura abajo para que ni el «+» ni la barra tapen el final de un formulario.
+
+El menú «+» es un `role="menu"`: el foco entra al primer elemento; las flechas (circulares), Inicio y Fin lo recorren; Escape, Tab y el fondo lo cierran devolviendo el foco al botón; elegir una acción o cambiar de ruta (incluido «atrás») lo cierra sin quitarle el foco a la pantalla nueva. El nombre del botón es fijo («Acciones rápidas») y `aria-expanded` dice si está abierto. Pendiente de verificar en el teléfono: cómo se comportan la barra y el «+» con el teclado abierto.
 
 ## Reglas
 

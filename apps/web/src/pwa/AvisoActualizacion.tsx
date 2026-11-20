@@ -14,7 +14,7 @@ export function AvisoActualizacionVista({ necesitaActualizar, listoOffline, onAc
   return (
     <div
       role="status"
-      className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-md rounded-tarjeta border-2 border-texto bg-fondo p-4 shadow-flotante"
+      className="fixed inset-x-4 bottom-[calc(9rem+env(safe-area-inset-bottom))] z-50 mx-auto max-w-md rounded-tarjeta border-2 border-texto bg-fondo p-4 shadow-flotante"
     >
       <p className="text-texto">
         {necesitaActualizar

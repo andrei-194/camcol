@@ -8,7 +8,7 @@ export function MarcoApp({ children }: { children: ReactNode }) {
   return (
     <>
       <IndicadoresEstado />
-      <div className="pb-[calc(6.5rem+env(safe-area-inset-bottom))]">{children}</div>
+      <div className="pb-[calc(8.5rem+env(safe-area-inset-bottom))]">{children}</div>
       <BarraInferior />
       <MenuAcciones />
     </>

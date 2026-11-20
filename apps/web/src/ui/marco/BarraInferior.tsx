@@ -19,7 +19,7 @@ function Destino({ a, icono, texto, contador }: { a: string; icono: ReactNode; t
             {contador ? (
               <span
                 aria-hidden="true"
-                className="absolute right-[calc(50%-1.5rem)] top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-advertencia px-1 text-[10px] font-semibold text-sobre-acento"
+                className="absolute right-[calc(50%-1.5rem)] top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-advertencia px-1 text-pequeno font-semibold text-sobre-acento"
               >
                 {contador}
               </span>
