@@ -6,6 +6,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 import { CampoSelect } from '../catalogo/campos'
+import { Chips } from './Chips'
 import { Boton, BotonEnlace } from './Boton'
 import { CampoTexto } from './CampoTexto'
 import { Dinero } from './Dinero'
@@ -191,5 +192,54 @@ describe('revisión de T-D2: coherencia y casos límite', () => {
     expect(screen.getByRole('button', { name: 'Uno' })).toHaveAttribute('aria-pressed', 'false')
     rerender(<Segmentos etiqueta="Vista" opciones={[]} valor={'a'} alCambiar={() => {}} />)
     expect(within(screen.getByRole('group', { name: 'Vista' })).queryAllByRole('button')).toHaveLength(0)
+  })
+})
+
+describe('Chips (opciones de una sola elección)', () => {
+  const opciones = ['Uno', 'Dos', 'Tres']
+
+  it('es un grupo de opción con nombre: cada chip es un radio y solo el elegido está marcado', () => {
+    render(<Chips etiqueta="Categoría" opciones={opciones} valor="Dos" alCambiar={() => {}} />)
+    const grupo = screen.getByRole('radiogroup', { name: 'Categoría' })
+    const radios = within(grupo).getAllByRole('radio')
+    expect(radios.map((r) => r.getAttribute('aria-checked'))).toEqual(['false', 'true', 'false'])
+    for (const r of radios) expect(r.className).toContain('min-h-12')
+  })
+
+  it('tocar una opción avisa su valor', () => {
+    const alCambiar = vi.fn()
+    render(<Chips etiqueta="Categoría" opciones={opciones} valor="" alCambiar={alCambiar} />)
+    fireEvent.click(screen.getByRole('radio', { name: 'Tres' }))
+    expect(alCambiar).toHaveBeenCalledExactlyOnceWith('Tres')
+  })
+
+  it('un solo chip entra en el orden de tabulación: el elegido, o el primero si no hay ninguno', () => {
+    const { rerender } = render(<Chips etiqueta="Categoría" opciones={opciones} valor="Dos" alCambiar={() => {}} />)
+    expect(screen.getAllByRole('radio').map((r) => r.getAttribute('tabindex'))).toEqual(['-1', '0', '-1'])
+    rerender(<Chips etiqueta="Categoría" opciones={opciones} valor="" alCambiar={() => {}} />)
+    expect(screen.getAllByRole('radio').map((r) => r.getAttribute('tabindex'))).toEqual(['0', '-1', '-1'])
+  })
+
+  it('las flechas mueven la elección de forma circular y llevan el foco', () => {
+    const alCambiar = vi.fn()
+    render(<Chips etiqueta="Categoría" opciones={opciones} valor="Tres" alCambiar={alCambiar} />)
+    const tres = screen.getByRole('radio', { name: 'Tres' })
+    fireEvent.keyDown(tres, { key: 'ArrowRight' })
+    expect(alCambiar).toHaveBeenLastCalledWith('Uno')
+    fireEvent.keyDown(tres, { key: 'ArrowLeft' })
+    expect(alCambiar).toHaveBeenLastCalledWith('Dos')
+    fireEvent.keyDown(tres, { key: 'ArrowDown' })
+    expect(alCambiar).toHaveBeenLastCalledWith('Uno')
+    fireEvent.keyDown(tres, { key: 'ArrowUp' })
+    expect(alCambiar).toHaveBeenLastCalledWith('Dos')
+  })
+
+  it('con error lo anuncia y lo vincula al grupo', () => {
+    render(<Chips etiqueta="Categoría" opciones={opciones} valor="" alCambiar={() => {}} error="Elige una categoría." />)
+    const alerta = screen.getByRole('alert')
+    expect(alerta).toHaveTextContent('Elige una categoría.')
+    const grupo = screen.getByRole('radiogroup', { name: 'Categoría' })
+    expect(grupo).toHaveAttribute('aria-invalid', 'true')
+    expect(grupo.getAttribute('aria-describedby')).toContain(alerta.id)
   })
 })
