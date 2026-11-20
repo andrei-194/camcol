@@ -273,7 +273,7 @@ describe('[RF-SYN-04] revisión: decidir con candidatos', () => {
     await db.outbox.put(enRevision())
     montar()
     fireEvent.click(await screen.findByRole('button', { name: /decidir/i }))
-    expect(await screen.findByText(/Don Luis/, { selector: '[data-candidato]' })).toBeInTheDocument()
+    expect(await screen.findByText(/Don Luis/, { selector: '[data-candidato] .nombre' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /usar existente/i }))
     await waitFor(async () => expect((await db.outbox.get('c1'))?.estado).toBe('pendiente'))
     const datos = (await db.outbox.get('c1'))!.datos as { proveedor_nuevo: { resolucion: unknown } }

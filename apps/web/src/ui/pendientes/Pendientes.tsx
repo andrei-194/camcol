@@ -201,7 +201,7 @@ export function Pendientes() {
                         {candidatosDe(op).map((c) => (
                           <div key={c.id} className="flex flex-col gap-1">
                             <span data-candidato className="text-texto">
-                              {c.nombre}
+                              <span className="nombre">{c.nombre}</span>
                               {c.telefono ? ` · ${c.telefono}` : ''}
                             </span>
                             <Boton onClick={() => void resolver(op.op_id, { tipo: 'usar_existente', tercero_id: c.id })}>

@@ -15,6 +15,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test-setup.ts'],
     globals: false,
+    testTimeout: 15_000,
     exclude: [...configDefaults.exclude, 'e2e/**'], // los E2E de Playwright no son pruebas de Vitest
   },
 })

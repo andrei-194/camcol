@@ -39,7 +39,7 @@ export function LoginPage() {
   }
 
   return (
-    <PantallaCentrada titulo="Camino Col">
+    <PantallaCentrada titulo="Camino Col" subtitulo="Del campo colombiano a tu mesa.">
       <form onSubmit={(e) => void alEnviar(e)} className="flex flex-col gap-4" noValidate>
         <h2 className="font-titulo text-seccion font-semibold text-texto">Iniciar sesión</h2>
         {estado.fase === 'anonimo' && estado.caducada && (
