@@ -81,11 +81,11 @@
 - [ ] **T-M4-07** ([CAM-60](https://linear.app/caminocol/issue/CAM-60)) Documentos de venta: `confirmacion` (offline), `remision`/`factura_interna` (online), anulación, PDF y **compartir por WhatsApp**. Cierra: RF-DOC-01–06, RN-DOC-01/02, [E9].
 
 ## M5 — Compras
-- [ ] **T-M5-01** ([CAM-61](https://linear.app/caminocol/issue/CAM-61)) Formulario "Nueva compra" con modos **inmediata** y **encargo** (la modalidad `apertura` de RN-COM-04 existe en el servidor; la carga del inventario inicial puede tener su propia pantalla o un modo oculto), proveedor (buscar/crear), ítems, recepción con lote/vencimiento, pago y foto de soporte; offline-capable. Cierra: RF-COM-01/02/03/04/05, RN-COM-01/02, [E1].
+- [x] **T-M5-01** ([CAM-61](https://linear.app/caminocol/issue/CAM-61)) Formulario "Nueva compra" con modos **inmediata** y **encargo** (la modalidad `apertura` de RN-COM-04 existe en el servidor; la carga del inventario inicial puede tener su propia pantalla o un modo oculto), proveedor (buscar/crear), ítems, recepción con lote/vencimiento, pago y foto de soporte; offline-capable. Cierra: RF-COM-01/02/03/04/05, RN-COM-01/02, [E1].
 - [ ] **T-M5-02** ([CAM-62](https://linear.app/caminocol/issue/CAM-62)) Detalle de OC: recibir (parcial), pagar, cancelar (solo antes de recibir). Cierra: RF-COM-08, RN-COM-03, [E8].
 - [ ] **T-M5-03** ([CAM-63](https://linear.app/caminocol/issue/CAM-63)) **Necesidades de compra** por proveedor + "Crear OC desde necesidades". Cierra: RF-COM-06, [E7].
 - [ ] **T-M5-04** ([CAM-64](https://linear.app/caminocol/issue/CAM-64)) Comprobante de compra PDF y compartir. Cierra: RF-COM-07.
-- [ ] **T-M5-05** ([CAM-65](https://linear.app/caminocol/issue/CAM-65)) Gastos (con categoría, offline). Cierra: RF-PAG-03.
+- [x] **T-M5-05** ([CAM-65](https://linear.app/caminocol/issue/CAM-65)) Gastos (con categoría, offline). Cierra: RF-PAG-03.
 - [x] ~~**T-M5-06**~~ *Eliminada (D13): no hay cuentas por pagar; las compras son de contado.*
 
 ## M6 — Inventario

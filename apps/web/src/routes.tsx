@@ -2,6 +2,9 @@
 import { Ajustes } from './ui/Ajustes'
 import { ComoInstalar } from './ui/ComoInstalar'
 import { Home } from './ui/Home'
+import { CompraNueva } from './ui/compras/CompraNueva'
+import { GastoNuevo } from './ui/gastos/GastoNuevo'
+import { Gastos } from './ui/gastos/Gastos'
 import { Mas } from './ui/Mas'
 import { Proximamente } from './ui/Proximamente'
 import { LoginPage } from './ui/auth/LoginPage'
@@ -25,10 +28,11 @@ export function AppRoutes() {
         <Route path="/mas" element={<Mas />} />
         <Route path="/ventas" element={<Proximamente titulo="Ventas" detalle="Aquí verás tus pedidos por confirmar y por cobrar." />} />
         <Route path="/ventas/nuevo" element={<Proximamente titulo="Nuevo pedido" volverA="/ventas" detalle="Aquí registrarás un pedido de WhatsApp o de la web." />} />
-        <Route path="/compras" element={<Proximamente titulo="Compras" detalle="Aquí registrarás compras a productores, también sin señal." />} />
-        <Route path="/compras/nueva" element={<Proximamente titulo="Nueva compra" volverA="/compras" detalle="Aquí registrarás una compra en finca." />} />
+        <Route path="/compras" element={<Proximamente titulo="Compras" detalle="Aquí verás tus compras y encargos." accion={{ a: '/compras/nueva', texto: 'Nueva compra' }} />} />
+        <Route path="/compras/nueva" element={<CompraNueva />} />
         <Route path="/inventario" element={<Proximamente titulo="Inventario" detalle="Aquí verás el stock, el kardex y los lotes." />} />
-        <Route path="/gastos/nuevo" element={<Proximamente titulo="Nuevo gasto" volverA="/mas" detalle="Aquí registrarás combustible, empaques y otros gastos." />} />
+        <Route path="/gastos" element={<Gastos />} />
+        <Route path="/gastos/nuevo" element={<GastoNuevo />} />
         <Route path="/pendientes" element={<Pendientes />} />
         <Route path="/catalogo" element={<Catalogo />} />
         <Route path="/catalogo/listas" element={<ListasPrecio />} />

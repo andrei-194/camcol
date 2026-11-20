@@ -175,8 +175,6 @@ describe('rutas del marco', () => {
     ['/compras', 'Compras'],
     ['/inventario', 'Inventario'],
     ['/ventas/nuevo', 'Nuevo pedido'],
-    ['/compras/nueva', 'Nueva compra'],
-    ['/gastos/nuevo', 'Nuevo gasto'],
   ])('%s existe y avisa que llega pronto', async (ruta, titulo) => {
     enSesion(ruta)
     expect(await screen.findByRole('heading', { level: 1, name: titulo })).toBeInTheDocument()
@@ -188,7 +186,7 @@ describe('rutas del marco', () => {
     await screen.findByRole('heading', { level: 1, name: 'Más' })
     const main = screen.getByRole('main')
     const enlaces = within(main).getAllByRole('link')
-    expect(enlaces.map((e) => e.getAttribute('href'))).toEqual(['/pendientes', '/catalogo', '/terceros', '/gastos/nuevo', '/ajustes', '/instalar'])
+    expect(enlaces.map((e) => e.getAttribute('href'))).toEqual(['/pendientes', '/catalogo', '/terceros', '/gastos', '/ajustes', '/instalar'])
     expect(enlaces.map((e) => e.textContent)).toEqual(
       ['Pendientes', 'Catálogo y precios', 'Clientes y proveedores', 'Gastos', 'Ajustes', 'Cómo instalar'].map((t) => expect.stringContaining(t)),
     )
@@ -327,10 +325,6 @@ describe('revisión de T-D3: menú, foco, rutas y capas', () => {
   })
 
   it('las pantallas «llega pronto» con Volver enlazan a su origen', async () => {
-    const { unmount } = enSesion('/gastos/nuevo')
-    await screen.findByRole('heading', { level: 1, name: 'Nuevo gasto' })
-    expect(screen.getByRole('link', { name: 'Volver' })).toHaveAttribute('href', '/mas')
-    unmount()
     enSesion('/ventas/nuevo')
     await screen.findByRole('heading', { level: 1, name: 'Nuevo pedido' })
     expect(screen.getByRole('link', { name: 'Volver' })).toHaveAttribute('href', '/ventas')
