@@ -1,8 +1,8 @@
 import type { VitePWAOptions } from 'vite-plugin-pwa'
 
-// Barra de estado y fondo de arranque: blanco, como la barra de estado de la app (docs/producto/diseno.md).
-export const COLOR_TEMA = '#FFFFFF'
-export const COLOR_FONDO = '#FFFFFF'
+// Barra del teléfono: el café de la cabecera; pantalla de arranque: el papel de fondo (docs/producto/diseno.md).
+export const COLOR_TEMA = '#3A2418'
+export const COLOR_FONDO = '#FBF7EE'
 
 /**
  * Configuración PWA de Camino Col (RF-OPS-01/02/03, PLAN §6).
