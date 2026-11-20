@@ -2,6 +2,8 @@
 import { Ajustes } from './ui/Ajustes'
 import { ComoInstalar } from './ui/ComoInstalar'
 import { Home } from './ui/Home'
+import { GastoNuevo } from './ui/gastos/GastoNuevo'
+import { Gastos } from './ui/gastos/Gastos'
 import { Mas } from './ui/Mas'
 import { Proximamente } from './ui/Proximamente'
 import { LoginPage } from './ui/auth/LoginPage'
@@ -28,7 +30,8 @@ export function AppRoutes() {
         <Route path="/compras" element={<Proximamente titulo="Compras" detalle="Aquí registrarás compras a productores, también sin señal." />} />
         <Route path="/compras/nueva" element={<Proximamente titulo="Nueva compra" volverA="/compras" detalle="Aquí registrarás una compra en finca." />} />
         <Route path="/inventario" element={<Proximamente titulo="Inventario" detalle="Aquí verás el stock, el kardex y los lotes." />} />
-        <Route path="/gastos/nuevo" element={<Proximamente titulo="Nuevo gasto" volverA="/mas" detalle="Aquí registrarás combustible, empaques y otros gastos." />} />
+        <Route path="/gastos" element={<Gastos />} />
+        <Route path="/gastos/nuevo" element={<GastoNuevo />} />
         <Route path="/pendientes" element={<Pendientes />} />
         <Route path="/catalogo" element={<Catalogo />} />
         <Route path="/catalogo/listas" element={<ListasPrecio />} />

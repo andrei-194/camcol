@@ -6,7 +6,7 @@ const ENLACES = [
   { a: '/pendientes', texto: 'Pendientes' },
   { a: '/catalogo', texto: 'Catálogo y precios' },
   { a: '/terceros', texto: 'Clientes y proveedores' },
-  { a: '/gastos/nuevo', texto: 'Gastos' },
+  { a: '/gastos', texto: 'Gastos' },
   { a: '/ajustes', texto: 'Ajustes' },
   { a: '/instalar', texto: 'Cómo instalar' },
 ]

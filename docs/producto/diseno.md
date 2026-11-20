@@ -32,6 +32,7 @@ T-D2 (CAM-107) los rediseña: `Boton` en pastilla con deshabilitado en arena y t
 | `Dinero` | Pesos sin decimales en Fraunces con cifras tabulares; el «$» va menor y en tinta. |
 | `Segmentos`, `SelectorPeriodo` | Pastillas de una opción (`aria-pressed`, 48 px); el selector ofrece hoy, semana y mes. |
 | `FilaLista` | Fila de lista de 48 px con filete punteado. |
+| `Chips` | Elección única entre pocas opciones (`role="radiogroup"`): chips de 48 px que se acomodan en filas; solo el elegido entra en la tabulación y las flechas mueven la elección. |
 | `Tablero` y gráficos (`ui/tablero/`) | `Arco` (margen), `AreaVentasCosto`, `BarrasPeriodo`, `BarrasHorizontales`: SVG propio, sin librerías, con escalas puras (`escalas.ts`) y texto alternativo; `frasesDeDecision` dice qué atender. `Tablero` recibe `DatosTablero` o `null` (estado vacío «Aún no hay ventas»). |
 | `BarraInferior`, `MenuAcciones`, `MarcoApp` (`ui/marco/`) | Navegación principal con el disco central, botón «+» con las tres acciones rápidas, y el marco que los pone en toda pantalla con sesión. |
 

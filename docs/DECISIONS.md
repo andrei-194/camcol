@@ -424,3 +424,11 @@ Pantallas `/catalogo`, `/catalogo/articulos/nuevo|:id` y `/catalogo/listas`; `Se
 - **Sin gráfico de velas:** el negocio no tiene serie de apertura y cierre. Ventas contra costo va en área y lo demás en barras (RF-DSH-02/03). El tablero muestra estados vacíos hasta que existan ventas (T-M7 conecta los datos).
 - **Los íconos de la app (192, 512, maskable) ya eran idénticos a los de la web;** lo que no era el logo de marca era el dibujo de la maqueta. En T-D6 el `theme_color` pasó a café `#3A2418` y el `background_color` a papel `#FBF7EE`; se usan el `apple-touch-icon` y el `favicon.ico` de la web (el `.ico` entra al precaché).
 - **Orden:** release `release/diseno` con T-D1 a T-D6 (CAM-106 a CAM-111).
+
+## Nota T-M5-05 · pantallas de gastos (CAM-65) — 2026-11-20
+
+- **Alcance:** lista (`/gastos`, con el total del mes y los recientes, ⏳ en los que no se han subido) y formulario (`/gastos/nuevo`: categoría, valor, concepto opcional, fecha y foto del soporte opcional). Funciona sin conexión (D-009): sin señal se encola `gasto.registrar` con su fila local y se sube desde Pendientes. Cierra RF-PAG-03 en lo que toca al uso diario.
+- **Categorías:** Combustible, Empaques, Transporte, Alimentación y Otros. La columna `categoria` es texto libre en el servidor; la lista es de la interfaz y se puede ampliar sin migración. El «Transporte» de un gasto suelto o de una compra es válido; el flete de una venta va en `envio_costo` (RN-COS-04) y el servidor lo rechaza si el gasto está ligado a un pedido.
+- **Fuera de alcance por ahora:** vincular el gasto a un pedido u orden de compra y «quién pagó» (`pagado_por`): este último necesita los socios en el caché local, que `sync_pull` aún no trae. Se hace cuando exista la pantalla de la compra o del pedido y se anota aquí.
+- **Valor:** pesos enteros; se aceptan `45000`, `45.000` y `$ 45.000`. Un punto solo vale como separador de miles; decimales y signos se rechazan en la interfaz y en el servidor.
+- **Fecha:** hoy por defecto y no futura. El servidor tolera hasta mañana por el desfase de reloj; la interfaz es más estricta.
