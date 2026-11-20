@@ -1,4 +1,5 @@
 // Resumen legible de una op de la outbox (PLAN §5.3) y antigüedad relativa.
+import { totalDeItems } from '../../application/compras/compras'
 import { formatCantidad, formatCOP } from '../../lib/formato'
 import type { CaminoDB, OpOutbox } from '../../infra/db/db'
 
@@ -31,7 +32,7 @@ export async function resumirOp(db: CaminoDB, op: OpOutbox): Promise<string> {
             ? ((await db.terceros.get(proveedorId))?.['nombre'] as string | undefined)
             : undefined
       const items = Array.isArray(d['items']) ? (d['items'] as Obj[]) : []
-      const total = items.reduce((s, i) => s + num(i['cantidad']) * num(i['costo_unitario']), 0)
+      const total = totalDeItems(items.map((i) => ({ cantidad: num(i['cantidad']), costo_unitario: num(i['costo_unitario']) })))
       let detalle = `${items.length} artículos`
       if (items.length === 1) {
         const aid = items[0]!['articulo_id']

@@ -3,6 +3,7 @@
 // rápidos, también sin señal. Fuera de alcance por ahora: la compra de apertura (inventario inicial), el crédito
 // (D-005: solo contado), «quién pagó», recepciones parciales y pagos parciales (van en el detalle de la orden, T-M5-02).
 import type { Fila } from '../../infra/db/db'
+import { formatCantidad } from '../../lib/formato'
 import { filaLocal as filaLocalTercero } from '../terceros/terceros'
 import { parseValor } from '../gastos/gastos'
 
@@ -13,6 +14,9 @@ export const PROVEEDOR_NUEVO = '__nuevo__'
 
 /** Tope del total de una compra: bastante por debajo de `numeric(14,2)` del servidor. */
 export const TOTAL_MAXIMO = 9_999_999_999
+
+/** Tope de cantidad por línea: cabe de sobra en `numeric(12,3)` del servidor. */
+export const CANTIDAD_MAXIMA = 999_999
 
 export const MEDIOS_PAGO = [
   { valor: 'efectivo', texto: 'Efectivo' },
@@ -37,7 +41,6 @@ export interface FormCompra {
   lineas: LineaCompra[]
   medioPago: string
   fechaEsperada: string
-  fecha: string
 }
 
 export interface ErroresLinea {
@@ -58,41 +61,72 @@ export interface ErroresCompra {
 
 export const lineaVacia = (): LineaCompra => ({ articuloId: '', cantidad: '', costo: '', vencimiento: '', lote: '' })
 
-export const formVacio = (hoy: string): FormCompra => ({
+export const formVacio = (): FormCompra => ({
   modalidad: 'inmediata',
   proveedorId: '',
   proveedorNuevo: { nombre: '', telefono: '' },
   lineas: [lineaVacia()],
   medioPago: 'efectivo',
   fechaEsperada: '',
-  fecha: hoy,
 })
 
 /**
- * Cantidad con hasta tres decimales, mayor que cero. La coma es el decimal (es-CO); un punto seguido de exactamente tres
- * dígitos es separador de miles (`1.500` = 1500, como se muestra) y en otro caso también vale como decimal (`2.5`).
+ * Cantidad en milésimas (entero), mayor que cero y con hasta tres decimales. La coma es el decimal (es-CO); un punto
+ * seguido de exactamente tres dígitos es separador de miles solo si el primer grupo no empieza en cero (`1.500` = 1500,
+ * como se muestra; `0.500` = 0,5) y en otro caso también vale como decimal (`2.5`).
  */
-export function parseCantidad(texto: string): number | null {
+export function parseMilesimas(texto: string): number | null {
   const t = texto.trim()
   let numero: string | null = null
-  if (/^\d{1,3}(\.\d{3})+(,\d{1,3})?$/.test(t)) numero = t.replace(/\./g, '').replace(',', '.')
+  if (/^[1-9]\d{0,2}(\.\d{3})+(,\d{1,3})?$/.test(t)) numero = t.replace(/\./g, '').replace(',', '.')
   else if (/^\d+([.,]\d{1,3})?$/.test(t)) numero = t.replace(',', '.')
   if (numero === null) return null
-  const n = Number(numero)
-  return n > 0 && Number.isFinite(n) ? n : null
+  const [entera = '0', decimal = ''] = numero.split('.')
+  const mil = Number(entera) * 1000 + Number(decimal.padEnd(3, '0'))
+  return Number.isSafeInteger(mil) && mil > 0 ? mil : null
 }
 
-const centavos = (n: number) => Math.round(n * 100) / 100
+/** Cantidad con hasta tres decimales, mayor que cero (ver `parseMilesimas`). */
+export function parseCantidad(texto: string): number | null {
+  const mil = parseMilesimas(texto)
+  return mil === null ? null : mil / 1000
+}
 
-/** Total de la compra al centavo; las líneas con cantidad o costo inválidos no suman. */
+/** Cómo se interpretó lo escrito, con su unidad: «Se registrará: 1.500 und». Vacío si no es una cantidad válida. */
+export function leyendaCantidad(texto: string, unidad: string | undefined): string {
+  const n = parseCantidad(texto)
+  return n === null ? '' : `Se registrará: ${formatCantidad(n)}${unidad ? ` ${unidad}` : ''}`
+}
+
+/**
+ * Centavos de una línea, como el servidor (`round(cantidad × costo, 2)`, mitad hacia arriba): con enteros, sin coma
+ * flotante. `cantidadMil` son milésimas y `costo` pesos enteros; el producto está en milésimas de peso.
+ */
+function centavosDeLinea(cantidadMil: number, costo: number): bigint {
+  return (BigInt(cantidadMil) * BigInt(costo) + 5n) / 10n
+}
+
+/** Total de ítems ya armados (`cantidad` decimal, `costo_unitario` en pesos): suma de líneas redondeadas una a una. */
+export function totalDeItems(items: Array<{ cantidad: number; costo_unitario: number }>): number {
+  const centavos = items.reduce((suma, it) => {
+    const mil = Math.round(it.cantidad * 1000)
+    return suma + (Number.isInteger(it.costo_unitario) ? centavosDeLinea(mil, it.costo_unitario) : BigInt(Math.round(it.cantidad * it.costo_unitario * 100)))
+  }, 0n)
+  return Number(centavos) / 100
+}
+
+/**
+ * Total de la compra al centavo, igual al de `oc_recalcular` del servidor (suma de `round(cantidad × costo, 2)` por
+ * línea): una compra inmediata exige que el pago lo cubra exactamente. Las líneas inválidas no suman.
+ */
 export function totalCompra(lineas: LineaCompra[]): number {
-  return centavos(
-    lineas.reduce((suma, l) => {
-      const c = parseCantidad(l.cantidad)
-      const k = parseValor(l.costo)
-      return c !== null && k !== null ? suma + c * k : suma
-    }, 0),
-  )
+  let centavos = 0n
+  for (const l of lineas) {
+    const mil = parseMilesimas(l.cantidad)
+    const costo = parseValor(l.costo)
+    if (mil !== null && costo !== null) centavos += centavosDeLinea(mil, costo)
+  }
+  return Number(centavos) / 100
 }
 
 export type InfoArticulo = { controla_vencimiento?: boolean }
@@ -100,9 +134,14 @@ export type InfoArticulo = { controla_vencimiento?: boolean }
 function erroresDeLinea(l: LineaCompra, f: FormCompra, articulos: Record<string, InfoArticulo>, previas: LineaCompra[]): ErroresLinea {
   const e: ErroresLinea = {}
   if (!l.articuloId) e.articulo = 'Elige el artículo.'
+  else if (!(l.articuloId in articulos)) e.articulo = 'Ese artículo ya no está disponible. Elígelo de nuevo.'
   else if (previas.some((p) => p.articuloId === l.articuloId)) e.articulo = 'Este artículo ya está en la compra: suma la cantidad en esa línea.'
   if (!l.cantidad.trim()) e.cantidad = 'Escribe la cantidad.'
-  else if (parseCantidad(l.cantidad) === null) e.cantidad = 'La cantidad debe ser un número mayor que cero (hasta 3 decimales).'
+  else {
+    const c = parseCantidad(l.cantidad)
+    if (c === null) e.cantidad = 'La cantidad debe ser un número mayor que cero (hasta 3 decimales).'
+    else if (c > CANTIDAD_MAXIMA) e.cantidad = 'La cantidad es demasiado grande (máximo 999.999).'
+  }
   if (!l.costo.trim()) e.costo = 'Escribe el costo unitario.'
   else {
     const k = parseValor(l.costo)
@@ -115,9 +154,16 @@ function erroresDeLinea(l: LineaCompra, f: FormCompra, articulos: Record<string,
   return e
 }
 
-export function validarForm(f: FormCompra, articulos: Record<string, InfoArticulo>, hoy: string): ErroresCompra {
+/**
+ * `articulos` son los que se pueden comprar hoy; `proveedoresIds`, si se conoce, los proveedores que existen: lo elegido
+ * que ya no está (borrado o inactivo tras una sincronización) se frena aquí y no en el servidor o en Pendientes.
+ */
+export function validarForm(f: FormCompra, articulos: Record<string, InfoArticulo>, hoy: string, proveedoresIds?: ReadonlySet<string>): ErroresCompra {
   const errores: ErroresCompra = {}
   if (!f.proveedorId) errores.proveedor = 'Elige el proveedor o crea uno nuevo.'
+  else if (f.proveedorId !== PROVEEDOR_NUEVO && proveedoresIds && !proveedoresIds.has(f.proveedorId)) {
+    errores.proveedor = 'Ese proveedor ya no está disponible. Elígelo de nuevo.'
+  }
   if (f.proveedorId === PROVEEDOR_NUEVO) {
     if (!f.proveedorNuevo.nombre.trim()) errores.proveedorNombre = 'Escribe el nombre del proveedor.'
     const tel = f.proveedorNuevo.telefono.trim()
@@ -201,18 +247,23 @@ export function armarDatos(f: FormCompra, nuevoId: () => string, ahora: Date): D
 
 /** Filas provisionales que la UI muestra con ⏳ hasta que la op se aplique (la orden y, si es nuevo, el proveedor). */
 export function filasLocales(d: DatosCompra): Array<{ tabla: 'ordenes_compra' | 'terceros'; fila: Fila }> {
-  const total = centavos(d.items.reduce((s, it) => s + it.cantidad * it.costo_unitario, 0))
+  const total = totalDeItems(d.items)
   const proveedorId = d.orden.proveedor_id ?? d.proveedor_nuevo?.id ?? ''
+  const inmediata = d.orden.modalidad === 'inmediata'
   const orden: Fila = {
     id: d.orden.id,
     proveedor_id: proveedorId,
     modalidad: d.orden.modalidad,
-    estado: d.orden.modalidad === 'inmediata' ? 'recibida' : 'pedida',
+    estado: inmediata ? 'recibida' : 'pedida',
     fecha: d.orden.fecha,
     ...(d.orden.fecha_esperada ? { fecha_esperada: d.orden.fecha_esperada } : {}),
     total,
-    items: d.items,
-    pagos: d.pagos ?? [],
+    // Con la forma que trae `sync_pull` (0005): ítems con lo recibido, recepciones con sus ítems y pagos.
+    items: d.items.map((it) => ({ ...it, orden_id: d.orden.id, cantidad_recibida: inmediata ? it.cantidad : 0 })),
+    recepciones: d.recepcion
+      ? [{ id: d.recepcion.id, orden_id: d.orden.id, fecha: d.orden.fecha, items: d.recepcion.items.map((ri) => ({ ...ri, recepcion_id: d.recepcion!.id })) }]
+      : [],
+    pagos: (d.pagos ?? []).map((p) => ({ ...p, orden_compra_id: d.orden.id, direccion: 'pago', fecha: d.orden.fecha })),
   }
   const filas: Array<{ tabla: 'ordenes_compra' | 'terceros'; fila: Fila }> = [{ tabla: 'ordenes_compra', fila: orden }]
   if (d.proveedor_nuevo) filas.push({ tabla: 'terceros', fila: filaLocalTercero(d.proveedor_nuevo) })

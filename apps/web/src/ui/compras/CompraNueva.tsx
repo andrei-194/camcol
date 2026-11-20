@@ -7,6 +7,7 @@ import {
   armarDatos,
   filasLocales,
   formVacio,
+  leyendaCantidad,
   lineaVacia,
   totalCompra,
   validarForm,
@@ -49,7 +50,7 @@ export function CompraNueva() {
   const { db, escritor, adjuntos } = usePendientesCtx()
   const catalogo = useCatalogo()
   const terceros = useTerceros(db)
-  const [form, setForm] = useState<FormCompra>(() => formVacio(hoyBogota()))
+  const [form, setForm] = useState<FormCompra>(() => formVacio())
   const [errores, setErrores] = useState<ErroresCompra>({})
   const [archivo, setArchivo] = useState<File | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
@@ -64,6 +65,7 @@ export function CompraNueva() {
     () => Object.fromEntries(articulos.map((a) => [a.id, { controla_vencimiento: Boolean(a['controla_vencimiento']), controla_lote: Boolean(a['controla_lote']) }])) as Record<string, InfoArticulo & { controla_lote?: boolean }>,
     [articulos],
   )
+  const unidades = useMemo(() => Object.fromEntries(articulos.map((a) => [a.id, texto(a, 'unidad_inventario') || undefined])) as Record<string, string | undefined>, [articulos])
   const proveedores = useMemo(
     () =>
       terceros.fase === 'listo'
@@ -74,18 +76,21 @@ export function CompraNueva() {
 
   useEffect(() => {
     if (intentos === 0) return
-    const invalido = formulario.current?.querySelector('[aria-invalid="true"]')
-    ;(invalido as HTMLElement | null)?.focus()
+    // El primer campo con error; si solo falla el total, el mensaje del total.
+    const destino = formulario.current?.querySelector('[aria-invalid="true"]') ?? formulario.current?.querySelector('[data-error-total]')
+    ;(destino as HTMLElement | null)?.focus()
   }, [intentos])
 
   const poner = <K extends keyof FormCompra>(k: K, v: FormCompra[K]) => setForm((f) => ({ ...f, [k]: v }))
+  // Al agregar o quitar una línea los errores por línea ya no corresponden a su posición: se limpian.
+  const sinErroresDeLinea = () => setErrores((e) => ({ ...e, detalle: undefined }))
   const ponerLinea = (i: number, parcial: Partial<LineaCompra>) =>
     setForm((f) => ({ ...f, lineas: f.lineas.map((l, j) => (j === i ? { ...l, ...parcial } : l)) }))
 
   async function guardar(e: FormEvent) {
     e.preventDefault()
     setAviso(null)
-    const errs = validarForm(form, infoArticulos, hoyBogota())
+    const errs = validarForm(form, infoArticulos, hoyBogota(), terceros.fase === 'listo' ? new Set(proveedores.map((p) => p.id)) : undefined)
     setErrores(errs)
     if (Object.keys(errs).length > 0) {
       setIntentos((n) => n + 1)
@@ -119,7 +124,7 @@ export function CompraNueva() {
   }
 
   function otra() {
-    setForm(formVacio(hoyBogota()))
+    setForm(formVacio())
     setErrores({})
     setArchivo(null)
     setAviso(null)
@@ -184,6 +189,11 @@ export function CompraNueva() {
           {inmediata ? 'La compra de finca: recibes y pagas en el momento.' : 'Pides ahora y recibes después.'}
         </p>
 
+        {catalogo.fase === 'error' && <Aviso tono="error">No se pudo leer el catálogo guardado en el teléfono.</Aviso>}
+        {catalogo.fase === 'listo' && articulos.length === 0 && (
+          <Aviso tono="advertencia">No hay artículos en el catálogo. Créalos en Catálogo antes de registrar una compra.</Aviso>
+        )}
+        {terceros.fase === 'error' && <Aviso tono="error">No se pudieron leer los proveedores guardados en el teléfono. Puedes crear uno nuevo.</Aviso>}
         <Tarjeta className="flex flex-col gap-4">
           <CampoSelect etiqueta="Proveedor" value={form.proveedorId} onChange={(e) => poner('proveedorId', e.target.value)} error={errores.proveedor}>
             <option value="">Elige…</option>
@@ -230,7 +240,15 @@ export function CompraNueva() {
                   </option>
                 ))}
               </CampoSelect>
-              <CampoTexto etiqueta={`Cantidad ${n}`} inputMode="decimal" autoComplete="off" value={l.cantidad} onChange={(ev) => ponerLinea(i, { cantidad: ev.target.value })} error={e.cantidad} />
+              <CampoTexto
+                etiqueta={`Cantidad ${n}`}
+                inputMode="decimal"
+                autoComplete="off"
+                ayuda={leyendaCantidad(l.cantidad, unidades[l.articuloId]) || (l.articuloId && unidades[l.articuloId] ? `Unidad: ${unidades[l.articuloId]}` : undefined)}
+                value={l.cantidad}
+                onChange={(ev) => ponerLinea(i, { cantidad: ev.target.value })}
+                error={e.cantidad}
+              />
               <CampoTexto
                 etiqueta={`Costo unitario ${n}`}
                 inputMode="numeric"
@@ -247,7 +265,10 @@ export function CompraNueva() {
                 <CampoTexto etiqueta={`Lote ${n} (opcional)`} autoComplete="off" value={l.lote} onChange={(ev) => ponerLinea(i, { lote: ev.target.value })} />
               )}
               {form.lineas.length > 1 && (
-                <Boton variante="secundario" aria-label={`Quitar artículo ${n}`} onClick={() => setForm((f) => ({ ...f, lineas: f.lineas.filter((_, j) => j !== i) }))}>
+                <Boton variante="secundario" aria-label={`Quitar artículo ${n}`} onClick={() => {
+                    sinErroresDeLinea()
+                    setForm((f) => ({ ...f, lineas: f.lineas.filter((_, j) => j !== i) }))
+                  }}>
                   Quitar
                 </Boton>
               )}
@@ -255,11 +276,17 @@ export function CompraNueva() {
           )
         })}
         {errores.lineas && (
-          <p role="alert" className="text-pequeno font-medium text-peligro">
+          <p role="alert" tabIndex={-1} data-error-total className="text-pequeno font-medium text-peligro">
             {errores.lineas}
           </p>
         )}
-        <Boton variante="secundario" onClick={() => setForm((f) => ({ ...f, lineas: [...f.lineas, lineaVacia()] }))}>
+        <Boton
+          variante="secundario"
+          onClick={() => {
+            sinErroresDeLinea()
+            setForm((f) => ({ ...f, lineas: [...f.lineas, lineaVacia()] }))
+          }}
+        >
           Agregar otro artículo
         </Boton>
 
