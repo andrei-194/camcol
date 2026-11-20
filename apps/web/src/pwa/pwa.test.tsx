@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { existsSync, readFileSync } from 'node:fs'
+import { inflateSync } from 'node:zlib'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AuthProvider } from '../application/auth/AuthProvider'
@@ -41,6 +42,51 @@ describe('[RF-OPS-01] instalable', () => {
     expect(html).toContain('rel="apple-touch-icon"')
     expect(html).toContain('name="apple-mobile-web-app-capable"')
     expect(existsSync('public/icons/apple-touch-icon.png')).toBe(true)
+  })
+
+  it('[T-D6] la barra del teléfono es el café y el arranque el papel, y coinciden con los tokens y con index.html', () => {
+    const css = readFileSync('src/index.css', 'utf8')
+    const token = (n: string) => new RegExp(`--color-${n}:\\s*(#[0-9a-fA-F]{6})`).exec(css)![1]!.toUpperCase()
+    expect(manifest.theme_color).toBe(token('cafe'))
+    expect(manifest.background_color).toBe(token('fondo'))
+    expect(manifest.theme_color).toBe('#3A2418')
+    expect(manifest.background_color).toBe('#FBF7EE')
+    expect(html).toContain(`<meta name="theme-color" content="${manifest.theme_color as string}" />`)
+  })
+
+  it('[T-D6] en iPhone la barra de estado es opaca y oscura, para no tapar la cabecera', () => {
+    expect(html).toContain('<meta name="apple-mobile-web-app-status-bar-style" content="black" />')
+  })
+
+  it('[T-D6] los íconos son los de la web: PNG reales de 180, 192 y 512 px, y el favicon enlazado', () => {
+    const tamano = (ruta: string) => {
+      const b = readFileSync(ruta)
+      expect(b.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a') // firma PNG
+      return [b.readUInt32BE(16), b.readUInt32BE(20)]
+    }
+    expect(tamano('public/icons/apple-touch-icon.png')).toEqual([180, 180])
+    expect(tamano('public/icons/icon-192.png')).toEqual([192, 192])
+    expect(tamano('public/icons/icon-512.png')).toEqual([512, 512])
+    expect(tamano('public/icons/maskable-512.png')).toEqual([512, 512])
+    expect(html).toContain('href="/favicon.svg"')
+    expect(html).toContain('<link rel="icon" href="/favicon.ico" sizes="48x48" />')
+    expect(existsSync('public/favicon.ico')).toBe(true)
+    expect(readFileSync('public/favicon.ico').subarray(0, 4).toString('hex')).toBe('00000100') // firma ICO
+  })
+
+  it('[T-D6] el apple-touch-icon es opaco en la esquina (iOS pinta de negro lo transparente)', () => {
+    const png = readFileSync('public/icons/apple-touch-icon.png')
+    expect(png.readUInt8(24)).toBe(8) // 8 bits por canal
+    expect(png.readUInt8(25)).toBe(6) // RGBA
+    // Une los trozos IDAT, descomprime y lee el primer píxel (en la primera fila el filtro no cambia su valor): alfa 255.
+    const trozos: Buffer[] = []
+    for (let i = 8; i < png.length; ) {
+      const largo = png.readUInt32BE(i)
+      if (png.subarray(i + 4, i + 8).toString('latin1') === 'IDAT') trozos.push(png.subarray(i + 8, i + 8 + largo))
+      i += 12 + largo
+    }
+    const crudo = inflateSync(Buffer.concat(trozos))
+    expect(crudo[4]).toBe(255)
   })
 
   it('la pantalla "Cómo instalar" explica iPhone y Android', () => {
