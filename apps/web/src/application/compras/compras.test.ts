@@ -3,11 +3,13 @@
 import { describe, expect, it } from 'vitest'
 import { TIPOS_OP } from '../../infra/sync/tiposOp'
 import {
+  CANTIDAD_MAXIMA,
   MEDIOS_PAGO,
   PROVEEDOR_NUEVO,
   armarDatos,
   filasLocales,
   formVacio,
+  leyendaCantidad,
   lineaVacia,
   parseCantidad,
   totalCompra,
@@ -26,7 +28,7 @@ const ids = (() => {
 })()
 
 const linea = (extra: Partial<FormCompra['lineas'][number]> = {}) => ({ ...lineaVacia(), articuloId: 'cafe', cantidad: '20', costo: '30.000', ...extra })
-const base = (extra: Partial<FormCompra> = {}): FormCompra => ({ ...formVacio(HOY), proveedorId: 'p1', lineas: [linea()], ...extra })
+const base = (extra: Partial<FormCompra> = {}): FormCompra => ({ ...formVacio(), proveedorId: 'p1', lineas: [linea()], ...extra })
 
 describe('[RF-COM-01] parseCantidad: cantidades con hasta tres decimales', () => {
   it.each([
@@ -35,17 +37,49 @@ describe('[RF-COM-01] parseCantidad: cantidades con hasta tres decimales', () =>
     ['2.5', 2.5],
     ['0,250', 0.25],
     ['1.500', 1500],
+    ['2.500,5', 2500.5],
+    ['0.500', 0.5],
+    ['0.250', 0.25],
+    ['0.5', 0.5],
+    ['1.000', 1000],
     ['1.500,5', 1500.5],
     [' 12 ', 12],
   ])('«%s» es %d', (texto, esperado) => expect(parseCantidad(texto)).toBe(esperado))
 
-  it.each(['', 'abc', '0', '-3', '2,5,1', '1,2345', '1e3', '0,000'])('«%s» no es una cantidad válida', (texto) => expect(parseCantidad(texto)).toBeNull())
+  it.each(['', 'abc', '0', '-3', '2,5,1', '1,2345', '1e3', '0,000', '1.50.000'])('«%s» no es una cantidad válida', (texto) => expect(parseCantidad(texto)).toBeNull())
+})
+
+describe('[RF-COM-01] leyendaCantidad: cómo se interpretó lo escrito, con su unidad', () => {
+  it('dice la cantidad con formato es-CO y la unidad', () => {
+    expect(leyendaCantidad('1.500', 'und')).toBe('Se registrará: 1.500 und')
+    expect(leyendaCantidad('0,5', 'kg')).toBe('Se registrará: 0,5 kg')
+    expect(leyendaCantidad('0.500', 'lb')).toBe('Se registrará: 0,5 lb')
+    expect(leyendaCantidad('20', 'und')).toBe('Se registrará: 20 und')
+  })
+
+  it('sin unidad conocida dice solo la cantidad; con texto vacío o inválido no dice nada', () => {
+    expect(leyendaCantidad('20', undefined)).toBe('Se registrará: 20')
+    expect(leyendaCantidad('', 'und')).toBe('')
+    expect(leyendaCantidad('abc', 'und')).toBe('')
+  })
 })
 
 describe('[RF-COM-01] totalCompra', () => {
   it('suma cantidad × costo de cada línea, con los pesos al centavo', () => {
     expect(totalCompra([linea({ cantidad: '20', costo: '30.000' }), linea({ cantidad: '2,5', costo: '10.000' })])).toBe(625000)
     expect(totalCompra([linea({ cantidad: '0,333', costo: '1.000' })])).toBe(333)
+  })
+
+  it('[paridad con el servidor] redondea cada línea al centavo y luego suma, como oc_recalcular', () => {
+    expect(totalCompra([linea({ cantidad: '1,005', costo: '1' })])).toBe(1.01) // 1.005 × 1 en coma flotante daría 1.00
+    // 0,125 × 12.345 = 1543,125 por línea: el servidor redondea a 1543,13 en cada una y suma 3086,26
+    expect(totalCompra([linea({ cantidad: '0,125', costo: '12.345' }), linea({ articuloId: 'crema', cantidad: '0,125', costo: '12.345' })])).toBe(3086.26)
+  })
+
+  it('el resultado es un número de centavos exacto, sin restos de coma flotante', () => {
+    const t = totalCompra([linea({ cantidad: '0,333', costo: '3.337' }), linea({ cantidad: '1,111', costo: '7.777' })])
+    expect(Math.round(t * 100) / 100).toBe(t)
+    expect(Number.isInteger(Math.round(t * 100))).toBe(true)
   })
 
   it('ignora las líneas con cantidad o costo inválidos y no devuelve NaN', () => {
@@ -55,9 +89,10 @@ describe('[RF-COM-01] totalCompra', () => {
 })
 
 describe('[RF-COM-02] formulario nuevo', () => {
-  it('arranca como compra inmediata, con una línea vacía, la fecha de hoy y pago en efectivo', () => {
-    const f = formVacio(HOY)
-    expect(f).toMatchObject({ modalidad: 'inmediata', proveedorId: '', fecha: HOY, medioPago: 'efectivo', fechaEsperada: '' })
+  it('arranca como compra inmediata, con una línea vacía y pago en efectivo; la fecha de la compra es el instante de guardar', () => {
+    const f = formVacio()
+    expect(f).toMatchObject({ modalidad: 'inmediata', proveedorId: '', medioPago: 'efectivo', fechaEsperada: '' })
+    expect(f).not.toHaveProperty('fecha')
     expect(f.lineas).toHaveLength(1)
     expect(f.lineas[0]).toEqual(lineaVacia())
   })
@@ -114,8 +149,25 @@ describe('[RF-COM-01][RN-COM-02] validarForm', () => {
     expect(validarForm(enc(HOY), articulos, HOY)).toEqual({})
   })
 
+  it('la cantidad por línea tiene tope (cabe en numeric(12,3) del servidor)', () => {
+    expect(CANTIDAD_MAXIMA).toBe(999_999)
+    const e = validarForm(base({ lineas: [linea({ cantidad: '1.000.000', costo: '1.000' })] }), articulos, HOY)
+    expect(e.detalle?.[0]?.cantidad).toBe('La cantidad es demasiado grande (máximo 999.999).')
+    expect(validarForm(base({ lineas: [linea({ cantidad: '999.999', costo: '1.000' })] }), articulos, HOY)).toEqual({})
+  })
+
+  it('un artículo o proveedor elegido que ya no existe se frena con un mensaje claro', () => {
+    const e = validarForm(base({ lineas: [linea({ articuloId: 'desaparecido' })] }), articulos, HOY)
+    expect(e.detalle?.[0]?.articulo).toBe('Ese artículo ya no está disponible. Elígelo de nuevo.')
+    const p = validarForm(base({ proveedorId: 'p-borrado' }), articulos, HOY, new Set(['p1', 'p2']))
+    expect(p.proveedor).toBe('Ese proveedor ya no está disponible. Elígelo de nuevo.')
+    expect(validarForm(base({ proveedorId: 'p1' }), articulos, HOY, new Set(['p1']))).toEqual({})
+    expect(validarForm(base({ proveedorId: PROVEEDOR_NUEVO, proveedorNuevo: { nombre: 'X', telefono: '' } }), articulos, HOY, new Set())).toEqual({})
+  })
+
   it('un total que supera el tope se frena', () => {
     const e = validarForm(base({ lineas: [linea({ cantidad: '999.999', costo: '999.999.999' })] }), articulos, HOY)
+    expect(e.detalle).toBeUndefined()
     expect(e.lineas).toBe('El total de la compra es demasiado grande.')
   })
 })
@@ -185,13 +237,18 @@ describe('filasLocales (lo que se ve con ⏳ mientras no se sube)', () => {
     const [orden] = filasLocales(d)
     expect(orden).toMatchObject({ tabla: 'ordenes_compra', fila: { id: d.orden.id, proveedor_id: 'p1', modalidad: 'inmediata', estado: 'recibida', total: 600000 } })
     expect((orden!.fila['items'] as unknown[])).toHaveLength(1)
+    expect((orden!.fila['items'] as Array<Record<string, unknown>>)[0]).toMatchObject({ articulo_id: 'cafe', cantidad: 20, cantidad_recibida: 20 })
+    const recepciones = orden!.fila['recepciones'] as Array<{ items: Array<Record<string, unknown>> }>
+    expect(recepciones).toHaveLength(1)
+    expect(recepciones[0]!.items).toEqual([expect.objectContaining({ cantidad: 20, orden_item_id: (orden!.fila['items'] as Array<{ id: string }>)[0]!.id })])
     expect((orden!.fila['pagos'] as unknown[])).toHaveLength(1)
   })
 
   it('un encargo queda «pedida» y sin pagos', () => {
     const d = armarDatos(base({ modalidad: 'encargo', fechaEsperada: '2026-11-30' }), ids, ahora)
     const [orden] = filasLocales(d)
-    expect(orden!.fila).toMatchObject({ estado: 'pedida', fecha_esperada: '2026-11-30' })
+    expect(orden!.fila).toMatchObject({ estado: 'pedida', fecha_esperada: '2026-11-30', recepciones: [] })
+    expect((orden!.fila['items'] as Array<Record<string, unknown>>)[0]).toMatchObject({ cantidad_recibida: 0 })
   })
 
   it('con proveedor nuevo agrega también su fila de tercero, con el rol proveedor', () => {

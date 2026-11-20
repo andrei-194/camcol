@@ -11,7 +11,6 @@ import { CaminoDB } from '../../infra/db/db'
 import { crearPendientesService } from '../../infra/sync/pendientesService'
 import { crearServidorSimulado, type ServidorSimulado } from '../../infra/sync/servidorSimulado'
 import { crearEscritor } from '../../infra/sync/writer'
-import { hoyBogota } from '../../lib/formato'
 import { AppRoutes } from '../../routes'
 import { servicioFalso } from '../../test/servicioAuthFalso'
 import { PendientesProvider } from '../pendientes/contexto'
@@ -337,15 +336,6 @@ describe('[RF-COM-02][RF-COM-05] guardar', () => {
     expect(await screen.findByText(/compra registrada/i)).toBeInTheDocument()
     expect(srv.llamadas).toHaveLength(1)
   })
-
-  it('la fecha de la compra es la de hoy en Bogotá', async () => {
-    montar()
-    await compraLista()
-    registrar()
-    await screen.findByText(/compra registrada/i)
-    const orden = (srv.llamadas[0]![0]!.datos as { orden: { fecha: string } }).orden
-    expect(orden.fecha.slice(0, 10) >= hoyBogota()).toBe(true)
-  })
 })
 
 describe('rutas de compras', () => {
@@ -372,5 +362,141 @@ describe('rutas de compras', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Nueva compra' })).toBeInTheDocument()
     expect(screen.queryByText(/llega pronto/i)).toBeNull()
     expect(screen.getByRole('button', { name: 'Registrar compra' })).toBeInTheDocument()
+  })
+})
+
+describe('revisión de T-M5-01: unidades, estados de datos, errores y ramas', () => {
+  it('[P1] bajo la cantidad se lee cómo se interpretó y en qué unidad: «Se registrará: 1.500 und»', async () => {
+    montar()
+    await screen.findByLabelText('Proveedor')
+    escribir('Artículo 1', 'a1')
+    escribir('Cantidad 1', '1.500')
+    expect(screen.getByText('Se registrará: 1.500 und')).toBeInTheDocument()
+    escribir('Cantidad 1', '0.500')
+    expect(screen.getByText('Se registrará: 0,5 und')).toBeInTheDocument()
+    escribir('Cantidad 1', 'abc')
+    expect(screen.queryByText(/Se registrará/)).toBeNull()
+  })
+
+  it('la cantidad por encima del tope se frena con su mensaje', async () => {
+    montar()
+    await compraLista()
+    escribir('Cantidad 1', '1.000.000')
+    registrar()
+    expect(await screen.findByText('La cantidad es demasiado grande (máximo 999.999).')).toBeInTheDocument()
+    expect(srv.llamadas).toHaveLength(0)
+  })
+
+  it('si el catálogo está vacío lo dice; si no se puede leer, también', async () => {
+    await db.articulos.clear()
+    const { unmount } = montar()
+    expect(await screen.findByText(/no hay artículos en el catálogo/i)).toBeInTheDocument()
+    unmount()
+    vi.spyOn(db.articulos, 'toArray').mockRejectedValue(new Error('IndexedDB no disponible'))
+    montar()
+    expect(await screen.findByText(/no se pudo leer el catálogo/i)).toBeInTheDocument()
+    vi.restoreAllMocks()
+  })
+
+  it('si no se pueden leer los proveedores, lo dice y aún deja crear uno nuevo', async () => {
+    vi.spyOn(db.terceros, 'toArray').mockRejectedValue(new Error('IndexedDB no disponible'))
+    montar()
+    expect(await screen.findByText(/no se pudieron leer los proveedores/i)).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Nuevo proveedor' })).toBeInTheDocument()
+    vi.restoreAllMocks()
+  })
+
+  it('un proveedor que desaparece tras elegirlo se frena con un mensaje claro y no se envía nada', async () => {
+    montar()
+    await compraLista()
+    await db.terceros.delete('p1')
+    registrar()
+    expect(await screen.findByText('Ese proveedor ya no está disponible. Elígelo de nuevo.')).toBeInTheDocument()
+    expect(srv.llamadas).toHaveLength(0)
+  })
+
+  it('un artículo que deja de estar activo tras elegirlo se frena, en vez de saltarse el vencimiento', async () => {
+    montar()
+    await screen.findByRole('option', { name: 'Finca La Tulia' })
+    proveedor('p1')
+    escribir('Artículo 1', 'a2')
+    escribir('Cantidad 1', '4')
+    escribir('Costo unitario 1', '12.000')
+    await db.articulos.update('a2', { activo: false })
+    registrar()
+    expect(await screen.findByText('Ese artículo ya no está disponible. Elígelo de nuevo.')).toBeInTheDocument()
+    expect(srv.llamadas).toHaveLength(0)
+  })
+
+  it('al quitar una línea con errores, los mensajes no quedan sobre la línea equivocada', async () => {
+    montar()
+    await screen.findByLabelText('Proveedor')
+    fireEvent.click(screen.getByRole('button', { name: 'Agregar otro artículo' }))
+    registrar()
+    await screen.findAllByText('Elige el artículo.')
+    expect(screen.getAllByText('Elige el artículo.')).toHaveLength(2)
+    fireEvent.click(screen.getByRole('button', { name: 'Quitar artículo 1' }))
+    expect(screen.queryByText('Elige el artículo.')).toBeNull()
+    expect(screen.getByLabelText('Artículo 1')).not.toHaveAttribute('aria-invalid', 'true')
+  })
+
+  it('si solo falla el total, el foco va al mensaje', async () => {
+    montar()
+    await compraLista()
+    escribir('Cantidad 1', '999.999')
+    escribir('Costo unitario 1', '999.999.999')
+    registrar()
+    const alerta = await screen.findByText('El total de la compra es demasiado grande.')
+    await waitFor(() => expect(alerta).toHaveFocus())
+  })
+
+  it('con la sesión vencida (401) la deja guardada en el teléfono y lo dice', async () => {
+    srv.forzar.push({ clase: 'no_aplicado', http: 401, mensaje: 'JWT expired' })
+    montar()
+    await compraLista()
+    registrar()
+    expect(await screen.findByText(/tu sesión venció/i)).toBeInTheDocument()
+    expect(await db.outbox.count()).toBe(1)
+  })
+
+  it('un fallo del servidor que no es de red muestra el aviso del escritor y la deja en el teléfono', async () => {
+    srv.forzar.push({ clase: 'no_aplicado', http: 503, mensaje: 'upstream' })
+    montar()
+    await compraLista()
+    registrar()
+    expect(await screen.findByText(/el servidor no pudo aplicarlo ahora/i)).toBeInTheDocument()
+    expect(await db.outbox.count()).toBe(1)
+  })
+
+  it('si la aplicación aún no tiene escritor, avisa y no pierde lo escrito', async () => {
+    const servicio = crearPendientesService({ db, api: srv })
+    render(
+      <CatalogoProvider db={db} api={apiCatalogo} refrescar={async () => {}}>
+        <PendientesProvider db={db} servicio={servicio}>
+          <MemoryRouter initialEntries={['/compras/nueva']}>
+            <Routes>
+              <Route path="/compras/nueva" element={<CompraNueva />} />
+            </Routes>
+          </MemoryRouter>
+        </PendientesProvider>
+      </CatalogoProvider>,
+    )
+    await compraLista()
+    registrar()
+    expect(await screen.findByRole('alert')).toHaveTextContent(/aún no está lista/i)
+    expect(screen.getByLabelText('Cantidad 1')).toHaveValue('20')
+  })
+
+  it('un encargo también guarda la foto del soporte', async () => {
+    enLinea = false
+    montar()
+    await compraLista()
+    fireEvent.click(within(screen.getByRole('group', { name: 'Tipo de compra' })).getByRole('button', { name: 'Encargo' }))
+    escribir('Fecha esperada', '2999-01-31')
+    const archivo = new File(['x'], 'cotizacion.jpg', { type: 'image/jpeg' })
+    fireEvent.change(screen.getByLabelText(/Foto del soporte/), { target: { files: [archivo] } })
+    registrar()
+    await screen.findByText(/encargo guardado en este teléfono/i)
+    expect(guardar).toHaveBeenCalledWith(expect.objectContaining({ entidad: 'orden_compra', archivo }))
   })
 })
