@@ -45,8 +45,9 @@ describe('[RF-OPS-01] instalable', () => {
   })
 
   // Lectura tolerante de index.html: no depende del orden de los atributos ni de cómo se cierre la etiqueta.
+  const sinComentarios = html.replace(/<!--[\s\S]*?-->/g, '')
   const atributos = (etiqueta: string) =>
-    [...html.matchAll(new RegExp(`<${etiqueta}\\b([^>]*)>`, 'g'))].map((m) =>
+    [...sinComentarios.matchAll(new RegExp(`<${etiqueta}\\b([^>]*)>`, 'g'))].map((m) =>
       Object.fromEntries([...m[1]!.matchAll(/([\w-]+)="([^"]*)"/g)].map((x) => [x[1]!, x[2]!])),
     )
   const meta = (nombre: string) => atributos('meta').find((m) => m['name'] === nombre)?.['content']
@@ -88,36 +89,35 @@ describe('[RF-OPS-01] instalable', () => {
     const img = decodificarPng(readFileSync(ruta))
     expect([img.ancho, img.alto]).toEqual([lado, lado])
     let claros = 0
+    let translucidos = 0
     for (let y = 0; y < img.alto; y++) {
       for (let x = 0; x < img.ancho; x++) {
-        expect(alfa(img, x, y)).toBe(255) // iOS pinta de negro lo transparente
+        if (alfa(img, x, y) !== 255) translucidos++ // iOS pinta de negro lo transparente
         if (luminosidad(img, x, y) > 200) claros++
       }
     }
+    expect(translucidos, `${translucidos} píxeles no son opacos`).toBe(0)
     expect(luminosidad(img, 0, 0)).toBeLessThan(128) // fondo cacao
     const fraccion = claros / (img.ancho * img.alto)
     expect(fraccion).toBeGreaterThan(0.02)
     expect(fraccion).toBeLessThan(0.4)
   })
 
-  it('[T-D6] el ícono maskable deja la marca dentro de la zona segura (80 % central)', () => {
+  it('[T-D6] el ícono maskable deja toda la marca dentro de la zona segura: el círculo de 80 % de diámetro', () => {
     const img = decodificarPng(readFileSync('public/icons/maskable-512.png'))
-    let minX = img.ancho
-    let maxX = 0
-    let minY = img.alto
-    let maxY = 0
+    const centro = img.ancho / 2
+    const radio = img.ancho * 0.4
+    let claros = 0
+    let fuera = 0
     for (let y = 0; y < img.alto; y++) {
       for (let x = 0; x < img.ancho; x++) {
-        if (luminosidad(img, x, y) > 200) {
-          minX = Math.min(minX, x)
-          maxX = Math.max(maxX, x)
-          minY = Math.min(minY, y)
-          maxY = Math.max(maxY, y)
-        }
+        if (luminosidad(img, x, y) <= 200) continue
+        claros++
+        if (Math.hypot(x + 0.5 - centro, y + 0.5 - centro) > radio) fuera++
       }
     }
-    for (const v of [minX, minY]) expect(v).toBeGreaterThanOrEqual(img.ancho * 0.1)
-    for (const v of [maxX, maxY]) expect(v).toBeLessThanOrEqual(img.ancho * 0.9)
+    expect(claros).toBeGreaterThan(0) // si no hay marca, la prueba no puede pasar en vacío
+    expect(fuera, `${fuera} píxeles claros quedan fuera del círculo seguro`).toBe(0)
   })
 
   it('la pantalla "Cómo instalar" explica iPhone y Android', () => {

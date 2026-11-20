@@ -18,7 +18,7 @@ export function decodificarPng(png: Buffer): Imagen {
   const tipo = png.readUInt8(25)
   const entrelazado = png.readUInt8(28)
   if (profundidad !== 8 || (tipo !== 2 && tipo !== 6) || entrelazado !== 0) {
-    throw new Error(`PNG no soportado por la prueba (profundidad ${profundidad}, tipo ${tipo}, entrelazado ${entrelazado})`)
+    throw new Error(`PNG no soportado por la prueba: usa RGB o RGBA de 8 bits sin entrelazado (recibió profundidad ${profundidad}, tipo ${tipo}, entrelazado ${entrelazado})`)
   }
   const canales = tipo === 6 ? 4 : 3
   const trozos: Buffer[] = []
@@ -29,9 +29,11 @@ export function decodificarPng(png: Buffer): Imagen {
   }
   const crudo = inflateSync(Buffer.concat(trozos))
   const fila = ancho * canales
+  if (crudo.length !== alto * (fila + 1)) throw new Error(`PNG truncado o corrupto: faltan datos (${crudo.length} bytes, se esperaban ${alto * (fila + 1)})`)
   const datos = new Uint8Array(alto * fila)
   for (let y = 0; y < alto; y++) {
     const filtro = crudo[y * (fila + 1)]!
+    if (filtro > 4) throw new Error(`PNG corrupto: filtro ${filtro} desconocido en la fila ${y}`)
     for (let x = 0; x < fila; x++) {
       const v = crudo[y * (fila + 1) + 1 + x]!
       const a = x >= canales ? datos[y * fila + x - canales]! : 0
