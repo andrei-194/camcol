@@ -1,5 +1,6 @@
 import { Aviso } from './componentes/Aviso'
 import { Pagina } from './componentes/Pagina'
+import { Tarjeta } from './componentes/Tarjeta'
 import { estaInstalada } from '../pwa/almacenamiento'
 
 export function ComoInstalar() {
@@ -11,6 +12,7 @@ export function ComoInstalar() {
         Instalar la app te da un ícono en la pantalla de inicio y la deja abrir sin conexión. Hazlo en cada teléfono.
       </p>
 
+      <Tarjeta>
       <section aria-labelledby="iphone" className="flex flex-col gap-2">
         <h2 id="iphone" className="font-titulo text-seccion font-semibold">
           iPhone (Safari)
@@ -22,7 +24,9 @@ export function ComoInstalar() {
           <li>Toca "Añadir". Abre la app desde el nuevo ícono.</li>
         </ol>
       </section>
+      </Tarjeta>
 
+      <Tarjeta>
       <section aria-labelledby="android" className="flex flex-col gap-2">
         <h2 id="android" className="font-titulo text-seccion font-semibold">
           Android (Chrome)
@@ -34,6 +38,7 @@ export function ComoInstalar() {
           <li>Confirma con "Instalar". Abre la app desde el nuevo ícono.</li>
         </ol>
       </section>
+      </Tarjeta>
 
       <p className="text-pequeno text-texto-secundario">
         Después de instalar, abre siempre la app desde el ícono. En el iPhone, así el teléfono cuida mejor los datos

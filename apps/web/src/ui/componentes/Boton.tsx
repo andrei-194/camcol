@@ -4,14 +4,14 @@ import { Link, type LinkProps } from 'react-router-dom'
 export type VarianteBoton = 'primario' | 'secundario' | 'peligro'
 
 const BASE =
-  'inline-flex min-h-12 items-center justify-center rounded-control px-5 py-2 text-cuerpo font-semibold ' +
-  'transition-colors disabled:cursor-not-allowed disabled:opacity-50'
+  'inline-flex min-h-12 items-center justify-center rounded-full px-5 py-2 text-cuerpo font-semibold ' +
+  'transition-colors disabled:cursor-not-allowed disabled:border-arena disabled:bg-arena disabled:text-texto-secundario'
 
 const VARIANTES: Record<VarianteBoton, string> = {
   // Café: la acción principal de la pantalla.
   primario: 'bg-acento text-sobre-acento hover:bg-acento-hover',
-  // Contorno negro: acciones de apoyo.
-  secundario: 'border-2 border-texto bg-fondo text-texto hover:bg-superficie',
+  // Contorno cacao: acciones de apoyo.
+  secundario: 'border-2 border-acento bg-transparent text-acento hover:bg-superficie',
   // Rojo: solo acciones destructivas.
   peligro: 'bg-peligro text-sobre-peligro hover:opacity-90',
 }

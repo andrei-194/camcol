@@ -82,6 +82,12 @@ describe('[RF-TER-01][RF-TER-02] lista y búsqueda local', () => {
     expect(srv.llamadas).toHaveLength(0)
   })
 
+  it('«Volver» abre Más cuando se llega directo', async () => {
+    await sembrar()
+    montar('/terceros')
+    expect(await screen.findByRole('link', { name: 'Volver' })).toHaveAttribute('href', '/mas')
+  })
+
   it('sin coincidencias muestra un mensaje', async () => {
     await sembrar()
     montar('/terceros')
@@ -100,6 +106,18 @@ describe('[RF-TER-01][RF-TER-02] lista y búsqueda local', () => {
     expect(screen.getByText('Don Luis')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Clientes' }))
     await waitFor(() => expect(screen.queryByText('Doña María Pérez')).toBeNull())
+  })
+
+  it('el rediseño: nombres en cursiva, filtro en pastillas y filas con filete punteado', async () => {
+    await sembrar()
+    montar('/terceros')
+    const nombre = await screen.findByText('Don Luis')
+    expect(nombre.className).toContain('nombre')
+    expect(nombre.closest('li')!.className).toContain('border-dotted')
+    const grupo = screen.getByRole('group', { name: 'Filtrar por rol' })
+    expect(within(grupo).getByRole('button', { name: 'Todos' })).toHaveAttribute('aria-pressed', 'true')
+    expect(within(grupo).getByRole('button', { name: 'Todos' }).className).toContain('rounded-full')
+    expect(within(grupo).getByRole('button', { name: 'Clientes' }).className).toContain('min-h-12')
   })
 
   it('marca con ⏳ las filas con _pendiente', async () => {

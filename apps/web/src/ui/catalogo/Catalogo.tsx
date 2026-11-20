@@ -2,6 +2,7 @@ import { useCatalogo, type DatosCatalogo } from '../../application/catalogo/cont
 import { formatCOP, formatCantidad } from '../../lib/formato'
 import { precioPara, type CatalogoPrecios } from '../../domain/pricing/pricing'
 import { Aviso } from '../componentes/Aviso'
+import { Dinero } from '../componentes/Dinero'
 import { BotonEnlace } from '../componentes/Boton'
 import { EtiquetaEstado } from '../componentes/EtiquetaEstado'
 import { Pagina } from '../componentes/Pagina'
@@ -13,7 +14,7 @@ import { Link } from 'react-router-dom'
 export function Catalogo() {
   const carga = useCatalogo()
   return (
-    <Pagina titulo="Catálogo" volverA="/">
+    <Pagina titulo="Catálogo" volverA="/mas">
       {carga.fase === 'cargando' && <p role="status">Cargando catálogo…</p>}
       {carga.fase === 'error' && <Aviso tono="error">No se pudo leer el catálogo guardado en el teléfono.</Aviso>}
       {carga.fase === 'listo' && <Contenido datos={carga.datos} />}
@@ -67,7 +68,7 @@ function Contenido({ datos }: { datos: DatosCatalogo }) {
                       {formatCantidad(numero(a, 'presentacion_cantidad'))} {texto(a, 'presentacion_unidad')}
                     </span>
                     <span className="flex flex-wrap items-center gap-2">
-                      {base === null ? <EtiquetaEstado tono="advertencia">Sin precio</EtiquetaEstado> : <span className="text-seccion font-semibold">{formatCOP(base)}</span>}
+                      {base === null ? <EtiquetaEstado tono="advertencia">Sin precio</EtiquetaEstado> : <Dinero valor={base} className="text-seccion" />}
                       {a.activo === false && <EtiquetaEstado>Inactivo</EtiquetaEstado>}
                     </span>
                     {escalones(a.id).map((e) => (

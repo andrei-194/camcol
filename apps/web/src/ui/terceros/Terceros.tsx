@@ -2,10 +2,12 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { filtrarTerceros, useTerceros, type FiltroRol } from '../../application/terceros/terceros'
 import { Aviso } from '../componentes/Aviso'
-import { Boton, BotonEnlace } from '../componentes/Boton'
+import { BotonEnlace } from '../componentes/Boton'
 import { CampoTexto } from '../componentes/CampoTexto'
 import { EtiquetaEstado } from '../componentes/EtiquetaEstado'
+import { FilaLista } from '../componentes/FilaLista'
 import { Pagina } from '../componentes/Pagina'
+import { Segmentos } from '../componentes/Segmentos'
 import { usePendientesCtx } from '../pendientes/contexto'
 
 const FILTROS: Array<{ valor: FiltroRol; texto: string }> = [
@@ -23,7 +25,7 @@ export function Terceros() {
   const visibles = useMemo(() => (carga.fase === 'listo' ? filtrarTerceros(carga.terceros, texto, rol) : []), [carga, texto, rol])
 
   return (
-    <Pagina titulo="Terceros" volverA="/">
+    <Pagina titulo="Terceros" volverA="/mas">
       <BotonEnlace to="/terceros/nuevo">Nuevo tercero</BotonEnlace>
       <CampoTexto
         etiqueta="Buscar"
@@ -33,19 +35,7 @@ export function Terceros() {
         onChange={(e) => setTexto(e.target.value)}
         autoComplete="off"
       />
-      <div role="group" aria-label="Filtrar por rol" className="flex gap-2">
-        {FILTROS.map((f) => (
-          <Boton
-            key={f.valor}
-            variante={rol === f.valor ? 'primario' : 'secundario'}
-            aria-pressed={rol === f.valor}
-            className="flex-1 px-2"
-            onClick={() => setRol(f.valor)}
-          >
-            {f.texto}
-          </Boton>
-        ))}
-      </div>
+      <Segmentos etiqueta="Filtrar por rol" opciones={FILTROS} valor={rol} alCambiar={setRol} />
       {carga.fase === 'cargando' && <p role="status">Cargando…</p>}
       {carga.fase === 'error' && <Aviso tono="error">No se pudieron leer los terceros de este teléfono.</Aviso>}
       {carga.fase === 'listo' && carga.terceros.length === 0 && (
@@ -53,18 +43,18 @@ export function Terceros() {
       )}
       {carga.fase === 'listo' && carga.terceros.length > 0 && visibles.length === 0 && <Aviso>Sin resultados para esa búsqueda.</Aviso>}
       {visibles.length > 0 && (
-        <ul className="flex flex-col divide-y divide-borde rounded-tarjeta border border-borde">
+        <ul className="rounded-tarjeta bg-superficie px-4">
           {visibles.map((t) => (
-            <li key={t.id}>
-              <Link to={`/terceros/${t.id}`} className="flex min-h-14 flex-col justify-center gap-0.5 px-4 py-2 text-texto">
-                <span className="font-medium">{String(t['nombre'] ?? '')}</span>
+            <FilaLista key={t.id} className="py-0">
+              <Link to={`/terceros/${t.id}`} className="flex min-h-14 flex-1 flex-col justify-center gap-0.5 py-2 text-texto">
+                <span className="nombre text-seccion">{String(t['nombre'] ?? '')}</span>
                 <span className="flex flex-wrap items-center gap-2 text-pequeno text-texto-secundario">
                   {(t.roles ?? []).map((r) => (r === 'cliente' ? 'Cliente' : 'Proveedor')).join(' · ')}
                   {t['telefono'] ? ` · ${String(t['telefono'])}` : ''}
                   {t._pendiente && <EtiquetaEstado tono="advertencia">⏳ Sin subir</EtiquetaEstado>}
                 </span>
               </Link>
-            </li>
+            </FilaLista>
           ))}
         </ul>
       )}

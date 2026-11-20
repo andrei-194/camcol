@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   fechaBogota,
   formatCantidad,
+  formatPorcentaje,
   formatCOP,
   formatFecha,
   formatFechaHora,
@@ -89,4 +90,14 @@ describe('libra = 500 g', () => {
     expect(gramosALibras(250)).toBe(0.5)
     expect(gramosALibras(0)).toBe(0)
   })
+})
+
+describe('[RNF-UX-01] formatPorcentaje: coma y hasta un decimal', () => {
+  it('redondea a un decimal con coma', () => expect(formatPorcentaje(31.46)).toBe('31,5'))
+  it('enteros sin decimales', () => expect(formatPorcentaje(31)).toBe('31'))
+  it('negativos y cero (sin -0)', () => {
+    expect(formatPorcentaje(-5)).toBe('-5')
+    expect(formatPorcentaje(-0.04)).toBe('0')
+  })
+  it('miles con punto', () => expect(formatPorcentaje(1250.5)).toBe('1.250,5'))
 })

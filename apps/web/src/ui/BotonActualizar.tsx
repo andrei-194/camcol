@@ -1,5 +1,6 @@
 import { useSync } from '../application/sync/SyncProvider'
 import { Boton } from './componentes/Boton'
+import { Tarjeta } from './componentes/Tarjeta'
 
 const MENSAJE_ERROR = {
   red: 'Sin conexión: se muestran los últimos datos guardados.',
@@ -17,6 +18,7 @@ export function BotonActualizar() {
   if (!sync) return null
   const { estado, actualizar } = sync
   return (
+    <Tarjeta>
     <section aria-labelledby="datos" className="flex flex-col items-start gap-2">
       <h2 id="datos" className="font-titulo text-seccion font-semibold">
         Datos
@@ -30,5 +32,6 @@ export function BotonActualizar() {
         {estado.fase === 'error' && MENSAJE_ERROR[estado.motivo]}
       </p>
     </section>
+    </Tarjeta>
   )
 }

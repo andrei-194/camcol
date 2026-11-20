@@ -84,10 +84,18 @@ describe('[RF-CAT-04] catálogo local', () => {
     montar('/catalogo')
     expect(await screen.findByText('Café Villa Luz 250 g')).toBeInTheDocument()
     expect(screen.getByText('Café Villa Luz 5 lb')).toBeInTheDocument()
-    expect(screen.getByText('$ 20.000')).toBeInTheDocument()
+    const precio = document.querySelector('data[value="20000"]')
+    expect(precio).not.toBeNull()
+    expect(precio!.className).toContain('font-titulo')
+    expect(precio).toHaveTextContent('20.000')
     expect(screen.getByText(/Desde 2 und/)).toHaveTextContent('$ 19.000')
     expect(screen.getByText('Inactivo')).toBeInTheDocument()
     expect(Object.values(api).every((f) => f.mock.calls.length === 0)).toBe(true)
+  })
+
+  it('«Volver» abre Más cuando se llega directo', async () => {
+    montar('/catalogo')
+    expect(await screen.findByRole('link', { name: 'Volver' })).toHaveAttribute('href', '/mas')
   })
 
   it('con el catálogo vacío muestra un estado vacío', async () => {

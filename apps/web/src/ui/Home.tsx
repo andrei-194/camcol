@@ -1,33 +1,19 @@
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
 import { Pagina } from './componentes/Pagina'
+import type { Periodo } from './componentes/SelectorPeriodo'
 import { BannerPendientes } from './pendientes/BannerPendientes'
+import { Tablero } from './tablero/Tablero'
 
-const ENLACES = [
-  { a: '/catalogo', texto: 'Catálogo' },
-  { a: '/terceros', texto: 'Terceros' },
-  { a: '/pendientes', texto: 'Pendientes' },
-  { a: '/instalar', texto: 'Cómo instalar' },
-  { a: '/ajustes', texto: 'Ajustes' },
-]
-
+/**
+ * Inicio: el tablero (RF-DSH). Los datos de ventas llegan con T-M7; mientras no existan muestra un estado vacío que
+ * invita a registrar el primer pedido. Los accesos viven en la barra inferior y en «Más».
+ */
 export function Home() {
+  const [periodo, setPeriodo] = useState<Periodo>('hoy')
   return (
-    <Pagina titulo="Camino Col" subtitulo="Vitrina y gestión de productos campesinos." marca>
+    <Pagina titulo="Camino Col" subtitulo="Del campo colombiano a tu mesa." marca>
       <BannerPendientes />
-      <nav aria-label="Secciones">
-        <ul className="flex flex-col divide-y divide-borde rounded-tarjeta border border-borde">
-          {ENLACES.map((e) => (
-            <li key={e.a}>
-              <Link to={e.a} className="flex min-h-14 items-center justify-between px-4 text-seccion text-texto">
-                {e.texto}
-                <span aria-hidden="true" className="text-acento">
-                  ›
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      <Tablero datos={null} periodo={periodo} alCambiarPeriodo={setPeriodo} />
     </Pagina>
   )
 }

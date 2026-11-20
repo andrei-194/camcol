@@ -30,7 +30,16 @@ const PARES_TEXTO: Array<[string, string]> = [
   ['texto', 'superficie'],
   ['texto-secundario', 'fondo'],
   ['texto-secundario', 'superficie'],
-  ['fondo', 'texto'], // texto blanco sobre la barra negra
+  ['fondo', 'cafe'], // texto papel sobre la cabecera de café
+  ['trigo', 'cafe'], // detalles de trigo sobre la cabecera
+  ['exito-claro', 'cafe'], // «En línea» sobre la barra de estado de café
+  ['advertencia-claro', 'cafe'], // «Sin conexión» sobre la barra de estado de café
+  ['sobre-acento', 'advertencia'], // contador de pendientes de la barra inferior
+  ['texto-secundario', 'tarjeta'],
+  ['sobre-acento', 'terracota'], // texto de la selección
+  ['peligro', 'superficie'],
+  ['exito', 'superficie'],
+  ['texto-secundario', 'arena'],
   ['acento', 'fondo'], // enlaces
   ['acento', 'superficie'],
   ['acento', 'acento-suave'],
@@ -53,8 +62,12 @@ describe('[RNF-UX] contraste AA de los tokens de color', () => {
     expect(razon(token('borde-fuerte'), token('fondo'))).toBeGreaterThanOrEqual(3)
   })
 
-  it('el color del foco contra el fondo cumple 3:1', () => {
-    expect(razon(token('acento'), token('fondo'))).toBeGreaterThanOrEqual(3)
+  it('el color del foco (terracota) cumple 3:1 contra el fondo, la superficie y la tarjeta', () => {
+    for (const f of ['fondo', 'superficie', 'tarjeta']) expect(razon(token('terracota'), token(f))).toBeGreaterThanOrEqual(3)
+  })
+
+  it('el borde de los campos también cumple 3:1 contra la tarjeta blanca', () => {
+    expect(razon(token('borde-fuerte'), token('tarjeta'))).toBeGreaterThanOrEqual(3)
   })
 })
 
@@ -65,7 +78,14 @@ describe('paleta de marca (decisión del socio)', () => {
     expect(token('peligro').toLowerCase()).toBe('#b3261e')
   })
 
-  it('el fondo es blanco', () => {
-    expect(token('fondo').toLowerCase()).toBe('#ffffff')
+  it('el fondo es el papel de la web, las superficies la crema y la cabecera el café', () => {
+    expect(token('fondo').toLowerCase()).toBe('#fbf7ee')
+    expect(token('superficie').toLowerCase()).toBe('#f6efe2')
+    expect(token('cafe').toLowerCase()).toBe('#3a2418')
+    expect(token('texto').toLowerCase()).toBe('#3a2418')
+  })
+
+  it('la terracota de la web existe solo para foco, selección y camino punteado', () => {
+    expect(token('terracota').toLowerCase()).toBe('#b5532f')
   })
 })

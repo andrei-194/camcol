@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../../application/auth/AuthProvider'
 import { Aviso } from '../componentes/Aviso'
 import { Boton } from '../componentes/Boton'
+import { Tarjeta } from '../componentes/Tarjeta'
 import { usePendientesOpcional } from './contexto'
 import { exportarPendientes } from './exportarJson'
 
@@ -31,6 +32,7 @@ export function BotonCerrarSesion() {
   }
 
   return (
+    <Tarjeta>
     <section aria-labelledby="sesion" className="flex flex-col items-start gap-2">
       <h2 id="sesion" className="font-titulo text-seccion font-semibold">
         Sesión
@@ -54,5 +56,6 @@ export function BotonCerrarSesion() {
         </div>
       )}
     </section>
+    </Tarjeta>
   )
 }

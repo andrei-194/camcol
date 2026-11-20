@@ -193,7 +193,7 @@ export function TerceroNuevo() {
           <label className="flex w-28 shrink-0 flex-col gap-1.5 font-medium text-texto">
             Tipo
             <select
-              className="min-h-12 rounded-control border-2 border-borde-fuerte bg-fondo px-2 text-cuerpo font-normal"
+              className="min-h-12 rounded-control border-2 border-borde-fuerte bg-tarjeta px-2 text-cuerpo font-normal"
               value={form.tipo_documento}
               onChange={(e) => poner('tipo_documento', e.target.value)}
             >

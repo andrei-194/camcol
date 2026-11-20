@@ -21,7 +21,7 @@ export function CampoTexto({ etiqueta, error, ayuda, className = '', ...resto }:
         id={id}
         aria-invalid={error ? true : undefined}
         aria-describedby={descritoPor}
-        className={`min-h-12 w-full rounded-control border-2 bg-fondo px-3 text-cuerpo text-texto ${
+        className={`min-h-12 w-full rounded-control border-2 bg-tarjeta px-3 text-cuerpo text-texto ${
           error ? 'border-peligro' : 'border-borde-fuerte'
         } ${className}`}
         {...resto}

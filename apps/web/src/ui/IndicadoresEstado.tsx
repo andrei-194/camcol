@@ -12,18 +12,18 @@ export function IndicadoresEstado({ db = dbGlobal }: { db?: CaminoDB }) {
   return (
     <section
       aria-label="Estado de la app"
-      className="sticky top-0 z-10 flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-borde bg-fondo px-3 py-1 text-pequeno text-texto-secundario"
+      className="sticky top-0 z-10 flex flex-wrap items-center gap-x-3 gap-y-1 bg-cafe px-3 py-1 pt-[max(0.25rem,env(safe-area-inset-top))] text-pequeno text-trigo"
     >
       <span
         role="status"
-        className={`inline-flex items-center font-semibold before:mr-1.5 before:inline-block before:size-2 before:rounded-full before:bg-current before:content-[''] ${enLinea ? 'text-exito' : 'text-advertencia'}`}
+        className={`inline-flex items-center font-semibold before:mr-1.5 before:inline-block before:size-2 before:rounded-full before:bg-current before:content-[''] ${enLinea ? 'text-exito-claro' : 'text-advertencia-claro'}`}
       >
         {enLinea ? 'En línea' : 'Sin conexión'}
       </span>
       <Link
         to="/pendientes"
         data-atencion={atencion}
-        className={`inline-flex min-h-8 items-center underline ${atencion ? 'font-semibold text-peligro' : 'text-texto'}`}
+        className={`inline-flex min-h-8 items-center underline ${atencion ? 'rounded-full bg-peligro px-2 font-semibold text-sobre-peligro' : 'text-fondo'}`}
       >
         {etiquetaPendientes}
         {atencion && ` · ${conAtencion} ${conAtencion === 1 ? 'requiere' : 'requieren'} atención`}

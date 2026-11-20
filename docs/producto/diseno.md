@@ -1,94 +1,154 @@
 # Sistema de diseño de Camino Col
 
-Tarea T-M3-00 ([CAM-101](https://linear.app/caminocol/issue/CAM-101)). La fuente de los valores es `apps/web/src/index.css` (bloque `@theme`); este documento los explica. Las capturas a 360 px están en `docs/producto/capturas/`.
+Rediseño premium ([CAM-105](https://linear.app/caminocol/issue/CAM-105)), base en T-D1 ([CAM-106](https://linear.app/caminocol/issue/CAM-106)). La fuente de los valores es `apps/web/src/index.css` (bloques `@font-face` y `@theme`); este documento los explica. La maqueta aprobada por el socio está en https://claude.ai/artifact/Y7jXmELTfp6Baw3wLGBv5X.
 
 ## Idea
 
-Blanco, negro y el café de la marca. La app es una herramienta de trabajo que se usa con una mano, a veces al sol y sin señal: mucho blanco para leer, negro para la estructura (la barra superior y el texto) y un solo color de acento, el café cacao de la vitrina, para lo que se puede tocar. El rojo existe únicamente para errores y acciones destructivas; no es color de marca.
+La app es la oficina de Camino Col y habla el mismo idioma visual que la web: papel cálido, café profundo y el logo de la montaña con el camino. Se usa con una mano, a veces al sol y sin señal: mucho papel para leer, café para la estructura y el texto, y un solo color de acción, el cacao. El rojo existe únicamente para errores, faltantes y acciones destructivas.
 
-El detalle de marca es el filo café bajo la barra negra de cada pantalla y los títulos en serifa de papel.
+Tres rasgos de marca: la cabecera de café con el logo grande recortado, el **disco central** de Inicio con su anillo incompleto, y los números de dinero y stock en Fraunces.
 
-## Paleta y proporción 60 / 30 / 10
+## Estado de implementación
 
-| Grupo | Token (Tailwind) | Valor | Uso |
-|---|---|---|---|
-| Blanco (~60 %) | `fondo` | `#ffffff` | fondo de pantalla, tarjetas, listas |
-| | `superficie` | `#f7f5f3` | fondo apenas distinto para zonas secundarias |
-| | `borde` | `#ddd8d3` | divisores y bordes decorativos |
-| Negro (~30 %) | `texto` | `#111111` | texto, barra superior, contorno de botones secundarios |
-| | `texto-secundario` | `#4d4d4d` | ayudas y texto de apoyo |
-| | `borde-fuerte` | `#7d7570` | borde de campos (3:1 contra el blanco) |
-| Café (~10 %) | `acento` | `#5a3a2a` | botón primario, enlaces, filo de la barra, foco, estado activo |
-| | `acento-hover` | `#3a2418` | café oscuro: hover y pulsado del acento |
-| | `acento-suave` | `#f1e9e4` | fondo de etiquetas de acento |
-| | `sobre-acento` | `#ffffff` | texto sobre el café |
-| Rojo (solo error o destructivo) | `peligro` | `#b3261e` | errores, «Descartar», «Sí, descartar» |
-| | `peligro-suave` / `sobre-peligro` | `#fcecea` / `#ffffff` | fondo de error / texto sobre rojo |
-| Estados mínimos | `exito` | `#1b6e3c` | solo el indicador «En línea» |
-| | `advertencia` / `advertencia-suave` | `#7a4a00` / `#fbf1de` | sin conexión, pendientes, avisos que piden atención |
-
-`index.css` hace `--color-*: initial`: las clases de color por defecto de Tailwind (`emerald`, `stone`…) no existen; solo se pueden usar los tokens de arriba. No se usan crema, kraft ni terracota de la vitrina.
-
-### Cómo comprobar las proporciones
-
-Las proporciones son una guía de peso visual, no un número exacto. Para revisarlas: tomar la captura a 360 px de la pantalla, y contar píxeles por familia (blanco, negro, café). Con las capturas de esta tarea el blanco ocupa entre 64 % y 83 % del área, el negro entre 9 % y 14 % y el café entre 1 % y 8 %. El orden blanco > negro > café se cumple siempre; el negro queda por debajo de 30 % del área porque casi todo es texto fino y la barra superior, y eso es lo esperado. Regla práctica: si un café ocupa más área que el negro en una pantalla (por ejemplo varios botones primarios juntos), hay demasiados acentos; dejar uno primario por pantalla.
-
-## Contraste (WCAG AA)
-
-Razón de luminancia, calculada y verificada en `apps/web/src/ui/componentes/contraste.test.ts` (lee los valores de `index.css`; si cambia un color y rompe AA, la prueba falla). Texto normal exige 4,5; componentes de interfaz, 3.
-
-| Par | Razón |
+| Hecho | Pendiente (aún no está en el código) |
 |---|---|
-| `texto` sobre `fondo` | 18,88 |
-| `texto` sobre `superficie` | 17,36 |
-| `texto-secundario` sobre `fondo` / `superficie` | 8,45 / 7,77 |
-| blanco sobre la barra negra | 18,88 |
-| `acento` sobre `fondo` (enlaces) / `superficie` / `acento-suave` | 10,13 / 9,31 / 8,45 |
-| `sobre-acento` sobre `acento` / `acento-hover` (botón primario) | 10,13 / 14,53 |
-| `peligro` sobre `fondo` / `peligro-suave` | 6,54 / 5,70 |
-| `sobre-peligro` sobre `peligro` (botón de peligro) | 6,54 |
-| `exito` sobre `fondo` | 6,28 |
-| `advertencia` sobre `fondo` / `advertencia-suave` | 7,48 / 6,68 |
-| `borde-fuerte` sobre `fondo` (campos) | 4,52 (mínimo 3) |
+| **T-D1:** paleta, tipografía autoalojada, grano de papel, sombra `shadow-papel`, foco y selección en terracota, escala. **T-D2:** botones en pastilla y deshabilitado en arena, tarjetas y campos sobre el papel, `Logo`, `Dinero`, `Segmentos`, `FilaLista`. **T-D3:** cabecera de café con logo y filo de trigo, barra de estado de café, barra inferior de cinco destinos con el disco central, menú flotante «+», rutas de Ventas, Compras, Inventario y Más (Ventas, Compras, Inventario y las acciones rápidas muestran «llega pronto»). **T-D4:** tablero de Inicio con gráficos en SVG (arco, área, barras), frases de decisión y estado vacío; los datos reales llegan con T-M7. **T-D5:** acceso en tarjeta con el lema de la marca, Catálogo con precios en `Dinero`, Terceros con nombres en cursiva, filtro en `Segmentos` y filas con filete punteado, Ajustes y Cómo instalar en tarjetas; «Volver» regresa a la pantalla de la que vienes y, si la abriste directo, a Más (Cómo instalar, a Inicio); el lema de la marca solo en el login; Ajustes con una tarjeta por bloque. **T-D6:** barra del teléfono en café, arranque en papel, íconos y favicon de la web | Conectar el tablero a los datos del servidor (T-M7); rediseño de las filas de Pendientes como en la maqueta (casillas grandes y botones, aparte); capturas a 360 px de las pantallas (se toman con el teléfono o con Playwright y Supabase levantado) |
 
-El color nunca es el único portador del significado: cada estado lleva texto («Sin subir», «Error», «Sin conexión»).
+Lo que sigue pendiente (ver la columna de la derecha) es el **objetivo**; cada tarea lo cumple al integrarse.
 
-## Tipografía
+## Componentes actuales (`apps/web/src/ui/componentes/`)
 
-La vitrina usa Fraunces y Work Sans, que se sirven desde Google Fonts. La app debe funcionar sin red y no puede cargar fuentes externas, así que se usan pilas del sistema que conservan el carácter:
-
-- **Titulares** (`font-titulo`): serifa de papel. `'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, 'Noto Serif', serif`. En iPhone sale Iowan; en Android, la serifa del sistema.
-- **Cuerpo** (`font-cuerpo`, por defecto): `system-ui, -apple-system, 'Segoe UI', Roboto, …`, la fuente del teléfono.
-
-Escala: `text-pequeno` 14 px (ayudas, etiquetas) · `text-cuerpo` 16 px (nunca menos en campos: iOS hace zoom con menos) · `text-seccion` 20 px (subtítulos) · `text-titulo` 28 px (título de pantalla) · `text-marca` 36 px (inicio y acceso). Títulos en peso 600, sin mayúsculas sostenidas. Líneas de menos de 70 caracteres: la columna mide 448 px como máximo.
-
-## Componentes (`apps/web/src/ui/componentes/`)
+T-D2 (CAM-107) los rediseña: `Boton` en pastilla con deshabilitado en arena y tinta (sin `opacity-50`), `Tarjeta` en blanco sobre el papel con `shadow-papel`; `CampoTexto` y los selects, también en blanco (`bg-tarjeta`), sin sombra. `BarraSuperior` pasó a café con logo en T-D3; `Pagina` no cambió.
 
 | Componente | Qué es |
 |---|---|
-| `Pagina` | Barra superior + columna de contenido de 448 px. Toda pantalla nueva empieza aquí. |
-| `BarraSuperior` | Banda negra con filo café, «Volver» opcional y el único `h1` de la pantalla. `marca` agranda el título. |
-| `Boton`, `BotonEnlace` | `primario` (café), `secundario` (contorno negro), `peligro` (rojo). 48 px de alto mínimo. Un solo primario por pantalla. |
-| `CampoTexto` | Etiqueta visible, ayuda y error vinculados con `aria-describedby`; error con `role="alert"` y `aria-invalid`. |
-| `Tarjeta` | Superficie blanca con borde fino y sombra mínima. No se anidan. |
-| `EtiquetaEstado` | Pastilla con texto: `neutro`, `acento`, `advertencia`, `peligro`, `exito`. |
-| `Aviso` | Mensaje en línea: `info`, `advertencia`, `error` (este con `role="alert"`). |
+| `Pagina` | Barra superior y columna de contenido de 448 px. |
+| `BarraSuperior` | Cabecera de café con el único `h1`, el logo en trigo recortado a la derecha y el filo de trigo. |
+| `Boton`, `BotonEnlace` | `primario` (cacao), `secundario` (contorno), `peligro`. 48 px de alto. |
+| `CampoTexto` | Etiqueta visible, ayuda y error vinculados con `aria-describedby`. |
+| `Tarjeta` | Superficie blanca (`bg-tarjeta`) sobre el papel, con borde fino y `shadow-papel`. |
+| `EtiquetaEstado`, `Aviso` | Pastilla de estado y mensaje en línea. |
+| `Logo` | Montaña con camino aprobada de la web (`marcaCamino.ts`), con `currentColor`; con `titulo` es imagen accesible. |
+| `Dinero` | Pesos sin decimales en Fraunces con cifras tabulares; el «$» va menor y en tinta. |
+| `Segmentos`, `SelectorPeriodo` | Pastillas de una opción (`aria-pressed`, 48 px); el selector ofrece hoy, semana y mes. |
+| `FilaLista` | Fila de lista de 48 px con filete punteado. |
+| `Tablero` y gráficos (`ui/tablero/`) | `Arco` (margen), `AreaVentasCosto`, `BarrasPeriodo`, `BarrasHorizontales`: SVG propio, sin librerías, con escalas puras (`escalas.ts`) y texto alternativo; `frasesDeDecision` dice qué atender. `Tablero` recibe `DatosTablero` o `null` (estado vacío «Aún no hay ventas»). |
+| `BarraInferior`, `MenuAcciones`, `MarcoApp` (`ui/marco/`) | Navegación principal con el disco central, botón «+» con las tres acciones rápidas, y el marco que los pone en toda pantalla con sesión. |
 
-`IndicadoresEstado` (barra pegada arriba: conexión, pendientes, «Datos al…») y `AvisoActualizacion` usan los mismos tokens. Las clases de un enlace dentro de un texto están en `CLASES_ENLACE` (café subrayado).
+`IndicadoresEstado` es la barra de estado de café (indicadores con `exito-claro` y `advertencia-claro`) y `AvisoActualizacion` usa los mismos tokens; los enlaces dentro de un texto usan `CLASES_ENLACE` (cacao subrayado).
 
-Radios: `rounded-control` 8 px (botones, campos, avisos) y `rounded-tarjeta` 12 px. Sombras: `shadow-tarjeta` (reposo, casi plana) y `shadow-flotante` (solo el aviso de actualización).
+## Paleta
+
+Son los colores de la web (`camino/app/globals.css`), con nombres funcionales para la app. Los nombres de token anteriores se conservaron para no romper pantallas; solo cambió su valor.
+
+| Token (Tailwind) | Valor | Uso |
+|---|---|---|
+| `fondo` | `#fbf7ee` | papel: fondo de pantalla |
+| `superficie` | `#f6efe2` | crema: filas, zonas secundarias |
+| `tarjeta` | `#ffffff` | tarjetas y campos sobre el papel |
+| `arena` | `#eadfc8` | separadores suaves, botón deshabilitado |
+| `borde` / `trigo` | `#d9c7a0` | divisores, detalles sobre el café |
+| `texto` / `cafe` | `#3a2418` | texto y cabecera |
+| `texto-secundario` | `#6b5647` | tinta: ayudas y datos de apoyo |
+| `borde-fuerte` | `#857260` | borde de campos (4,6 contra la tarjeta; mínimo 3) |
+| `acento` | `#5a3a2a` | cacao: botón primario, enlaces, estado activo |
+| `acento-hover` | `#3a2418` | pulsado |
+| `acento-suave` | `#f1e9e4` | fondo de etiquetas de acento |
+| `sobre-acento` | `#fbf7ee` | texto sobre el cacao |
+| `terracota` | `#b5532f` | **solo** foco del teclado, selección y camino punteado |
+| `peligro` / `peligro-suave` | `#b3261e` / `#fcecea` | errores, faltantes, «Descartar» |
+| `exito` / `exito-claro` | `#1b6e3c` / `#8fd4a6` | «En línea», cifras que suben / sobre la barra de estado de café |
+| `advertencia` / `advertencia-suave` / `advertencia-claro` | `#7a4a00` / `#fbf1de` / `#f0c27a` | sin conexión, pendientes, lo que pide atención / sobre la barra de estado de café |
+
+`index.css` hace `--color-*: initial`: solo existen los tokens de arriba. Regla de proporción: papel y crema dominan; el café es estructura y texto; el cacao aparece en **un solo botón primario por pantalla**; el ámbar marca lo que pide atención.
+
+## Contraste (WCAG AA)
+
+Se calcula y verifica en `apps/web/src/ui/componentes/contraste.test.ts` (lee los valores de `index.css`). Texto normal exige 4,5; componentes de interfaz, 3.
+
+| Par | Razón |
+|---|---|
+| `texto` sobre `fondo` / `superficie` | 13,6 / 12,7 |
+| `texto-secundario` sobre `fondo` / `superficie` | 6,5 / 6,0 |
+| `fondo` sobre `cafe` (cabecera) | 13,6 |
+| `trigo` sobre `cafe` | 8,7 |
+| `acento` sobre `fondo` / `superficie` / `acento-suave` | 9,5 / 8,9 / 8,5 |
+| `sobre-acento` sobre `acento` | 9,5 |
+| `peligro` sobre `fondo` / `superficie` | 6,1 / 5,7 |
+| `exito` sobre `fondo` | 5,9 |
+| `exito-claro` / `advertencia-claro` sobre `cafe` | 8,4 / 8,8 |
+| `advertencia` sobre `fondo` / `advertencia-suave` | 7,0 / 6,7 |
+| `terracota` sobre `fondo` (foco) | 4,6 (mínimo 3) |
+| `sobre-acento` sobre `terracota` (texto seleccionado) | 4,6 |
+| `peligro` / `exito` sobre `superficie` | 5,7 / 5,5 |
+| `texto-secundario` sobre `arena` | 5,2 |
+
+Cada fila de esta tabla tiene su prueba en `contraste.test.ts`.
+
+El color nunca es el único portador del significado: cada estado lleva texto («Faltante», «Sin conexión», «Sin subir»).
+
+## Tipografía
+
+Las de la web, **autoalojadas** para funcionar sin red (`apps/web/src/fonts/`; Fraunces recortada a español con `scripts/subconjunto-fuentes.py` y Work Sans tal como la sirve Google, ya en su subconjunto latino; 125 KB en total, precacheadas por el service worker, `font-display: swap`):
+
+- **Titulares y cifras** (`font-titulo`): Fraunces, pesos 500 a 700. El eje óptico (24 a 144) lo ajusta solo el navegador según el tamaño; no se fija en el CSS. Precios, totales, stock y KPI van aquí, con `tabular-nums`.
+- **Nombres de personas** (`.nombre`): Fraunces cursiva, como en la web.
+- **Cuerpo** (`font-cuerpo`): Work Sans, pila de respaldo del sistema.
+
+Escala: `text-pequeno` 14 px · `text-cuerpo` 16 px (nunca menos en campos: iOS hace zoom) · `text-seccion` 20 px · `text-titulo` 28 px · `text-marca` 34 px · `text-cifra` 40 px. Cuerpo siempre en peso 400 o más. Líneas de menos de 70 caracteres.
+
+## Superficies
+
+- **Papel:** el fondo lleva el grano de papel de la web (`src/assets/grano-papel.webp`, 12 KB).
+- **Sombra** `shadow-papel` (la de «papeles apilados» de la web: plana y corta) en tarjetas y gráficos. `shadow-flotante`, profunda, solo en lo que flota: disco central, botón «+» y menú flotante.
+- **Radios:** 8 px en tarjetas y controles; los botones son pastilla (como en la web, donde es lo único redondeado del todo).
+- **Filetes punteados** en listas y el **camino punteado** (`.camino-punteado`, terracota) como separador.
+
+## Navegación y pantallas
+
+Barra inferior de cinco destinos, con Inicio en el centro como disco de café con anillo de trigo incompleto:
+
+| Destino | Contiene | Conexión |
+|---|---|---|
+| Ventas | pedidos por confirmar, esperando pago, por reembolsar, todos; detalle, cobros, documentos | con conexión |
+| Compras | compra inmediata y encargo, recibir, necesidades, comprobante | funciona sin señal |
+| **Inicio** | tablero (RF-DSH): ventas, ganancia, margen, gráficos, lo que pide atención | conexión o copia «datos al…» |
+| Inventario | stock, kardex, lotes, ajustes | stock desde copia local |
+| Más | pendientes (con contador), catálogo, clientes y proveedores, gastos, ajustes, cómo instalar | según la función |
+
+Un botón «+» flotante abre Nuevo pedido (primario), Nueva compra y Gasto. No hay gráfico de velas: el negocio no tiene serie de apertura y cierre; ventas contra costo va en área y lo demás en barras.
+
+## Tablero de Inicio
+
+De arriba abajo: selector de periodo (hoy, semana, mes), lo que pide atención (por confirmar, esperando pago, faltantes), arco del margen con las ventas y la ganancia en Fraunces, seis indicadores (costo, utilidad neta, gastos, ticket promedio, pedidos y unidades vendidas), ventas y costo por día (área y línea punteada), unidades por semana (las últimas 12 como máximo, cada barra con su cifra), lo más vendido y «qué hacer». Sin gráfico de velas. Cada gráfico es una imagen con texto alternativo que dice el último valor; lo más vendido es una lista. Lo que comunica un dato va en marrón con al menos 3:1 sobre la tarjeta (`borde-fuerte` y cacao); el trigo claro queda solo para lo decorativo. El color nunca va solo: cada barra lleva su cifra y la variación lleva ▲/▼ y texto. Cifras en es-CO (coma decimal, separador de miles).
+
+**Alcance de T-D4 (solo la capa visual).** Cubre RF-DSH-01 (selector), RF-DSH-02 (los nueve indicadores) y parte de RF-DSH-03 y RF-DSH-04. Faltan, y los construye T-M7: la tabla por artículo y el total del mes frente al mes anterior (CAM-71), el capital en inventario y los artículos con stock en cero (CAM-72) y la caché «datos al…» (CAM-73). Mientras no existan ventas, Inicio muestra «Aún no hay ventas» y un botón para registrar el primer pedido.
+
+## Capas y menú flotante
+
+Orden de capas (`z-index`): barra de estado sticky `z-10`, barra inferior `z-20`, fondo oscuro del menú `z-30`, botón «+» y menú `z-40`, aviso de actualización `z-50`. El aviso flota por encima del «+» y de la barra (`bottom: 9rem`); el contenido deja `8,5 rem` de holgura abajo para que ni el «+» ni la barra tapen el final de un formulario.
+
+El menú «+» es un `role="menu"`: el foco entra al primer elemento; las flechas (circulares), Inicio y Fin lo recorren; Escape, Tab y el fondo lo cierran devolviendo el foco al botón; elegir una acción o cambiar de ruta (incluido «atrás») lo cierra sin quitarle el foco a la pantalla nueva. El nombre del botón es fijo («Acciones rápidas») y `aria-expanded` dice si está abierto. Pendiente de verificar en el teléfono: cómo se comportan la barra y el «+» con el teclado abierto.
 
 ## Reglas
 
-1. **Contraste AA** en todo texto, con los pares de la tabla. No inventar colores fuera de los tokens.
-2. **Objetivos táctiles de 48 px** como mínimo (botones, campos, filas de lista, enlaces sueltos). Los enlaces dentro de un párrafo se rodean de espacio.
-3. **Viewport de 360 px**: una columna, sin desplazamiento horizontal; todo se prueba a 360 × 740.
-4. **Estados**: cada lista o pantalla de datos define vacío («No tienes nada pendiente.»), cargando («Cargando…», `role="status"`) y error (`Aviso` de error, dice qué pasó y qué hacer).
-5. **Foco visible**: contorno de 3 px en café (blanco sobre la barra negra, clase `sobre-oscuro`). Nunca `outline: none`.
-6. **Un acento por pantalla**: la acción principal va en café; las demás, en contorno negro. El rojo no se usa como decoración.
-7. **Movimiento**: solo el que responde a una acción; `prefers-reduced-motion` lo apaga.
-8. **Sin recursos externos**: ni fuentes, ni íconos, ni imágenes remotas.
+1. **Contraste AA** en todo texto con los pares de la tabla. No inventar colores fuera de los tokens.
+2. **Objetivos táctiles de 48 px** como mínimo, con 8 px entre vecinos.
+3. **Viewport de 360 px**: una columna, sin desplazamiento horizontal. Respetar `safe-area` de iOS.
+4. **Estados completos**: vacío con una frase que invita a actuar, cargando (`role="status"`) y error que dice qué pasó y qué hacer. El botón deshabilitado se ve «apagado con intención» (arena y tinta), no con `opacity-50`.
+5. **Foco visible**: 3 px en terracota (trigo sobre la cabecera de café, clase `sobre-oscuro`). Nunca `outline: none`.
+6. **Un acento por pantalla**: la acción principal en cacao; las demás, secundarias. El rojo no es decoración.
+7. **Jerarquía numérica**: el dinero y el stock son el elemento más grande de su tarjeta, en Fraunces con cifras tabulares; el «$» va más pequeño y en tinta.
+8. **Movimiento**: solo el que responde a una acción; `prefers-reduced-motion` lo apaga.
+9. **Sin recursos externos**: ni fuentes, ni íconos, ni imágenes remotas.
+10. **Vocabulario**: «productores del campo colombiano», nunca «campesino» (decisión de la web, `docs/DECISION-VOCABULARIO.md` de ese repo). Tuteo cercano.
 
-## PWA
+## Logo y PWA
 
-`theme_color` y `background_color` del manifest y la meta `theme-color` son blancos (`#ffffff`): la barra de estado del teléfono y la pantalla de arranque coinciden con la barra de indicadores de la app, que siempre está arriba y es blanca. Los íconos son provisionales y no cambian en esta tarea.
+El logo es el aprobado de la web (`camino-mark.svg`, `currentColor`: trigo sobre el café, cacao sobre el papel). Los íconos son los archivos de la web: 192, 512 y maskable en `public/icons/`, el `apple-touch-icon` de 180 px, `favicon.ico` y el `favicon.svg` de la marca. Los PNG entran al precaché por el patrón `png` y los favicon y el `apple-touch-icon` por `includeAssets` (se comprobó en el `sw.js` del build). Las pruebas decodifican los PNG para exigir que ningún píxel sea transparente (iOS pinta de negro lo transparente), que no estén en blanco y que toda la marca del maskable quede dentro del círculo seguro de 80 %; del `.ico` se prueba que traiga la entrada de 48 px declarada (las de 16 y 32 se vieron a mano).
+
+- **Android:** `theme_color` es el café (`#3A2418`), así que la barra del teléfono se funde con la cabecera, y `background_color` el papel (`#FBF7EE`) para la pantalla de arranque.
+- **iPhone:** la barra de estado es opaca y negra (`black`); **no se funde** con el café de la cabecera, queda una franja negra por encima. Se eligió porque el viewport no usa `viewport-fit=cover`: sin él, iOS deja el contenido bajo la barra y `env(safe-area-inset-*)` vale 0 (los márgenes de zona segura de las barras y del botón «+» no actúan hoy, y las holguras de 8,5 y 9 rem están calculadas para ese caso). Probar `black-translucent` con `viewport-fit=cover` es una decisión de diseño aparte, para cuando se vea en un teléfono real; si se activa hay que revisar esas holguras.
+- iOS no pinta pantalla de arranque propia sin imágenes `apple-touch-startup-image` y muestra un instante de blanco antes de cargar los estilos.
+
+**Verificar en el teléfono** (no se puede comprobar desde las pruebas): el color de la barra en Android y la franja en iPhone; el arranque en papel en Android; el ícono instalado en iOS y Android; el favicon en el navegador de escritorio; la barra inferior y el botón «+» con el teclado abierto.
