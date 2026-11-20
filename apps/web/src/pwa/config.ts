@@ -16,7 +16,7 @@ export const COLOR_FONDO = '#FBF7EE'
  */
 export const opcionesPwa: Partial<VitePWAOptions> = {
   registerType: 'prompt',
-  includeAssets: ['favicon.svg', 'icons/apple-touch-icon.png'],
+  includeAssets: ['favicon.svg', 'favicon.ico', 'icons/apple-touch-icon.png'],
   manifest: {
     id: '/',
     name: 'Camino Col',
