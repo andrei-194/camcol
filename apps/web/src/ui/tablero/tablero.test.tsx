@@ -18,6 +18,9 @@ const datos: DatosTablero = {
   margenPct: 31,
   pedidos: 8,
   ticket: 155000,
+  unidadesVendidas: 42,
+  gastos: 120000,
+  utilidadNeta: 266000,
   variacionPct: 18,
   serieDiaria: [
     { etiqueta: 'L', ventas: 120000, costo: 80000 },
@@ -184,5 +187,149 @@ describe('Inicio con el tablero', () => {
     )
     expect(await screen.findByText(/Aún no hay ventas/)).toBeInTheDocument()
     expect(screen.queryByText(/llega pronto/i)).toBeNull()
+  })
+})
+
+describe('revisión de T-D4: indicadores, contraste, formato y casos límite', () => {
+  const montar = (d: DatosTablero, periodo: 'hoy' | 'semana' | 'mes' = 'hoy') =>
+    render(
+      <MemoryRouter>
+        <Tablero datos={d} periodo={periodo} alCambiarPeriodo={() => {}} />
+      </MemoryRouter>,
+    )
+
+  it('muestra los indicadores de RF-DSH-02: costo, ganancia, margen, unidades, pedidos, ticket, gastos y utilidad neta', () => {
+    montar(datos)
+    for (const t of ['Costo', 'Ganancia', 'Unidades vendidas', 'Pedidos', 'Ticket promedio', 'Gastos', 'Utilidad neta']) {
+      expect(screen.getByText(t)).toBeInTheDocument()
+    }
+    expect(document.querySelector('data[value="854000"]')).not.toBeNull()
+    expect(document.querySelector('data[value="120000"]')).not.toBeNull()
+    expect(document.querySelector('data[value="266000"]')).not.toBeNull()
+  })
+
+  it('el gráfico de área no fija «Esta semana»: su título no depende del periodo', () => {
+    montar(datos, 'mes')
+    expect(screen.getByRole('heading', { name: /Ventas y costo por día/ })).toBeInTheDocument()
+    expect(screen.queryByText('Esta semana')).toBeNull()
+  })
+
+  it('los títulos siguen al periodo: semana y mes', () => {
+    const { unmount } = montar(datos, 'semana')
+    expect(screen.getByText('Ventas de la semana')).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Qué hacer esta semana' })).toBeInTheDocument()
+    unmount()
+    montar(datos, 'mes')
+    expect(screen.getByText('Ventas del mes')).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Qué hacer este mes' })).toBeInTheDocument()
+  })
+
+  it('formato es-CO: el margen con coma y un decimal, y las unidades con separador de miles', () => {
+    montar({ ...datos, margenPct: 31.46, masVendidos: [{ nombre: 'Café Jardín 500 g', unidades: 1500 }] })
+    expect(screen.getByRole('img', { name: 'margen 31,5 %' })).toBeInTheDocument()
+    expect(within(screen.getByRole('list', { name: 'Lo más vendido' })).getByText('1.500')).toBeInTheDocument()
+  })
+
+  it('variación 0 no se pinta como subida; con margen mayor que 50 la escala del arco sube a 100', () => {
+    const { unmount } = montar({ ...datos, variacionPct: 0 })
+    expect(screen.getByText('Sin cambio frente al periodo anterior')).toBeInTheDocument()
+    expect(screen.queryByText(/▲/)).toBeNull()
+    unmount()
+    const { container } = montar({ ...datos, margenPct: 60 })
+    expect(container.querySelector('path[data-relleno]')?.getAttribute('stroke-dasharray')).toBe('60 100')
+  })
+
+  it('un margen negativo se lee «-5 %» y deja el arco vacío', () => {
+    const { container } = montar({ ...datos, margenPct: -5 })
+    expect(screen.getByRole('img', { name: 'margen -5 %' })).toBeInTheDocument()
+    expect(container.querySelector('path[data-relleno]')).toBeNull()
+  })
+
+  it('el arco con 0 % no dibuja el trazo de relleno (no parece un 1 %)', () => {
+    const { container } = render(<Arco valor={0} max={50} etiqueta="margen" texto="0 %" />)
+    expect(container.querySelector('path[data-relleno]')).toBeNull()
+  })
+
+  it('las referencias url(#id) del arco apuntan a ids que existen', () => {
+    const { container } = render(<Arco valor={20} max={50} etiqueta="margen" texto="20 %" />)
+    const relleno = container.querySelector('path[data-relleno]')!
+    for (const atributo of ['stroke', 'filter']) {
+      const id = /url\(#([^)]+)\)/.exec(relleno.getAttribute(atributo) ?? '')?.[1]
+      expect(id).toBeTruthy()
+      expect(container.querySelector(`[id="${id}"]`)).not.toBeNull()
+    }
+  })
+
+  it('el color de lo que comunica un dato tiene contraste: nada de trigo claro sobre la tarjeta blanca', () => {
+    const { container } = render(<BarrasPeriodo titulo="Unidades por semana" datos={datos.unidadesSemanales} />)
+    expect(container.querySelector('rect[data-actual="false"]')?.getAttribute('fill')).toBe('var(--color-borde-fuerte)')
+    render(<BarrasHorizontales titulo="Lo más vendido" datos={datos.masVendidos} />)
+    expect(document.querySelector('[data-barra].from-borde-fuerte')).not.toBeNull()
+    const arco = render(<Arco valor={20} max={50} etiqueta="margen" texto="20 %" />).container
+    expect(arco.innerHTML).not.toContain('--color-trigo')
+  })
+
+  it('cada barra de las semanas lleva su cifra', () => {
+    const semanas = Array.from({ length: 8 }, (_, i) => ({ etiqueta: `S${i + 1}`, unidades: 10 + i }))
+    const { container } = render(<BarrasPeriodo titulo="Unidades por semana" datos={semanas} />)
+    const cifras = [...container.querySelectorAll('text')].map((t) => t.textContent)
+    for (const s of semanas) expect(cifras).toContain(String(s.unidades))
+  })
+
+  it('con muchísimos periodos dibuja como máximo 12 barras, todas con ancho positivo', () => {
+    const muchos = Array.from({ length: 40 }, (_, i) => ({ etiqueta: `S${i}`, unidades: i + 1 }))
+    const { container } = render(<BarrasPeriodo titulo="Unidades por semana" datos={muchos} />)
+    const barras = [...container.querySelectorAll('rect[data-barra]')]
+    expect(barras).toHaveLength(12)
+    for (const b of barras) expect(Number(b.getAttribute('width'))).toBeGreaterThan(0)
+  })
+
+  it('con todo en cero las barras no llevan alto negativo ni NaN', () => {
+    const { container } = render(<BarrasPeriodo titulo="Unidades por semana" datos={[{ etiqueta: 'S1', unidades: 0 }, { etiqueta: 'S2', unidades: 0 }]} />)
+    expect(container.innerHTML).not.toContain('NaN')
+  })
+
+  it('el área con un solo día dibuja el punto final y ninguna línea degenerada', () => {
+    const { container } = render(<AreaVentasCosto datos={[{ etiqueta: 'L', ventas: 100, costo: 60 }]} />)
+    expect(container.querySelector('polyline')).toBeNull()
+    expect(container.querySelector('circle[data-final]')).not.toBeNull()
+  })
+
+  it('el área con todo en cero no produce NaN', () => {
+    const { container } = render(<AreaVentasCosto datos={[{ etiqueta: 'L', ventas: 0, costo: 0 }, { etiqueta: 'M', ventas: 0, costo: 0 }]} />)
+    expect(container.innerHTML).not.toContain('NaN')
+  })
+
+  it('lo más vendido: lista vacía, nombres repetidos sin aviso de React y nombre completo en title', () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { rerender } = render(<BarrasHorizontales titulo="Lo más vendido" datos={[]} />)
+    expect(within(screen.getByRole('list', { name: 'Lo más vendido' })).queryAllByRole('listitem')).toHaveLength(0)
+    rerender(
+      <BarrasHorizontales
+        titulo="Lo más vendido"
+        datos={[
+          { nombre: 'Crema de cacao, cacao original 200 g', unidades: 3 },
+          { nombre: 'Crema de cacao, cacao original 200 g', unidades: 2 },
+        ]}
+      />,
+    )
+    expect(screen.getAllByTitle('Crema de cacao, cacao original 200 g')).toHaveLength(2)
+    expect(error).not.toHaveBeenCalled()
+    error.mockRestore()
+  })
+})
+
+describe('frasesDeDecision: orden y combinaciones', () => {
+  it('van de lo que más cuesta a lo que menos: cobrar, faltantes, por confirmar', () => {
+    const f = frasesDeDecision(datos)
+    expect(f).toHaveLength(3)
+    expect(f[0]).toMatch(/^3 pedidos esperan pago: \$\s480\.000 por cobrar\.$/)
+    expect(f[1]).toMatch(/^1 artículo faltante/)
+    expect(f[2]).toMatch(/^2 pedidos por confirmar/)
+  })
+
+  it('faltantes sin ejemplo y combinaciones con ceros parciales', () => {
+    expect(frasesDeDecision({ ...datos, porConfirmar: 0, esperandoPago: { cantidad: 0, valor: 0 }, faltantes: { cantidad: 2 } })).toEqual(['2 artículos faltantes.'])
+    expect(frasesDeDecision({ ...datos, faltantes: { cantidad: 0 }, esperandoPago: { cantidad: 0, valor: 0 } })).toEqual(['2 pedidos por confirmar.'])
   })
 })
