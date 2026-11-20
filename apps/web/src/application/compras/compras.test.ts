@@ -184,8 +184,8 @@ describe('filasLocales (lo que se ve con ⏳ mientras no se sube)', () => {
     const d = armarDatos(base(), ids, ahora)
     const [orden] = filasLocales(d)
     expect(orden).toMatchObject({ tabla: 'ordenes_compra', fila: { id: d.orden.id, proveedor_id: 'p1', modalidad: 'inmediata', estado: 'recibida', total: 600000 } })
-    expect((orden!.fila as { items: unknown[]; pagos: unknown[] }).items).toHaveLength(1)
-    expect((orden!.fila as { pagos: unknown[] }).pagos).toHaveLength(1)
+    expect((orden!.fila['items'] as unknown[])).toHaveLength(1)
+    expect((orden!.fila['pagos'] as unknown[])).toHaveLength(1)
   })
 
   it('un encargo queda «pedida» y sin pagos', () => {
