@@ -34,7 +34,7 @@ const PARES_TEXTO: Array<[string, string]> = [
   ['trigo', 'cafe'], // detalles de trigo sobre la cabecera
   ['exito-claro', 'cafe'], // «En línea» sobre la barra de estado de café
   ['advertencia-claro', 'cafe'], // «Sin conexión» sobre la barra de estado de café
-  ['sobre-peligro', 'peligro'], // contador de atención sobre rojo
+  ['sobre-acento', 'advertencia'], // contador de pendientes de la barra inferior
   ['texto-secundario', 'tarjeta'],
   ['sobre-acento', 'terracota'], // texto de la selección
   ['peligro', 'superficie'],

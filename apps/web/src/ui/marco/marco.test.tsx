@@ -1,15 +1,17 @@
 // Marco de la app (T-D3, CAM-108, docs/producto/diseno.md): cabecera de café con logo, barra inferior de cinco destinos con
 // el disco central, menú flotante de acciones rápidas y rutas de Ventas, Compras, Inventario y Más.
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { IDBFactory, IDBKeyRange } from 'fake-indexeddb'
-import { MemoryRouter } from 'react-router-dom'
+import { Link, MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { AuthProvider } from '../../application/auth/AuthProvider'
 import { CaminoDB } from '../../infra/db/db'
+import { AvisoActualizacionVista } from '../../pwa/AvisoActualizacion'
 import { AppRoutes } from '../../routes'
 import { servicioFalso } from '../../test/servicioAuthFalso'
 import { BarraSuperior } from '../componentes/BarraSuperior'
 import { BarraInferior } from './BarraInferior'
+import { MarcoApp } from './MarcoApp'
 import { MenuAcciones } from './MenuAcciones'
 
 let db: CaminoDB
@@ -124,7 +126,7 @@ describe('MenuAcciones', () => {
     ;['Nuevo pedido', 'Nueva compra', 'Gasto'].forEach((nombre, i) => expect(items[i]).toHaveAccessibleName(nombre))
     expect(items.map((i) => i.getAttribute('href'))).toEqual(['/ventas/nuevo', '/compras/nueva', '/gastos/nuevo'])
     expect(items[0]).toHaveFocus()
-    expect(screen.getByRole('button', { name: 'Cerrar acciones rápidas' })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('button', { name: 'Acciones rápidas' })).toHaveAttribute('aria-expanded', 'true')
   })
 
   it('Escape lo cierra y devuelve el foco al botón', () => {
@@ -196,5 +198,160 @@ describe('rutas del marco', () => {
     enSesion('/')
     await screen.findByRole('heading', { level: 1, name: 'Camino Col' })
     expect(within(screen.getByRole('main')).queryByRole('link', { name: /Catálogo/ })).toBeNull()
+  })
+})
+
+describe('revisión de T-D3: menú, foco, rutas y capas', () => {
+  const abrir = () => fireEvent.click(screen.getByRole('button', { name: 'Acciones rápidas' }))
+
+  function Ubicacion() {
+    return <p data-testid="ruta">{useLocation().pathname}</p>
+  }
+  const montarConRutas = () =>
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Link to="/otra">Ir a otra</Link>
+        <Routes>
+          <Route path="*" element={<MenuAcciones />} />
+        </Routes>
+        <Ubicacion />
+      </MemoryRouter>,
+    )
+
+  it('el nombre del botón es fijo y aria-expanded dice el estado', () => {
+    montarConRutas()
+    const boton = screen.getByRole('button', { name: 'Acciones rápidas' })
+    abrir()
+    expect(boton).toHaveAccessibleName('Acciones rápidas')
+    expect(boton).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  it('aria-controls apunta al id del menú abierto', () => {
+    montarConRutas()
+    abrir()
+    const menu = screen.getByRole('menu')
+    expect(screen.getByRole('button', { name: 'Acciones rápidas' })).toHaveAttribute('aria-controls', menu.id)
+  })
+
+  it('las flechas recorren las acciones de forma circular y Inicio y Fin saltan a los extremos', () => {
+    montarConRutas()
+    abrir()
+    const [pedido, compra, gasto] = screen.getAllByRole('menuitem')
+    const tecla = (key: string) => fireEvent.keyDown(document.activeElement!, { key })
+    expect(pedido).toHaveFocus()
+    tecla('ArrowDown')
+    expect(compra).toHaveFocus()
+    tecla('ArrowDown')
+    expect(gasto).toHaveFocus()
+    tecla('ArrowDown')
+    expect(pedido).toHaveFocus()
+    tecla('ArrowUp')
+    expect(gasto).toHaveFocus()
+    tecla('Home')
+    expect(pedido).toHaveFocus()
+    tecla('End')
+    expect(gasto).toHaveFocus()
+  })
+
+  it('Tab cierra el menú y deja el foco en el botón (no se escapa a la barra tapada)', () => {
+    montarConRutas()
+    abrir()
+    fireEvent.keyDown(document.activeElement!, { key: 'Tab' })
+    expect(screen.queryByRole('menu')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Acciones rápidas' })).toHaveFocus()
+  })
+
+  it('al cambiar de ruta (por ejemplo «atrás» en Android) el menú se cierra solo', () => {
+    montarConRutas()
+    abrir()
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('link', { name: 'Ir a otra' }))
+    expect(screen.getByTestId('ruta')).toHaveTextContent('/otra')
+    expect(screen.queryByRole('menu')).toBeNull()
+  })
+
+  it('elegir una acción navega y el foco NO vuelve al botón «+»', () => {
+    montarConRutas()
+    abrir()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Gasto' }))
+    expect(screen.getByTestId('ruta')).toHaveTextContent('/gastos/nuevo')
+    expect(screen.queryByRole('menu')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Acciones rápidas' })).not.toHaveFocus()
+  })
+
+  it('cerrar con Escape o con el fondo sí devuelve el foco al botón', () => {
+    montarConRutas()
+    abrir()
+    fireEvent.click(screen.getByTestId('fondo-menu'))
+    expect(screen.getByRole('button', { name: 'Acciones rápidas' })).toHaveFocus()
+  })
+
+  it('/ventas/nuevo mantiene marcada Ventas; /catalogo no marca ninguna pestaña', () => {
+    const { unmount } = render(
+      <MemoryRouter initialEntries={['/ventas/nuevo']}>
+        <BarraInferior db={db} />
+      </MemoryRouter>,
+    )
+    expect(screen.getByRole('link', { name: 'Ventas' })).toHaveAttribute('aria-current', 'page')
+    unmount()
+    render(
+      <MemoryRouter initialEntries={['/catalogo']}>
+        <BarraInferior db={db} />
+      </MemoryRouter>,
+    )
+    for (const e of within(screen.getByRole('navigation', { name: 'Navegación principal' })).getAllByRole('link')) {
+      expect(e).not.toHaveAttribute('aria-current')
+    }
+  })
+
+  it('el contador de Más cuenta también las operaciones con error o en revisión', async () => {
+    await db.outbox.bulkAdd([op('a'), { ...op('b'), estado: 'error' as const }, { ...op('c'), estado: 'revision' as const }])
+    render(
+      <MemoryRouter>
+        <BarraInferior db={db} />
+      </MemoryRouter>,
+    )
+    await waitFor(() => expect(within(screen.getByRole('link', { name: 'Más' })).getByText('3')).toBeInTheDocument())
+    expect(within(screen.getByRole('link', { name: 'Más' })).getByText('3').className).not.toContain('text-[10px]')
+  })
+
+  it('los indicadores se leen sobre el café: verde claro en línea, ámbar claro sin conexión', async () => {
+    enSesion('/')
+    const enLinea = await screen.findByText('En línea')
+    expect(enLinea.className).toContain('text-exito-claro')
+    Object.defineProperty(navigator, 'onLine', { value: false, configurable: true })
+    act(() => void window.dispatchEvent(new Event('offline')))
+    expect((await screen.findByText('Sin conexión')).className).toContain('text-advertencia-claro')
+    Object.defineProperty(navigator, 'onLine', { value: true, configurable: true })
+    act(() => void window.dispatchEvent(new Event('online')))
+  })
+
+  it('las pantallas «llega pronto» con Volver enlazan a su origen', async () => {
+    const { unmount } = enSesion('/gastos/nuevo')
+    await screen.findByRole('heading', { level: 1, name: 'Nuevo gasto' })
+    expect(screen.getByRole('link', { name: 'Volver' })).toHaveAttribute('href', '/mas')
+    unmount()
+    enSesion('/ventas/nuevo')
+    await screen.findByRole('heading', { level: 1, name: 'Nuevo pedido' })
+    expect(screen.getByRole('link', { name: 'Volver' })).toHaveAttribute('href', '/ventas')
+  })
+
+  it('Inicio avisa que el tablero llega pronto', async () => {
+    enSesion('/')
+    expect(await screen.findByText(/tablero.*llega pronto/i)).toBeInTheDocument()
+  })
+
+  it('el contenido deja holgura bajo el «+» y el aviso de actualización flota por encima de la barra y del botón', () => {
+    const { container } = render(
+      <MemoryRouter>
+        <MarcoApp>
+          <p>x</p>
+        </MarcoApp>
+      </MemoryRouter>,
+    )
+    expect(container.innerHTML).toContain('pb-[calc(8.5rem+env(safe-area-inset-bottom))]')
+    render(<AvisoActualizacionVista necesitaActualizar listoOffline={false} onActualizar={() => {}} onCerrar={() => {}} />)
+    const aviso = screen.getByText(/Nueva versión disponible/).closest('[role="status"]')!
+    expect(aviso.className).toContain('bottom-[calc(9rem+env(safe-area-inset-bottom))]')
   })
 })
